@@ -39,6 +39,7 @@ jobs:
         with:
           tag_name: v${{ steps.ver.outputs.vn }}-${{ steps.ver.outputs.vc }}
           name: LexTV ${{ steps.ver.outputs.vn }}
+          body: "v3.5 实景模拟上线:盈透证券IBKR/汇丰香港/DBS星展 6门App动画实操课,手指点击+聚光灯讲解像看真机演示;新增「港新银行实战」词库90+词;界面对照新增FPS/定期存款/PayNow/跨境汇款。"
           files: LexTV.apk
           make_latest: true
         env:

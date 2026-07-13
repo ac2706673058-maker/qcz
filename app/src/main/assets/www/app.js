@@ -150,23 +150,37 @@ function speak(t) {
   if (typeof Audio === "undefined") { nativeSpeak(t); return; }
   var segs = splitSentences(t);
   if (!segs.length) return;
-  var seq = ++_speakSeq;  // 新的朗读会取消旧的
+  var seq = ++_speakSeq;
   var idx = 0;
+  var timer = null;
+  function clearT() { if (timer) { clearTimeout(timer); timer = null; } }
   function playNext() {
-    if (seq !== _speakSeq) return;  // 已被新朗读打断
+    clearT();
+    if (seq !== _speakSeq) return;
     if (idx >= segs.length) { _player = null; return; }
     var seg = segs[idx++];
+    var advanced = false;
+    function advance() { if (advanced || seq !== _speakSeq) return; advanced = true; clearT(); playNext(); }
     try {
       var a = new Audio(ydUrl(seg));
       _player = a;
       a.playbackRate = P.set.rate || 1;
-      var moved = false;
-      var goOn = function () { if (moved) return; moved = true; playNext(); };
-      a.onended = goOn;
-      a.onerror = function () { if (moved) return; moved = true; if (idx === 1 && segs.length === 1) nativeSpeak(seg); else playNext(); };
+      a.onended = advance;
+      a.onerror = function () { if (idx === 1 && segs.length === 1) { advanced = true; nativeSpeak(seg); } else advance(); };
+      // 元数据到位后按真实时长兜底(onended没触发时也能接上)
+      a.onloadedmetadata = function () {
+        if (seq !== _speakSeq) return;
+        var dur = a.duration;
+        if (isFinite(dur) && dur > 0) {
+          clearT();
+          timer = setTimeout(advance, (dur / (a.playbackRate || 1)) * 1000 + 350);
+        }
+      };
       var pr = a.play();
-      if (pr && pr.catch) pr.catch(function () { /* 等onerror/onended处理 */ });
-    } catch (e) { playNext(); }
+      if (pr && pr.catch) pr.catch(function () { });
+      // 最后兜底:每段最多给12秒,防止卡死
+      timer = setTimeout(advance, 12000);
+    } catch (e) { advance(); }
   }
   playNext();
 }
@@ -204,6 +218,8 @@ const MENU = [
   { id: "browse", ic: "📖", t: "单词本", d: "今日新学 · 全部已学" },
   { id: "custom", ic: "🗓️", t: "自选复习", d: "按日期挑单词随时复习" },
   { id: "battle", ic: "🤖", t: "人机对战", d: "和AI拼速度拼准度" },
+  { id: "sim", ic: "🏦", t: "实景模拟", d: "盈透/港新银行App动画实操课" },
+  { id: "screens", ic: "📱", t: "界面对照", d: "对着券商/银行App学界面英文" },
   { id: "ai", ic: "👨‍🏫", t: "AI 外教", d: "对话 · 跟读 · 情景课 · 教练" },
   { id: "decks", ic: "📚", t: "词库", d: "开关词书 · 外部扩展" },
   { id: "stats", ic: "📊", t: "统计", d: "热力图 · 掌握度" },
@@ -258,6 +274,8 @@ function openMenu(id) {
   else if (id === "battle") startTF(true);
   else if (id === "browse") { BR.tab = 0; BR.idx = 0; show("browse"); }
   else if (id === "custom") { CU.idx = 0; show("custom"); }
+  else if (id === "sim") { simOpen(); }
+  else if (id === "screens") { SC.view = "list"; SC.gi = 0; show("screens"); }
   else if (id === "ai") show("ai");
   else show(id);
 }
@@ -406,17 +424,22 @@ function renderQuiz() {
     opts.forEach((o, i) => {
       const d = document.createElement("div");
       d.className = "opt" + (i === 0 ? " focus" : "");
-      d.innerHTML = '<span class="idx">' + (i + 1) + '</span><span class="serif" style="font-size:3.8vmin">' + esc(o.w) + '</span>';
+      d.innerHTML = '<span class="idx">' + (i + 1) + '</span><span><span class="serif" style="font-size:3.8vmin">' + esc(o.w) + '</span><span style="display:block;font-size:2.1vmin;color:var(--dim);margin-top:.4vmin">' + esc(o.m) + '</span></span>';
       box.appendChild(d);
     });
   }
   clearInterval(QZ.timer); QZ.tStart = NOW();
-  $("q-timer").style.width = "100%";
-  QZ.timer = setInterval(() => {
-    const left = 1 - (NOW() - QZ.tStart) / QUIZ_MS;
-    $("q-timer").style.width = Math.max(0, left * 100) + "%";
-    if (left <= 0) answer(-1);
-  }, 100);
+  if (QZ.mode === "cloze") {
+    // 例句填空不限时:隐藏计时条,不启动倒计时
+    $("q-timer").style.width = "0%";
+  } else {
+    $("q-timer").style.width = "100%";
+    QZ.timer = setInterval(() => {
+      const left = 1 - (NOW() - QZ.tStart) / QUIZ_MS;
+      $("q-timer").style.width = Math.max(0, left * 100) + "%";
+      if (left <= 0) answer(-1);
+    }, 100);
+  }
 }
 function moveSel(k) {
   const n = QZ.optCount || 4;
@@ -1077,6 +1100,74 @@ handlers.settings = {
   }
 };
 
+/* ================= 界面对照教学 ================= */
+let SCREENS = [];
+function loadScreens() {
+  try { SCREENS = JSON.parse(NativeBridge.readDeckFile("asset", "screens.json")); }
+  catch (e) { SCREENS = []; }
+  if (!Array.isArray(SCREENS)) SCREENS = [];
+}
+const SC = { view: "list", gi: 0, wi: 0 };
+handlers.screens = {
+  enter() {
+    if (SC.view === "list") renderScList();
+    else renderScWords();
+  },
+  key(k) {
+    if (SC.view === "list") {
+      if (k === "BACK") { show("home"); return; }
+      if (!SCREENS.length) return;
+      if (k === "UP") SC.gi = Math.max(0, SC.gi - 1);
+      else if (k === "DOWN") SC.gi = Math.min(SCREENS.length - 1, SC.gi + 1);
+      else if (k === "OK") { SC.view = "words"; SC.wi = 0; renderScWords(); return; }
+      renderScList();
+    } else {
+      const g = SCREENS[SC.gi];
+      const items = (g && g.items) || [];
+      if (k === "BACK") { SC.view = "list"; renderScList(); return; }
+      if (!items.length) return;
+      if (k === "UP") SC.wi = Math.max(0, SC.wi - 1);
+      else if (k === "DOWN") SC.wi = Math.min(items.length - 1, SC.wi + 1);
+      else if (k === "OK" || k === "PLAY" || k === "MENU") { speak(items[SC.wi][0]); return; }
+      renderScWords();
+    }
+  }
+};
+function renderScList() {
+  $("sc-title").textContent = "📱 界面对照教学";
+  $("sc-hint").textContent = "选一个App界面 · OK 进入 · 对着你手机上的App一起看";
+  const box = $("sc-list"); box.innerHTML = "";
+  if (!SCREENS.length) { box.innerHTML = '<div class="empty"><div class="e1">🍃</div><div class="e3">暂无对照数据</div></div>'; return; }
+  const win = 6, start = Math.max(0, Math.min(SC.gi - 2, SCREENS.length - win));
+  SCREENS.slice(start, start + win).forEach((g, ii) => {
+    const i = start + ii;
+    const el = document.createElement("div");
+    el.className = "rowitem" + (i === SC.gi ? " focus" : "");
+    el.innerHTML = '<div class="ic">📲</div><div class="info"><div class="name">' + esc(g.app) + ' · ' + esc(g.screen) + '</div><div class="desc">' + esc(g.desc || "") + ' · ' + ((g.items || []).length) + ' 词</div></div><div class="val">OK</div>';
+    box.appendChild(el);
+  });
+  try { const fc = box.querySelector(".focus"); if (fc && fc.scrollIntoView) fc.scrollIntoView({ block: "nearest" }); } catch (e) { }
+}
+function renderScWords() {
+  const g = SCREENS[SC.gi];
+  const items = (g && g.items) || [];
+  $("sc-title").textContent = esc(g.app) + " · " + esc(g.screen);
+  $("sc-hint").textContent = "▲▼ 逐词浏览 · OK 发音 · 返回上一层　(" + (SC.wi + 1) + "/" + items.length + ")";
+  const box = $("sc-list"); box.innerHTML = "";
+  const win = 7, start = Math.max(0, Math.min(SC.wi - 3, items.length - win));
+  items.slice(start, start + win).forEach((it, ii) => {
+    const i = start + ii;
+    const el = document.createElement("div");
+    el.className = "brow" + (i === SC.wi ? " focus" : "");
+    el.innerHTML = '<div class="w serif" style="font-size:3.4vmin">' + esc(it[0]) + '</div>'
+      + '<div class="m" style="color:var(--gold)">' + esc(it[1]) + '</div>'
+      + '<div class="g" style="flex:1.6;text-align:left;color:var(--dim)">' + esc(it[2] || "") + '</div>';
+    box.appendChild(el);
+  });
+  try { const fc = box.querySelector(".focus"); if (fc && fc.scrollIntoView) fc.scrollIntoView({ block: "nearest" }); } catch (e) { }
+  if (P.set.auto && items[SC.wi]) setTimeout(() => speak(items[SC.wi][0]), 200);
+}
+
 /* ================= 检查更新 ================= */
 const UP = { active: false, phase: "", url: "", newVn: "", notes: "" };
 function upBox(html) { $("ai-pop-text").innerHTML = html; $("ai-pop").classList.add("show"); UP.active = true; }
@@ -1143,6 +1234,7 @@ handlers.settings.key = function (k) {
 function boot() {
   loadP();
   loadDecks();
+  loadScreens();
   try { ttsOK = !!NativeBridge.isTtsReady(); } catch (e) { }
   show("home");
 }

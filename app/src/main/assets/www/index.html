@@ -166,10 +166,155 @@ body{background:
 .opt.done{opacity:.22}
 .aisay{font-size:4vmin;line-height:1.6;max-width:150vmin;align-self:center;text-align:center;margin-top:2vmin}
 .aicn{font-size:2.4vmin;color:var(--dim);text-align:center;margin-top:1.4vmin}
-.aiopts{display:flex;flex-direction:column;gap:1.8vmin;max-width:130vmin;width:100%;align-self:center;margin:auto 0 2vmin;overflow-y:auto;max-height:52vmin}
+.aiopts{display:flex;flex-direction:column;gap:1.8vmin;max-width:130vmin;width:100%;align-self:center;margin:auto 0 2vmin;overflow-y:auto;max-height:52vmin;padding:.6vmin .8vmin}
+.aiopts .opt.focus{transform:none;border-width:.5vmin;box-shadow:0 0 0 .3vmin rgba(212,175,110,.35)}
 .aipop{position:absolute;inset:0;background:rgba(10,13,24,.88);display:none;align-items:center;justify-content:center;z-index:50}
 .aipop.show{display:flex}
 .aipop .box{background:var(--panel);border:.35vmin solid var(--gold2);border-radius:2vmin;padding:4vmin;max-width:120vmin;font-size:2.8vmin;line-height:1.8;white-space:pre-wrap}
+
+/* ===== 实景模拟(手机框架 + 教学面板) ===== */
+#sim-play{display:none;flex:1;gap:5vmin;min-height:0;align-items:center}
+.phwrap{flex:0 0 auto;display:flex;align-items:center;justify-content:center;height:100%}
+.ph{width:41.5vmin;height:88vmin;background:#05070c;border-radius:6vmin;border:.4vmin solid #39415c;
+  box-shadow:0 3vmin 10vmin rgba(0,0,0,.65), inset 0 0 0 .9vmin #10141f;position:relative;padding:1.5vmin}
+.ph-notch{position:absolute;top:2.4vmin;left:50%;transform:translateX(-50%);width:11vmin;height:2.4vmin;background:#05070c;border-radius:2vmin;z-index:30}
+.ph-scr{width:100%;height:100%;border-radius:4.6vmin;overflow:hidden;position:relative;
+  --pbg:#fff;--ptx:#20242c;--pdim:#8a90a0;--pac:#0a6cff;--pcard:#f4f5f7;--phair:#e8e9ee;--pgreen:#0da05e;--pred:#d9414e;
+  background:var(--pbg);color:var(--ptx)}
+.ph-scr[data-th=ibkr]{--pbg:#0d1017;--ptx:#e8ecf4;--pdim:#7c86a0;--pac:#d81222;--pcard:#161b28;--phair:#242b3e;--pgreen:#1fcb84;--pred:#f0616a}
+.ph-scr[data-th=hsbc]{--pac:#db0011}
+.ph-scr[data-th=dbs]{--pac:#ed1b2e}
+.ph-page{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;font-size:2vmin;padding-bottom:2vmin}
+.ph-page::-webkit-scrollbar{display:none}
+.pg-fwd{animation:pgfwd .38s cubic-bezier(.25,.8,.3,1)}
+@keyframes pgfwd{from{transform:translateX(100%)}to{transform:none}}
+.pg-up{animation:pgup .4s cubic-bezier(.25,.8,.3,1)}
+@keyframes pgup{from{transform:translateY(60%);opacity:.3}to{transform:none;opacity:1}}
+.pg-fade{animation:pgfade .3s ease}
+@keyframes pgfade{from{opacity:0}to{opacity:1}}
+.ph-finger{position:absolute;z-index:45;font-size:5vmin;line-height:1;pointer-events:none;opacity:0;
+  transform:translate(-30%,-12%) rotate(-12deg);transition:left .5s cubic-bezier(.3,.8,.3,1),top .5s cubic-bezier(.3,.8,.3,1),opacity .25s;
+  filter:drop-shadow(0 1vmin 1.6vmin rgba(0,0,0,.55))}
+.ph-finger.show{opacity:1;animation:fghover 1.4s ease-in-out infinite}
+@keyframes fghover{50%{margin-top:-.9vmin}}
+.ph-finger.tapping{animation:fgtap .4s ease}
+@keyframes fgtap{35%{transform:translate(-30%,-12%) rotate(-12deg) scale(.72)}}
+.tapflash{animation:tapfl .45s ease}
+@keyframes tapfl{30%{filter:brightness(1.6)}}
+/* 聚光灯 */
+.spot{position:relative;z-index:5;outline:.45vmin solid var(--gold);outline-offset:.2vmin;border-radius:1.2vmin;
+  box-shadow:0 0 0 200vmax rgba(4,6,12,.62);animation:spotin .45s ease}
+@keyframes spotin{from{outline-color:transparent;box-shadow:0 0 0 200vmax rgba(4,6,12,0)}}
+/* 手机内部通用组件 */
+.p-sbar{display:flex;justify-content:space-between;padding:1.2vmin 2.6vmin .6vmin;font-size:1.7vmin;color:var(--ptx);opacity:.9}
+.p-sbar .sig{letter-spacing:.06em}
+.p-navbar{display:flex;align-items:center;gap:1.6vmin;padding:1.4vmin 2.2vmin;border-bottom:.15vmin solid var(--phair)}
+.p-navbar .bk{font-size:3.4vmin;color:var(--pac);line-height:1}
+.p-navbar .tt{font-weight:700;font-size:2.5vmin}
+.p-navbar .tt small{display:block;font-weight:400;font-size:1.6vmin;color:var(--pdim)}
+.p-navbar .mo{margin-left:auto;color:var(--pdim);letter-spacing:.1em}
+.p-logo{display:flex;align-items:center;gap:1.4vmin;padding:1.6vmin 2.4vmin;font-size:2.4vmin;font-weight:800}
+.p-logo span{font-size:1.8vmin;color:var(--pdim);font-weight:400;margin-left:auto;text-align:right}
+.ibkr-mark{color:#fff;background:#d81222;padding:.2vmin 1vmin;border-radius:.6vmin;font-size:2.2vmin;letter-spacing:.05em}
+.hsbc-mark{color:#db0011;font-size:2.4vmin;letter-spacing:-.35em;margin-right:.6vmin}
+.dbs-mark{color:#fff;background:#ed1b2e;padding:.2vmin 1vmin;border-radius:.6vmin;font-size:2.2vmin}
+.p-big{padding:1.6vmin 2.6vmin 2vmin;margin:.6vmin 1.6vmin;border-radius:1.6vmin;background:var(--pcard)}
+.p-big .k{font-size:1.8vmin;color:var(--pdim)}
+.p-big .n{font-size:5vmin;font-weight:800;letter-spacing:-.02em;margin-top:.4vmin}
+.p-big .d{font-size:2vmin;margin-top:.4vmin}
+.p-sec{padding:2vmin 2.4vmin .8vmin;font-size:1.6vmin;letter-spacing:.18em;color:var(--pdim);font-weight:700}
+.p-row{display:flex;justify-content:space-between;align-items:center;gap:2vmin;padding:1.5vmin 2.4vmin;border-bottom:.15vmin solid var(--phair);font-size:2vmin}
+.p-row .l{color:var(--pdim)}
+.p-row .v{font-weight:600;text-align:right}
+.p-note{padding:1.6vmin 2.4vmin;font-size:1.65vmin;color:var(--pdim);line-height:1.55}
+.p-btnrow{display:flex;gap:1.6vmin;padding:2vmin 2.4vmin;margin-top:auto}
+.p-btn{flex:1;text-align:center;padding:1.8vmin;border-radius:1.4vmin;font-weight:700;font-size:2.2vmin;background:var(--pcard);color:var(--ptx)}
+.p-btn.blue{background:#0a6cff;color:#fff}
+.p-btn.red{background:#d9414e;color:#fff}
+.p-btn.hsbcred{background:#db0011;color:#fff}
+.p-btn.dbsred{background:#ed1b2e;color:#fff}
+.p-btn.ghost{background:transparent;border:.25vmin solid var(--phair);color:var(--pdim)}
+.p-input{padding:1.4vmin 2.4vmin;border-bottom:.15vmin solid var(--phair)}
+.p-input .l{font-size:1.7vmin;color:var(--pdim)}
+.p-input .f{font-size:2.7vmin;font-weight:700;margin-top:.4vmin;display:flex;align-items:center;gap:1.4vmin}
+.p-input .f .ph{color:var(--pdim);font-weight:400}
+.p-input .f .stp{margin-left:auto;border:.2vmin solid var(--phair);border-radius:.8vmin;padding:0 1.6vmin;color:var(--pac);font-weight:700}
+.p-input .f .stp+.stp{margin-left:1vmin}
+.p-seg{display:inline-flex;background:var(--pcard);border-radius:1vmin;padding:.35vmin;gap:.35vmin}
+.p-seg span{padding:.55vmin 1.7vmin;border-radius:.8vmin;font-size:1.8vmin;color:var(--pdim);font-weight:600}
+.p-seg span.on{background:var(--pac);color:#fff}
+.p-kv{display:grid;grid-template-columns:repeat(3,1fr);gap:.2vmin;background:var(--phair);margin:1vmin 1.6vmin;border-radius:1.4vmin;overflow:hidden}
+.p-kv .c{background:var(--pbg);padding:1.2vmin 1.4vmin}
+.p-kv .k{font-size:1.5vmin;color:var(--pdim)}
+.p-kv .w{font-size:1.95vmin;font-weight:700;margin-top:.3vmin}
+.p-duo{display:flex;gap:1.4vmin;margin:1vmin 1.6vmin}
+.p-duo .c{flex:1;background:var(--pcard);border-radius:1.4vmin;padding:1.4vmin 1.8vmin}
+.p-duo .k{font-size:1.6vmin;color:var(--pdim)}
+.p-duo .w{font-size:2.5vmin;font-weight:800;margin-top:.3vmin}
+.p-duo .w i,.p-pos .b i{font-style:normal;font-size:1.6vmin;color:var(--pdim)}
+.p-tabs{position:absolute;bottom:0;left:0;right:0;display:flex;background:var(--pbg);border-top:.15vmin solid var(--phair);padding:1vmin 0 1.8vmin;z-index:10}
+.p-tab{flex:1;text-align:center;font-size:2.4vmin;color:var(--pdim)}
+.p-tab i{display:block;font-style:normal;font-size:1.35vmin;margin-top:.3vmin}
+.p-tab.on{color:var(--pac)}
+.p-tabspace{height:8vmin}
+.p-pos{display:flex;align-items:center;gap:1.6vmin;padding:1.6vmin 2.4vmin;border-bottom:.15vmin solid var(--phair)}
+.p-pos .a{flex:1.3}.p-pos .a b{font-size:2.2vmin}
+.p-pos .a i{display:block;font-style:normal;font-size:1.55vmin;color:var(--pdim);margin-top:.3vmin}
+.p-pos .b{flex:.8;font-weight:600;font-size:2vmin}
+.p-pos .c{flex:1;text-align:right}.p-pos .c b{font-size:2vmin}
+.p-pos .c i{display:block;font-style:normal;font-size:1.7vmin;margin-top:.3vmin}
+.up{color:var(--pgreen)}.dn{color:var(--pred)}
+.p-card{background:var(--pcard);border-radius:1.6vmin;margin:1vmin 1.6vmin;padding:1.6vmin 2vmin}
+.p-card.acc .t{font-size:1.9vmin;font-weight:600;display:flex;justify-content:space-between}
+.p-card.acc .t span{color:var(--pdim);font-weight:400}
+.p-card.acc .n{font-size:3.4vmin;font-weight:800;margin-top:.6vmin}
+.p-card.acc .s{font-size:1.6vmin;color:var(--pdim);margin-top:.3vmin}
+.p-card.lite .t{font-size:1.7vmin;color:var(--pdim)}
+.p-card.lite .n{font-weight:800;margin-top:.4vmin}
+.p-card.lite .s{font-size:1.7vmin;color:var(--pdim);margin-top:.4vmin}
+.p-grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:1.2vmin;padding:0 1.6vmin}
+.p-grid4 .g{background:var(--pcard);border-radius:1.4vmin;text-align:center;padding:1.6vmin .6vmin;font-size:3vmin}
+.p-grid4 .g i{display:block;font-style:normal;font-size:1.35vmin;color:var(--pdim);margin-top:.6vmin}
+.p-search{margin:1vmin 2vmin;background:var(--pcard);border-radius:1.4vmin;padding:1.6vmin 2vmin;font-size:2.4vmin}
+.p-search .cur{animation:blink 1s steps(1) infinite;color:var(--pac)}
+@keyframes blink{50%{opacity:0}}
+.p-hero{font-size:3.2vmin;font-weight:800;padding:3vmin 2.4vmin 1vmin}
+.p-faceid{text-align:center;padding:3vmin 0 1vmin;font-size:6vmin;position:relative}
+.p-faceid .ring{position:absolute;left:50%;top:5.6vmin;transform:translate(-50%,-50%);width:11vmin;height:11vmin;
+  border:.4vmin dashed var(--pac);border-radius:50%;animation:spin 3s linear infinite}
+.p-faceid.big{padding:6vmin 0 2vmin}
+.p-faceid.big .ring{top:9.4vmin;width:14vmin;height:14vmin}
+@keyframes spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
+.p-faceid .t{font-size:1.9vmin;color:var(--pdim);margin-top:1.6vmin}
+.p-fps{margin:1.2vmin 2vmin;padding:1.6vmin 2vmin;border-radius:1.4vmin;background:rgba(219,0,17,.07);border:.2vmin solid rgba(219,0,17,.25);font-size:2vmin;line-height:1.6}
+.ph-scr[data-th=dbs] .p-fps{background:rgba(237,27,46,.07);border-color:rgba(237,27,46,.25)}
+.p-fps span{font-size:1.7vmin;color:var(--pdim)}
+.p-toggle{display:inline-block;width:4.6vmin;height:2.6vmin;background:var(--phair);border-radius:2vmin;position:relative}
+.p-toggle:after{content:"";position:absolute;left:.3vmin;top:.3vmin;width:2vmin;height:2vmin;border-radius:50%;background:#fff;box-shadow:0 .2vmin .5vmin rgba(0,0,0,.3)}
+.p-sheetbar{width:6vmin;height:.7vmin;border-radius:1vmin;background:var(--phair);margin:.6vmin auto}
+.p-ordhead{display:flex;justify-content:space-between;align-items:center;padding:.6vmin 0 1.2vmin;font-size:2.2vmin}
+.p-badge{font-size:1.6vmin;font-weight:700;padding:.5vmin 1.4vmin;border-radius:2vmin;background:rgba(10,108,255,.15);color:#5ea0ff;letter-spacing:.08em}
+.p-badge.ok{background:rgba(31,203,132,.15);color:var(--pgreen)}
+.p-checkwrap{text-align:center;padding:4vmin 2vmin 2vmin}
+.p-check{width:11vmin;height:11vmin;margin:0 auto;border-radius:50%;background:var(--pgreen);color:#fff;
+  font-size:6vmin;line-height:11vmin;font-weight:700;animation:ckpop .55s cubic-bezier(.2,1.4,.4,1)}
+@keyframes ckpop{from{transform:scale(0)}60%{transform:scale(1.15)}to{transform:scale(1)}}
+.p-ct{font-size:2.8vmin;font-weight:800;margin-top:1.8vmin}
+.p-cs{font-size:1.9vmin;color:var(--pdim);margin-top:.6vmin}
+/* 教学面板 */
+.teach{flex:1;display:flex;flex-direction:column;min-width:0;height:88vmin;padding:2vmin 0}
+.t-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:1.6vmin}
+.t-app{font-size:2.5vmin;color:var(--gold);letter-spacing:.08em}
+.t-step{font-size:2.4vmin;color:var(--dim)}
+.t-term{font-size:6.2vmin;font-weight:700;line-height:1.15;margin-top:2.6vmin}
+.t-term.pop2{animation:tpop .4s ease}
+@keyframes tpop{from{opacity:0;transform:translateY(1.6vmin)}to{opacity:1;transform:none}}
+.t-phon{font-size:3vmin;color:var(--gold);margin-top:1.4vmin}
+.t-cn{font-size:3.8vmin;font-weight:700;margin-top:1.8vmin}
+.t-exp{font-size:2.7vmin;color:var(--dim);line-height:1.85;margin-top:2.2vmin;max-width:92vmin}
+.t-note{font-size:2.6vmin;color:var(--mid);margin-top:auto;padding-top:2vmin;min-height:5vmin}
+.t-keys{font-size:2vmin;color:var(--faint);margin-top:1.6vmin}
+.t-keys .k{display:inline-block;border:.25vmin solid var(--faint);border-radius:.8vmin;padding:.1vmin 1vmin;margin:0 .8vmin 0 1.6vmin;color:var(--dim)}
 </style>
 </head>
 <body>
@@ -177,7 +322,7 @@ body{background:
 
   <div class="screen" id="home">
     <div class="top">
-      <div class="brand serif">千词斩<small>QIANCIZHAN · v3.1</small></div>
+      <div class="brand serif">千词斩<small>QIANCIZHAN · v3.5</small></div>
       <div class="meta">
         <span class="flame">🔥 连续 <b id="h-streak">0</b> 天</span>
         <span>Lv.<b id="h-level">1</b></span>
@@ -256,6 +401,37 @@ body{background:
     </div>
   </div>
 
+  <div class="screen" id="screens">
+    <div class="top"><div class="brand serif" id="sc-title">界面对照教学</div>
+      <div class="meta"><span id="sc-hint"></span></div></div>
+    <div class="listwrap" id="sc-list" style="gap:1.2vmin"></div>
+  </div>
+
+  <div class="screen" id="sim">
+    <div class="top" id="sim-top"><div class="brand serif" id="sim-title">🏦 实景模拟</div>
+      <div class="meta"><span id="sim-hint"></span></div></div>
+    <div class="listwrap" id="sim-list"></div>
+    <div id="sim-play">
+      <div class="phwrap">
+        <div class="ph">
+          <div class="ph-notch"></div>
+          <div class="ph-scr" id="ph-scr"></div>
+          <div class="ph-finger" id="ph-finger">👆</div>
+        </div>
+      </div>
+      <div class="teach">
+        <div class="t-head"><span class="t-app" id="t-app"></span><span class="t-step" id="t-step"></span></div>
+        <div class="pbar"><i id="t-bar"></i></div>
+        <div class="t-term serif" id="t-term"></div>
+        <div class="t-phon" id="t-phon"></div>
+        <div class="t-cn" id="t-cn"></div>
+        <div class="t-exp" id="t-exp"></div>
+        <div class="t-note" id="t-note"></div>
+        <div class="t-keys" id="t-keys"></div>
+      </div>
+    </div>
+  </div>
+
   <div class="screen" id="decks">
     <div class="top"><div class="brand serif">词库</div>
       <div class="meta"><span>OK 开关词库 · 关闭后不再出新词</span></div></div>
@@ -322,5 +498,6 @@ body{background:
   <div class="toast" id="toast"></div>
 </div>
 <script src="app.js"></script>
+<script src="sim.js"></script>
 </body>
 </html>

@@ -1,0 +1,183 @@
+[
+  {
+    "id": "ibkr_home",
+    "app": "盈透证券 IBKR",
+    "screen": "主页 / 账户总览",
+    "desc": "打开盈透App首页,通常最先看到这些",
+    "items": [
+      ["Portfolio", "投资组合", "点进去看你持有的所有股票"],
+      ["Watchlist", "自选股", "你收藏关注但不一定持有的股票列表"],
+      ["Net Liquidation", "净清算价值", "账户全部资产折现后的总价值"],
+      ["Available Funds", "可用资金", "现在还能用来买入的钱"],
+      ["Buying Power", "购买力", "含融资后你能买入的最大额度"],
+      ["Cash Balance", "现金余额", "账户里的现金"],
+      ["Market Value", "市值", "当前持仓按市价算的价值"],
+      ["Unrealized P&L", "未实现盈亏", "还没卖出时账面上的赚/亏"],
+      ["Realized P&L", "已实现盈亏", "已经卖出兑现的赚/亏"],
+      ["Daily P&L", "当日盈亏", "今天一天的赚/亏"]
+    ]
+  },
+  {
+    "id": "ibkr_trade",
+    "app": "盈透证券 IBKR",
+    "screen": "下单页 / Order Ticket",
+    "desc": "点某只股票的 Buy/Sell 后进入的下单界面",
+    "items": [
+      ["Buy", "买入", "建立或增加持仓"],
+      ["Sell", "卖出", "减少或平掉持仓"],
+      ["Quantity", "数量", "买卖多少股"],
+      ["Order Type", "订单类型", "选市价、限价还是止损单"],
+      ["Market", "市价单", "立刻按当前市场价成交"],
+      ["Limit", "限价单", "指定一个价,到价才成交"],
+      ["Stop", "止损单", "跌到某价自动触发卖出"],
+      ["Limit Price", "限价", "你愿意成交的价格"],
+      ["Time in Force", "订单有效期", "这单挂多久有效"],
+      ["Day", "当日有效", "收盘前没成交就作废"],
+      ["GTC", "撤单前有效", "一直挂着直到你取消"],
+      ["Preview", "预览", "提交前先看下单明细和费用"],
+      ["Submit", "提交", "确认发出这一单"],
+      ["Estimated Cost", "预计花费", "这单大概要花多少钱"]
+    ]
+  },
+  {
+    "id": "us_stock_detail",
+    "app": "美股行情页(通用)",
+    "screen": "个股详情 / 行情页",
+    "desc": "点开一只美股(如 AAPL)看到的行情界面",
+    "items": [
+      ["Bid", "买价", "当前买方愿出的最高价"],
+      ["Ask", "卖价", "当前卖方要的最低价"],
+      ["Volume", "成交量", "今天已经成交了多少股"],
+      ["Open", "开盘价", "今天开盘第一笔价格"],
+      ["Prev Close", "昨收价", "昨天的收盘价"],
+      ["Day High", "当日最高", "今天最高到过的价"],
+      ["Day Low", "当日最低", "今天最低到过的价"],
+      ["52W High", "52周最高", "过去一年最高价"],
+      ["52W Low", "52周最低", "过去一年最低价"],
+      ["Market Cap", "总市值", "公司股票总价值"],
+      ["P/E Ratio", "市盈率", "衡量股价贵不贵的常用指标"],
+      ["Dividend Yield", "股息率", "分红占股价的比例"],
+      ["Earnings", "财报", "公司公布业绩的日子要留意"]
+    ]
+  },
+  {
+    "id": "bank_app",
+    "app": "银行 App(通用)",
+    "screen": "转账 / 账户",
+    "desc": "各大银行App里转账、查账常见的英文",
+    "items": [
+      ["Balance", "余额", "账户里现在有多少钱"],
+      ["Available Balance", "可用余额", "扣掉冻结后能动用的钱"],
+      ["Transfer", "转账", "把钱转给别人或自己另一个账户"],
+      ["Payee", "收款人", "钱要转给谁"],
+      ["Recipient", "收款方", "接收转账的一方"],
+      ["Amount", "金额", "转多少钱"],
+      ["From Account", "转出账户", "钱从哪个账户扣"],
+      ["To Account", "转入账户", "钱进哪个账户"],
+      ["Routing Number", "银行路由号", "美国银行转账要填的行号"],
+      ["Account Number", "账号", "对方的银行账号"],
+      ["Reference", "附言 / 备注", "给这笔转账写个说明"],
+      ["Confirm", "确认", "核对无误后点它完成转账"],
+      ["Statement", "对账单", "查看历史交易明细"],
+      ["Pending", "处理中", "这笔还没到账"]
+    ]
+  },
+  {
+    "id": "login_security",
+    "app": "登录 / 安全(通用)",
+    "screen": "登录与验证",
+    "desc": "几乎所有金融App登录时都会遇到",
+    "items": [
+      ["Username", "用户名", "登录用的账号名"],
+      ["Password", "密码", "登录密码"],
+      ["Sign In", "登录", "进入你的账户"],
+      ["Sign Out", "退出登录", "离开时点它保护账户"],
+      ["Face ID", "面容识别", "刷脸快速登录"],
+      ["Fingerprint", "指纹", "按指纹登录"],
+      ["Verification Code", "验证码", "短信或App收到的一次性数字"],
+      ["OTP", "一次性密码", "One-Time Password 的缩写"],
+      ["Two-Factor", "双重验证", "密码之外再加一层验证"],
+      ["Remember Me", "记住我", "下次不用重新输账号"],
+      ["Forgot Password", "忘记密码", "找回或重置密码"]
+    ]
+  },
+  {
+    "id": "hsbc_fps",
+    "app": "汇丰香港 HSBC HK",
+    "screen": "FPS 转数快转账",
+    "desc": "香港最常用的即时转账,对着App一起看",
+    "items": [
+      ["FPS", "转数快", "香港实时支付系统,秒到账全年无休"],
+      ["Proxy ID", "代理识别码", "手机号/邮箱/FPS ID 都能当收款账号"],
+      ["Mobile Number", "手机号码", "输对方手机号即可转账"],
+      ["Payee Name", "收款人姓名", "系统返回脱敏姓名,务必核对"],
+      ["Default Bank", "默认收款银行", "对方FPS绑定的银行"],
+      ["Amount", "金额", "转多少钱,注意币种HKD"],
+      ["Fee: Free", "手续费:免费", "FPS港币转账基本全免"],
+      ["Reference", "附言", "写清用途方便对账"],
+      ["Daily Limit", "每日限额", "超限要去设置调整"],
+      ["Review", "核对", "确认前最后检查一遍"],
+      ["Confirm", "确认", "点了就即时执行,无法撤回"],
+      ["e-Receipt", "电子回单", "付款凭证,可保存分享"]
+    ]
+  },
+  {
+    "id": "hsbc_deposit",
+    "app": "汇丰香港 HSBC HK",
+    "screen": "定期存款 Time Deposit",
+    "desc": "存款单上的英文一次看懂",
+    "items": [
+      ["Time Deposit", "定期存款", "锁定期限换更高利息"],
+      ["Principal", "本金", "存进去的本钱"],
+      ["Tenor", "存期", "1M/3M/6M/12M,M=月"],
+      ["p.a.", "年利率(按年计)", "per annum,实际利息按天折算"],
+      ["Board Rate", "挂牌利率", "银行公开的标准利率"],
+      ["Value Date", "起息日", "从这天开始算利息"],
+      ["Maturity Date", "到期日", "到期才能免损失取出"],
+      ["Interest at Maturity", "到期利息", "到期能拿的利息总额"],
+      ["Maturity Instruction", "到期指示", "自动续存或转回活期"],
+      ["Early Withdrawal", "提前支取", "通常会没收利息"],
+      ["Auto Renewal", "自动续存", "不管它就一直滚下去"]
+    ]
+  },
+  {
+    "id": "dbs_paynow",
+    "app": "星展新加坡 DBS",
+    "screen": "PayNow 即时转账",
+    "desc": "新加坡版转数快,手机号/身份证号秒转",
+    "items": [
+      ["PayNow", "新加坡即时转账", "绑定手机号或NRIC收款"],
+      ["NRIC / FIN", "新加坡身份证号", "公民NRIC,外国人FIN"],
+      ["UEN", "企业注册号", "给公司/商家付款用"],
+      ["FAST", "快速转账系统", "新加坡银行间秒级转账网络"],
+      ["Recipient Nickname", "收款人昵称", "核对昵称防止转错"],
+      ["From Account", "扣款账户", "多账户注意别选错"],
+      ["Message", "留言", "对方看得到的备注"],
+      ["Digital Token", "数字令牌", "手机内置,取代短信OTP"],
+      ["Approve", "批准/授权", "在本机确认这笔交易"],
+      ["Transfer Successful", "转账成功", "秒到,可分享回单"],
+      ["Share Receipt", "分享回单", "把凭证发给对方"]
+    ]
+  },
+  {
+    "id": "remit_overseas",
+    "app": "跨境汇款(通用)",
+    "screen": "Overseas Transfer / Remit",
+    "desc": "电汇/汇款必懂词,汇错一个字母就退票",
+    "items": [
+      ["Remittance", "汇款", "动词是 remit"],
+      ["Telegraphic Transfer", "电汇 T/T", "传统跨境汇款,1-3个工作日"],
+      ["Beneficiary", "收款人(受益人)", "姓名必须与开户名完全一致"],
+      ["Beneficiary Bank", "收款银行", "对方开户行"],
+      ["SWIFT / BIC", "银行国际代码", "8或11位,银行的身份证"],
+      ["IBAN", "国际银行账号", "汇欧洲必填"],
+      ["Intermediary Bank", "中转行", "可能扣一道费用"],
+      ["Exchange Rate", "汇率", "含点差,和中间价比比看"],
+      ["Rate Lock", "锁定汇率", "限时按报价成交"],
+      ["SHA / OUR / BEN", "费用分担方式", "各付/汇款人全包/收款人全担"],
+      ["Purpose of Transfer", "汇款用途", "反洗钱合规必填"],
+      ["Estimated Arrival", "预计到账", "当日达或1-3个工作日"],
+      ["Track Transfer", "追踪汇款", "SWIFT gpi像查快递一样"]
+    ]
+  }
+]
