@@ -25,13 +25,13 @@ window.onTtsReady = ok => { ttsOK = !!ok; };
 let WORDS = {};
 let DECKS = [];
 let P = null;
-const DEFAULTS = { xp: 0, streak: 0, lastDay: "", dayLog: {}, dayNew: {}, words: {}, decksOff: {}, set: { newPerDay: 20, tts: 1, auto: 1, rate: 0.9 } };
+const DEFAULTS = { xp: 0, streak: 0, lastDay: "", dayLog: {}, dayNew: {}, words: {}, decksOff: {}, tr: {}, set: { newPerDay: 20, tts: 1, auto: 1, rate: 0.9 } };
 
 function loadP() {
   try { const s = NativeBridge.load("progress"); P = s ? JSON.parse(s) : null; } catch (e) { P = null; }
   if (!P) P = JSON.parse(JSON.stringify(DEFAULTS));
   P.set = Object.assign({}, DEFAULTS.set, P.set || {});
-  ["dayLog", "dayNew", "words", "decksOff"].forEach(k => { if (!P[k]) P[k] = {}; });
+  ["dayLog", "dayNew", "words", "decksOff", "tr"].forEach(k => { if (!P[k]) P[k] = {}; });
 }
 let saveTimer = null;
 function saveP() { clearTimeout(saveTimer); saveTimer = setTimeout(() => { try { NativeBridge.save("progress", JSON.stringify(P)); } catch (e) { } }, 600); }
@@ -96,7 +96,7 @@ function loadDecks() {
         if (!e || !e[0]) continue;
         const w = String(e[0]).trim();
         if (WORDS[w]) continue;
-        WORDS[w] = { w: w, p: e[1] || "", m: e[2] || "", x: e[3] || "", deck: d.id };
+        WORDS[w] = { w: w, p: e[1] || "", m: e[2] || "", x: e[3] || "", tr: e[4] || "", deck: d.id };
         total++;
       }
     }
@@ -393,6 +393,8 @@ function renderQuiz() {
   $("q-fb").textContent = "";
   const opts = [e];
   const pool = shuffle(activeWords().filter(x => x.w !== e.w && x.m !== e.m));
+  // 例句填空优先用同词库的干扰项,更贴近主题也更有挑战
+  pool.sort((a, b) => (a.deck === e.deck ? 0 : 1) - (b.deck === e.deck ? 0 : 1));
   for (const c of pool) { if (opts.length >= 4) break; opts.push(c); }
   shuffle(opts);
   QZ.ansIdx = opts.indexOf(e);
@@ -420,11 +422,15 @@ function renderQuiz() {
     $("q-word").style.display = "none"; $("q-phon").style.display = "none"; $("q-sent").style.display = "";
     const stem = e.w.slice(0, Math.max(3, e.w.length - 2));
     const re = new RegExp("\\b" + stem.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "[a-zA-Z]*", "i");
-    $("q-sent").innerHTML = esc(e.x).replace(re, "<b>______</b>") + '<div style="font-size:2.6vmin;color:var(--dim);margin-top:2vmin">' + esc(e.m) + '</div>';
+    // 上方:挖空的英文整句 + 整句中文翻译(靠读懂句子来选词)
+    $("q-sent").innerHTML = esc(e.x).replace(re, "<b>______</b>")
+      + '<div id="q-tr" style="font-size:2.9vmin;color:var(--gold);margin-top:2.4vmin;line-height:1.6"></div>';
+    setClozeTr(e);
+    // 四个选项:只显示英文单词,不给中文释义
     opts.forEach((o, i) => {
       const d = document.createElement("div");
-      d.className = "opt" + (i === 0 ? " focus" : "");
-      d.innerHTML = '<span class="idx">' + (i + 1) + '</span><span><span class="serif" style="font-size:3.8vmin">' + esc(o.w) + '</span><span style="display:block;font-size:2.1vmin;color:var(--dim);margin-top:.4vmin">' + esc(o.m) + '</span></span>';
+      d.className = "opt cloze" + (i === 0 ? " focus" : "");
+      d.innerHTML = '<span class="idx">' + (i + 1) + '</span><span class="serif" style="font-size:4.6vmin;letter-spacing:.01em">' + esc(o.w) + '</span>';
       box.appendChild(d);
     });
   }
@@ -487,6 +493,33 @@ function finishQuiz() {
   $("f-msg").textContent = QZ.right >= QZ.list.length * 0.8 ? "反应又快又准,词汇正在变成本能" : "错误的词已被算法标记,复习时会重点照顾";
   saveP(); show("finish");
 }
+/* 例句填空:显示整句中文翻译。优先用词库内置译文(第5字段),
+   否则查本机缓存,再否则调用AI翻译一次并永久缓存。 */
+let _trSeq = 0;
+function setClozeTr(e) {
+  const seq = ++_trSeq;
+  const put = (txt, cls) => {
+    const el = document.getElementById("q-tr");
+    if (!el || seq !== _trSeq) return;
+    el.textContent = txt;
+    el.style.color = cls === "dim" ? "var(--dim)" : "var(--gold)";
+  };
+  if (e.tr) { put(e.tr); return; }
+  if (!P.tr) P.tr = {};
+  if (P.tr[e.w]) { put(P.tr[e.w]); return; }
+  put("　整句翻译加载中…", "dim");
+  aiCall([
+    { role: "system", content: "你是专业翻译。把用户给的英文句子翻译成通顺自然的简体中文,只输出译文本身,不要加引号、拼音、英文或任何解释。" },
+    { role: "user", content: e.x }
+  ], (content, err) => {
+    if (content) {
+      const t = String(content).replace(/^[\s"'「」]+|[\s"'「」]+$/g, "").trim();
+      if (t) { P.tr[e.w] = t; saveP(); put(t); return; }
+    }
+    put("（整句翻译需联网,可稍后再进此题）", "dim");
+  }, 240);
+}
+
 handlers.quiz = {
   key(k) {
     if (k === "BACK") { clearInterval(QZ.timer); show("home"); return; }
