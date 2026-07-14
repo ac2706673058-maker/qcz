@@ -19,6 +19,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.media.AudioFormat
 import android.media.AudioRecord
+import android.media.MediaPlayer
 import android.media.MediaRecorder
 import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
@@ -113,6 +114,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     override fun onDestroy() {
         tts?.shutdown()
         try { recording = false; recorder?.release() } catch (_: Exception) {}
+        try { speakSeq++; mplayer?.release() } catch (_: Exception) {}
         super.onDestroy()
     }
 
@@ -248,6 +250,120 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         return out.toByteArray()
     }
 
+    // 取百度 access_token(缓存25天),识别与合成共用
+    private fun ensureBaiduToken(): String {
+        val now = System.currentTimeMillis()
+        if (baiduToken.isNotEmpty() && now - baiduTokenTime < 25L * 24 * 3600 * 1000) return baiduToken
+        try {
+            val turl = "https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id=$BAIDU_API_KEY&client_secret=$BAIDU_SECRET_KEY"
+            val tc = URL(turl).openConnection() as HttpURLConnection
+            tc.requestMethod = "POST"; tc.connectTimeout = 15000; tc.readTimeout = 15000
+            val tst = if (tc.responseCode in 200..299) tc.inputStream else tc.errorStream
+            val tj = JSONObject(tst.bufferedReader().readText())
+            if (tj.has("access_token")) { baiduToken = tj.getString("access_token"); baiduTokenTime = now }
+        } catch (_: Exception) {}
+        return baiduToken
+    }
+
+    /* ===== 发音引擎 v2:整句一次合成 + 原生 MediaPlayer + 磁盘缓存 =====
+       单词→有道词典音;短语/整句→百度翻译gettts(免key)→百度云text2audio(备)。
+       彻底取代 WebView 内分段 Audio 播放,解决"句子只读一半/中间漏读"问题。 */
+    private var mplayer: MediaPlayer? = null
+    private var speakSeq = 0
+    private val ttsPool = java.util.concurrent.Executors.newSingleThreadExecutor()
+
+    private fun md5hex(s: String): String =
+        java.security.MessageDigest.getInstance("MD5").digest(s.toByteArray(Charsets.UTF_8))
+            .joinToString("") { String.format("%02x", it) }
+
+    private fun ttsCacheFile(key: String): File {
+        val dir = File(cacheDir, "tts")
+        if (!dir.exists()) dir.mkdirs()
+        return File(dir, md5hex(key) + ".mp3")
+    }
+
+    // 下载音频;返回 null 表示该源失败(非audio响应/太小/网络错)
+    private fun fetchAudio(url: String, post: String?): ByteArray? {
+        return try {
+            val c = URL(url).openConnection() as HttpURLConnection
+            c.connectTimeout = 8000; c.readTimeout = 20000
+            c.instanceFollowRedirects = true
+            c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 9; SmartTV) AppleWebKit/537.36")
+            if (post != null) {
+                c.requestMethod = "POST"; c.doOutput = true
+                c.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                c.outputStream.use { it.write(post.toByteArray(Charsets.UTF_8)) }
+            }
+            if (c.responseCode !in 200..299) return null
+            val bytes = c.inputStream.readBytes()
+            val ct = c.contentType ?: ""
+            if (!ct.contains("audio", true) || bytes.size < 600) return null
+            bytes
+        } catch (e: Exception) { null }
+    }
+
+    private fun playTtsFile(f: File, rate: Float, seq: Int) {
+        runOnUiThread {
+            if (seq != speakSeq) return@runOnUiThread
+            try {
+                try { mplayer?.release() } catch (_: Exception) {}
+                val p = MediaPlayer()
+                mplayer = p
+                p.setDataSource(f.absolutePath)
+                p.setOnCompletionListener { js("window.onSpeakDone && window.onSpeakDone()") }
+                p.setOnErrorListener { _, _, _ -> js("window.onSpeakErr && window.onSpeakErr()"); true }
+                p.prepare()
+                if (Build.VERSION.SDK_INT >= 23 && rate > 0f && rate != 1.0f) {
+                    try { p.playbackParams = p.playbackParams.setSpeed(rate) } catch (_: Exception) {}
+                }
+                p.start()
+            } catch (e: Exception) {
+                try { f.delete() } catch (_: Exception) {}
+                js("window.onSpeakErr && window.onSpeakErr()")
+            }
+        }
+    }
+
+    private fun doSpeakText(text: String, rate: Float) {
+        val seq = ++speakSeq
+        runOnUiThread { try { mplayer?.stop() } catch (_: Exception) {} }
+        ttsPool.execute {
+            if (seq != speakSeq) return@execute
+            val t = text.replace(Regex("\\s+"), " ").trim().take(400)
+            if (t.isEmpty()) return@execute
+            val zh = t.any { it.code > 0x2E7F }
+            val lan = if (zh) "zh" else "en"
+            val cache = ttsCacheFile(lan + "|" + t)
+            if (!cache.exists() || cache.length() < 600) {
+                val enc = java.net.URLEncoder.encode(t, "UTF-8")
+                var bytes: ByteArray? = null
+                // 单个英文单词优先有道词典音(音质最佳);有道不支持短语和整句
+                if (!zh && !t.contains(' ') && t.length <= 32)
+                    bytes = fetchAudio("https://dict.youdao.com/dictvoice?audio=" + enc + "&type=2", null)
+                // 主源:百度翻译在线合成,整句一次到位,不分段
+                if (bytes == null)
+                    bytes = fetchAudio("https://fanyi.baidu.com/gettts?lan=" + lan + "&text=" + enc + "&spd=4&source=web", null)
+                // 备源:百度云短文本合成(App已配好凭证,lan=zh支持中英混读)
+                if (bytes == null) {
+                    val tok = ensureBaiduToken()
+                    if (tok.isNotEmpty())
+                        bytes = fetchAudio("https://tsn.baidu.com/text2audio",
+                            "tex=" + enc + "&tok=" + tok + "&cuid=lextv-tts&ctp=1&lan=zh&spd=5&pit=5&vol=9&per=0&aue=3")
+                }
+                if (bytes == null) { if (seq == speakSeq) js("window.onSpeakErr && window.onSpeakErr()"); return@execute }
+                try { cache.writeBytes(bytes) } catch (_: Exception) {}
+                // 缓存瘦身:超过400条删最旧的一半
+                try {
+                    val fs = File(cacheDir, "tts").listFiles()
+                    if (fs != null && fs.size > 400)
+                        fs.sortedBy { it.lastModified() }.take(fs.size / 2).forEach { it.delete() }
+                } catch (_: Exception) {}
+            }
+            if (seq != speakSeq) return@execute
+            playTtsFile(cache, rate, seq)
+        }
+    }
+
     // 百度语音识别:先取access_token,再上传音频
     private fun transcribe(wav: ByteArray) {
         Thread {
@@ -255,19 +371,8 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                 if (BAIDU_SECRET_KEY == "PUT_YOUR_SECRET_KEY_HERE") {
                     js("window.onVoiceErr && window.onVoiceErr('\u672a\u586b\u5199\u767e\u5ea6Secret Key,\u8bf7\u5148\u914d\u7f6e')"); return@Thread
                 }
-                // 1) 取token(缓存25天)
-                val now = System.currentTimeMillis()
-                if (baiduToken.isEmpty() || now - baiduTokenTime > 25L * 24 * 3600 * 1000) {
-                    val turl = "https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id=$BAIDU_API_KEY&client_secret=$BAIDU_SECRET_KEY"
-                    val tc = URL(turl).openConnection() as HttpURLConnection
-                    tc.requestMethod = "POST"; tc.connectTimeout = 15000; tc.readTimeout = 15000
-                    val tst = if (tc.responseCode in 200..299) tc.inputStream else tc.errorStream
-                    val tresp = tst.bufferedReader().readText()
-                    val tj = JSONObject(tresp)
-                    if (!tj.has("access_token")) {
-                        js("window.onVoiceErr && window.onVoiceErr(" + JSONObject.quote("\u83b7\u53d6\u6388\u6743\u5931\u8d25:" + tresp.take(80)) + ")"); return@Thread
-                    }
-                    baiduToken = tj.getString("access_token"); baiduTokenTime = now
+                if (ensureBaiduToken().isEmpty()) {
+                    js("window.onVoiceErr && window.onVoiceErr('\u83b7\u53d6\u6388\u6743\u5931\u8d25,\u8bf7\u68c0\u67e5\u7f51\u7edc')"); return@Thread
                 }
                 // 2) 上传音频识别
                 val devPid = if (recordLang == "cn") 1537 else 1737
@@ -323,7 +428,18 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         }
 
         @JavascriptInterface
-        fun stopSpeak() { tts?.stop() }
+        fun stopSpeak() {
+            tts?.stop()
+            speakSeq++
+            runOnUiThread { try { mplayer?.stop() } catch (_: Exception) {} }
+        }
+
+        // 发音引擎v2:整句在线合成+原生播放。JS 优先调它
+        @JavascriptInterface
+        fun speakText(text: String, rate: Float) { doSpeakText(text, rate) }
+
+        @JavascriptInterface
+        fun hasNativeTts(): Boolean = true
 
         @JavascriptInterface
         fun isTtsReady(): Boolean = ttsReady

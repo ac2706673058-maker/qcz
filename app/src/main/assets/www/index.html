@@ -53,6 +53,30 @@ body{background:
 .mcard .badge{position:absolute;top:2.4vmin;right:2.4vmin;background:var(--gold);color:#1A1408;
   font-size:2.2vmin;font-weight:700;border-radius:10vmin;padding:.5vmin 1.6vmin;min-width:4.6vmin;text-align:center}
 .mcard.focus{border-color:var(--gold);background:var(--panel2);transform:scale(1.035)}
+.menu.dense{gap:1.4vmin}
+.menu.dense .mcard{min-height:8.6vmin;padding:1.6vmin 1.8vmin}
+.menu.dense .mcard .ic{font-size:2.7vmin}
+.menu.dense .mcard .t{font-size:2.2vmin;margin-top:.7vmin}
+.menu.dense .mcard .d{font-size:1.5vmin;margin-top:.4vmin}
+.menu.dense .mcard .badge{top:1.6vmin;right:1.6vmin;font-size:1.9vmin;padding:.35vmin 1.3vmin}
+
+/* ===== 拼写挑战 ===== */
+.sp-mean{text-align:center;font-size:4.4vmin;font-weight:700;margin:1.5vmin 8vmin 0;line-height:1.4}
+.sp-boxes{display:flex;justify-content:center;gap:1.2vmin;margin:2.6vmin 0 2.2vmin;flex-wrap:wrap}
+.sp-box{width:7vmin;height:8.6vmin;border-radius:1.2vmin;background:var(--panel);border:.35vmin solid #2A3552;
+  display:flex;align-items:center;justify-content:center;font-size:5vmin;font-weight:700;text-transform:lowercase;
+  font-family:"Noto Serif CJK SC",Georgia,serif}
+.sp-box.lockc{color:var(--gold);border-color:var(--gold2)}
+.sp-box.cur{border-color:var(--gold);background:var(--panel2);animation:curblink 1.1s steps(1) infinite}
+@keyframes curblink{50%{border-color:#2A3552}}
+.sp-box.good{border-color:var(--good);color:var(--good);background:#18271F}
+.sp-box.bad{border-color:var(--bad);color:var(--bad);background:#2A1D22}
+.sp-kb{display:grid;grid-template-columns:repeat(7,1fr);gap:1.1vmin;max-width:112vmin;width:100%;align-self:center;margin-top:auto;margin-bottom:1vmin}
+.sp-key{background:var(--panel);border:.3vmin solid #2A3552;border-radius:1.1vmin;text-align:center;
+  padding:1.35vmin 0;font-size:3.1vmin;font-weight:700;color:var(--paper);transition:all .1s;text-transform:lowercase}
+.sp-key.fn{font-size:2.2vmin;color:var(--dim);text-transform:none}
+.sp-key.focus{border-color:var(--gold);background:var(--panel2);color:var(--gold);transform:scale(1.06)}
+
 .hint-bar{display:flex;gap:5vmin;justify-content:center;color:var(--faint);font-size:2vmin;margin-top:2vmin}
 #home .hint-bar{display:none}
 #home .menu{margin-bottom:0}
@@ -322,8 +346,9 @@ body{background:
 
   <div class="screen" id="home">
     <div class="top">
-      <div class="brand serif">千词斩<small>QIANCIZHAN · v3.5.1</small></div>
+      <div class="brand serif">千词斩<small>QIANCIZHAN · v3.6</small></div>
       <div class="meta">
+        <span id="h-user" style="color:var(--gold)">💼 爸爸</span>
         <span class="flame">🔥 连续 <b id="h-streak">0</b> 天</span>
         <span>Lv.<b id="h-level">1</b></span>
         <span>已掌握 <b id="h-mastered">0</b></span>
@@ -405,6 +430,22 @@ body{background:
     <div class="top"><div class="brand serif" id="sc-title">界面对照教学</div>
       <div class="meta"><span id="sc-hint"></span></div></div>
     <div class="listwrap" id="sc-list" style="gap:1.2vmin"></div>
+  </div>
+
+  <div class="screen" id="who">
+    <div class="top"><div class="brand serif">👥 谁在使用?</div>
+      <div class="meta"><span>▲▼选择 · OK 切换 · 两人的学习进度完全独立、互不影响</span></div></div>
+    <div class="listwrap" id="who-list" style="justify-content:center;gap:4vmin;max-width:150vmin;width:100%;align-self:center"></div>
+  </div>
+
+  <div class="screen" id="spell">
+    <div class="study-top"><div class="mode">拼写挑战</div><div class="prog" id="sp-prog">1 / 10</div></div>
+    <div class="quiz-head"><div class="combo" id="sp-combo"></div><div class="combo" id="sp-score">0 分</div></div>
+    <div class="sp-mean" id="sp-mean">释义</div>
+    <div class="qphon" id="sp-phon"></div>
+    <div class="sp-boxes" id="sp-boxes"></div>
+    <div class="sp-kb" id="sp-kb"></div>
+    <div class="feedback" id="sp-fb">听发音 · 看释义 · 方向键选字母,OK 输入 · 菜单键重听</div>
   </div>
 
   <div class="screen" id="sim">

@@ -39,7 +39,7 @@ jobs:
         with:
           tag_name: v${{ steps.ver.outputs.vn }}-${{ steps.ver.outputs.vc }}
           name: LexTV ${{ steps.ver.outputs.vn }}
-          body: "v3.5.1 例句填空升级:四个选项只显示英文单词,题干整句给出中文翻译,靠读懂句子选词;新增「美股交易进阶」词库42词(内置整句译文);其余词库整句翻译AI按需生成并永久缓存。含v3.5实景模拟(盈透/汇丰/DBS 6门App动画实操课)。"
+          body: "v3.6 双使用者+全新发音引擎:主页可一键切换 爸爸金融版⇄弟弟中考版,进度完全独立;发音彻底重做——整句一次合成+原生播放+本地缓存,根治句子漏读;新增拼写挑战(遥控器拼单词);中考词库框架就绪。"
           files: LexTV.apk
           make_latest: true
         env:

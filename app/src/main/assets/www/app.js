@@ -27,14 +27,49 @@ let DECKS = [];
 let P = null;
 const DEFAULTS = { xp: 0, streak: 0, lastDay: "", dayLog: {}, dayNew: {}, words: {}, decksOff: {}, tr: {}, set: { newPerDay: 20, tts: 1, auto: 1, rate: 0.9 } };
 
+/* ================= 使用者档案(双模式) =================
+   fin  = 爸爸·金融投资(沿用老进度key,升级无损)
+   teen = 弟弟·中考冲刺(独立进度,隐藏金融功能,词库按 profile 过滤) */
+const PROFILES = {
+  fin: {
+    name: "爸爸 · 金融投资", short: "💼 爸爸", icon: "💼", store: "progress",
+    menuHide: {}, deckOk: p => p !== "teen",
+    slogans: ["看懂<em>世界</em>的词汇", "读懂<em>硅谷</em>与华尔街", "今天也在<em>变强</em>", "新闻不再<em>陌生</em>", "词汇是<em>带宽</em>"]
+  },
+  teen: {
+    name: "弟弟 · 中考冲刺", short: "🎒 弟弟", icon: "🎒", store: "progress_teen",
+    menuHide: { sim: 1, screens: 1 }, deckOk: p => p !== "fin",
+    slogans: ["中考词汇<em>稳稳拿下</em>", "每天进步<em>一点点</em>", "单词是<em>分数</em>", "背过的词<em>不会背叛你</em>", "考场见<em>真章</em>"]
+  }
+};
+let CUR = "fin";
+const PF = () => PROFILES[CUR];
+function loadApp() {
+  try { const s = NativeBridge.load("app"); if (s) { const a = JSON.parse(s); if (a && a.profile === "teen") CUR = "teen"; } } catch (e) { }
+}
+function saveApp() { try { NativeBridge.save("app", JSON.stringify({ profile: CUR })); } catch (e) { } }
+
 function loadP() {
-  try { const s = NativeBridge.load("progress"); P = s ? JSON.parse(s) : null; } catch (e) { P = null; }
+  try { const s = NativeBridge.load(PF().store); P = s ? JSON.parse(s) : null; } catch (e) { P = null; }
   if (!P) P = JSON.parse(JSON.stringify(DEFAULTS));
   P.set = Object.assign({}, DEFAULTS.set, P.set || {});
   ["dayLog", "dayNew", "words", "decksOff", "tr"].forEach(k => { if (!P[k]) P[k] = {}; });
 }
 let saveTimer = null;
-function saveP() { clearTimeout(saveTimer); saveTimer = setTimeout(() => { try { NativeBridge.save("progress", JSON.stringify(P)); } catch (e) { } }, 600); }
+function saveP() { clearTimeout(saveTimer); saveTimer = setTimeout(() => { try { NativeBridge.save(PF().store, JSON.stringify(P)); } catch (e) { } }, 600); }
+function flushP() { clearTimeout(saveTimer); try { NativeBridge.save(PF().store, JSON.stringify(P)); } catch (e) { } }
+
+function switchProfile(k) {
+  if (!PROFILES[k]) return;
+  if (k === CUR) { show("home"); return; }
+  flushP();                       // 先把当前使用者的进度落盘
+  CUR = k; saveApp();
+  WORDS = {}; DECKS = [];
+  loadP(); loadDecks();
+  homeIdx = 0;
+  show("home");
+  toast("已切换到 " + PF().name + ",学习进度相互独立");
+}
 
 const W = [0.4872, 1.4003, 3.7145, 13.8206, 5.1618, 1.2298, 0.8975, 0.031, 1.6474, 0.1367, 1.0461, 2.1072, 0.0793, 0.3246, 1.587, 0.2272, 2.8755];
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -87,6 +122,8 @@ function loadDecks() {
   let list = [];
   try { list = JSON.parse(NativeBridge.getDecks()); } catch (e) { list = []; }
   DECKS = [];
+  // 按使用者过滤词库:manifest 里 profile 标 "fin"/"teen",不标=双方共用;U盘外部词库双方可见
+  list = list.filter(d => d.source === "ext" || PF().deckOk(d.profile || ""));
   for (const d of list) {
     let total = 0;
     for (const f of (d.files || [])) {
@@ -143,7 +180,25 @@ function splitSentences(t) {
   }
   return out;
 }
+/* 发音引擎v2:优先走原生(整句一次合成+MediaPlayer+缓存,彻底解决漏读);
+   原生不可用(浏览器调试/旧APK)时降级到 webSpeak 旧逻辑 */
+const hasNativeTts = (() => { try { return !!(window.Bridge && window.Bridge.hasNativeTts && window.Bridge.hasNativeTts()); } catch (e) { return false; } })();
+let _spkErrToast = 0;
+window.onSpeakDone = () => { };
+window.onSpeakErr = () => {
+  const now = NOW();
+  if (now - _spkErrToast > 60000) { _spkErrToast = now; toast("发音获取失败,请检查电视网络"); }
+};
 function speak(t) {
+  if (!P.set.tts || !t) return;
+  t = String(t).replace(/\s+/g, " ").trim();
+  if (!t) return;
+  if (hasNativeTts) {
+    try { NativeBridge.speakText(t, P.set.rate || 1); return; } catch (e) { }
+  }
+  webSpeak(t);
+}
+function webSpeak(t) {
   if (!P.set.tts || !t) return;
   try { NativeBridge.stopSpeak(); } catch (e) { }
   try { if (_player) { _player.pause(); _player.src = ""; _player = null; } } catch (e) { }
@@ -212,25 +267,28 @@ const MENU = [
   { id: "review", ic: "🧠", t: "智能复习", d: "FSRS 记忆算法调度" },
   { id: "quiz", ic: "⚡", t: "闪电测验", d: "限时四选一 · 连击得分" },
   { id: "listen", ic: "🎧", t: "听音辨义", d: "只听发音 · 训练听力反应" },
-  { id: "cloze", ic: "📝", t: "例句填空", d: "新闻语境激活记忆" },
+  { id: "cloze", ic: "📝", t: "例句填空", d: "读懂整句中文选英文词" },
+  { id: "spell", ic: "⌨️", t: "拼写挑战", d: "听音看义 · 遥控器拼单词" },
   { id: "match", ic: "🀄", t: "词义配对", d: "消除式配对 · 上瘾警告" },
   { id: "tf", ic: "⚖️", t: "极速判断", d: "对错二选一 · 拼反应" },
-  { id: "browse", ic: "📖", t: "单词本", d: "今日新学 · 全部已学" },
-  { id: "custom", ic: "🗓️", t: "自选复习", d: "按日期挑单词随时复习" },
   { id: "battle", ic: "🤖", t: "人机对战", d: "和AI拼速度拼准度" },
   { id: "sim", ic: "🏦", t: "实景模拟", d: "盈透/港新银行App动画实操课" },
   { id: "screens", ic: "📱", t: "界面对照", d: "对着券商/银行App学界面英文" },
+  { id: "browse", ic: "📖", t: "单词本", d: "今日新学 · 全部已学" },
+  { id: "custom", ic: "🗓️", t: "自选复习", d: "按日期挑单词随时复习" },
   { id: "ai", ic: "👨‍🏫", t: "AI 外教", d: "对话 · 跟读 · 情景课 · 教练" },
   { id: "decks", ic: "📚", t: "词库", d: "开关词书 · 外部扩展" },
   { id: "stats", ic: "📊", t: "统计", d: "热力图 · 掌握度" },
+  { id: "who", ic: "👥", t: "切换使用者", d: "爸爸金融版 ⇄ 弟弟中考版" },
   { id: "settings", ic: "⚙️", t: "设置", d: "新词量 · 发音 · 语速" }
 ];
-const SLOGANS = [
-  "看懂<em>世界</em>的词汇", "读懂<em>硅谷</em>与华尔街", "今天也在<em>变强</em>", "新闻不再<em>陌生</em>", "词汇是<em>带宽</em>"
-];
+function homeItems() { return MENU.filter(it => !PF().menuHide[it.id]); }
+function homeCols() { return homeItems().length > 16 ? 5 : 4; }
 let homeIdx = 0;
 handlers.home = {
   enter() {
+    const items = homeItems();
+    if (homeIdx >= items.length) homeIdx = 0;
     const due = dueWords().length;
     let unseen = 0;
     for (const e of activeWords()) { const r = P.words[e.w]; if (!r || !r.st) unseen++; }
@@ -239,10 +297,13 @@ handlers.home = {
     $("h-level").textContent = level();
     $("h-mastered").textContent = Object.values(P.words).filter(r => r.st === 2 && r.S >= 21).length;
     $("h-due").textContent = due + newRemain;
-    $("h-slogan").innerHTML = SLOGANS[new Date().getDate() % SLOGANS.length];
+    $("h-user").textContent = PF().short;
+    $("h-slogan").innerHTML = PF().slogans[new Date().getDate() % PF().slogans.length];
     $("h-sub").textContent = due > 0 ? ("待复习 " + due + " 个 · 今日新词剩余 " + newRemain + " 个") : ("今日新词剩余 " + newRemain + " 个 · 无待复习,棒!");
     const m = $("menu"); m.innerHTML = "";
-    MENU.forEach((it, i) => {
+    m.style.gridTemplateColumns = "repeat(" + homeCols() + ",1fr)";
+    m.classList.toggle("dense", items.length > 16);
+    items.forEach((it, i) => {
       const el = document.createElement("div");
       el.className = "mcard" + (i === homeIdx ? " focus" : "");
       let badge = "";
@@ -253,12 +314,13 @@ handlers.home = {
     });
   },
   key(k) {
-    const cols = 4, n = MENU.length;
+    const items = homeItems();
+    const cols = homeCols(), n = items.length;
     if (k === "LEFT") homeIdx = (homeIdx + n - 1) % n;
     else if (k === "RIGHT") homeIdx = (homeIdx + 1) % n;
     else if (k === "UP") homeIdx = (homeIdx - cols + n) % n;
     else if (k === "DOWN") homeIdx = (homeIdx + cols) % n;
-    else if (k === "OK") { openMenu(MENU[homeIdx].id); return; }
+    else if (k === "OK") { openMenu(items[homeIdx].id); return; }
     else if (k === "BACK") { NativeBridge.exitApp(); return; }
     handlers.home.enter();
   }
@@ -275,6 +337,8 @@ function openMenu(id) {
   else if (id === "browse") { BR.tab = 0; BR.idx = 0; show("browse"); }
   else if (id === "custom") { CU.idx = 0; show("custom"); }
   else if (id === "sim") { simOpen(); }
+  else if (id === "spell") { startSpell(); }
+  else if (id === "who") { WHO.idx = CUR === "fin" ? 0 : 1; show("who"); }
   else if (id === "screens") { SC.view = "list"; SC.gi = 0; show("screens"); }
   else if (id === "ai") show("ai");
   else show(id);
@@ -1263,8 +1327,131 @@ handlers.settings.key = function (k) {
   _setKeyOrig(k);
 };
 
+/* ================= 切换使用者 ================= */
+const WHO = { idx: 0 };
+handlers.who = {
+  enter() {
+    const box = $("who-list"); box.innerHTML = "";
+    [["fin", "汇丰/盈透实景模拟 · 金融词库 · 界面对照"], ["teen", "中考核心词汇 · 拼写挑战 · 无金融内容"]].forEach((it, i) => {
+      const p = PROFILES[it[0]];
+      const el = document.createElement("div");
+      el.className = "rowitem" + (i === WHO.idx ? " focus" : "");
+      el.innerHTML = '<div class="ic" style="font-size:6vmin">' + p.icon + '</div>'
+        + '<div class="info"><div class="name" style="font-size:4vmin">' + p.name + (it[0] === CUR ? ' <span style="color:var(--good);font-size:2.2vmin">● 当前</span>' : '') + '</div>'
+        + '<div class="desc" style="font-size:2.4vmin;margin-top:1vmin">' + it[1] + '</div></div>'
+        + '<div class="val">' + (it[0] === CUR ? "使用中" : "OK 切换") + '</div>';
+      el.style.padding = "4vmin 4vmin";
+      box.appendChild(el);
+    });
+  },
+  key(k) {
+    if (k === "BACK") { show("home"); return; }
+    if (k === "UP" || k === "DOWN" || k === "LEFT" || k === "RIGHT") WHO.idx = 1 - WHO.idx;
+    else if (k === "OK") { switchProfile(WHO.idx === 0 ? "fin" : "teen"); return; }
+    handlers.who.enter();
+  }
+};
+
+/* ================= 拼写挑战(听音看义,遥控器拼单词) ================= */
+const SPL = { list: [], i: 0, ans: "", input: [], ki: 0, score: 0, combo: 0, best: 0, right: 0, lock: false, hints: 0 };
+const SPL_KEYS = "abcdefghijklmnopqrstuvwxyz".split("").concat(["DEL", "HINT"]);
+function startSpell() {
+  const pool = seenWords().filter(e => /^[a-zA-Z]{3,12}$/.test(e.w));
+  if (pool.length < 8) { toast("先学至少 8 个可拼写的单词(纯字母)再来挑战"); return; }
+  SPL.list = shuffle(pool.slice()).slice(0, 10);
+  SPL.i = 0; SPL.score = 0; SPL.combo = 0; SPL.best = 0; SPL.right = 0;
+  show("spell"); renderSpell();
+}
+function renderSpell() {
+  const e = SPL.list[SPL.i];
+  SPL.ans = e.w.toLowerCase();
+  SPL.input = [SPL.ans[0]];      // 首字母默认给出,降低遥控器输入负担
+  SPL.ki = 0; SPL.lock = false; SPL.hints = 0;
+  $("sp-prog").textContent = (SPL.i + 1) + " / " + SPL.list.length;
+  $("sp-score").textContent = SPL.score + " 分";
+  $("sp-combo").textContent = SPL.combo > 1 ? "⚡连击 ×" + SPL.combo : "";
+  $("sp-mean").textContent = e.m;
+  $("sp-phon").textContent = e.p ? "/" + e.p + "/" : "";
+  $("sp-fb").textContent = "";
+  drawSpell();
+  speak(e.w);
+}
+function drawSpell() {
+  const box = $("sp-boxes"); box.innerHTML = "";
+  for (let i = 0; i < SPL.ans.length; i++) {
+    const d = document.createElement("div");
+    d.className = "sp-box" + (i === 0 ? " lockc" : "") + (i === SPL.input.length ? " cur" : "");
+    d.textContent = SPL.input[i] || "";
+    box.appendChild(d);
+  }
+  const kb = $("sp-kb"); kb.innerHTML = "";
+  SPL_KEYS.forEach((kk, i) => {
+    const d = document.createElement("div");
+    d.className = "sp-key" + (i === SPL.ki ? " focus" : "") + (kk.length > 1 ? " fn" : "");
+    d.textContent = kk === "DEL" ? "⌫ 删除" : (kk === "HINT" ? "💡 提示" : kk);
+    kb.appendChild(d);
+  });
+}
+function spellJudge() {
+  SPL.lock = true;
+  const e = SPL.list[SPL.i];
+  const got = SPL.input.join("");
+  const ok = got === SPL.ans;
+  const box = $("sp-boxes"); box.innerHTML = "";
+  for (let i = 0; i < SPL.ans.length; i++) {
+    const d = document.createElement("div");
+    d.className = "sp-box " + (got[i] === SPL.ans[i] ? "good" : "bad");
+    d.textContent = SPL.ans[i];
+    box.appendChild(d);
+  }
+  if (ok) {
+    SPL.combo++; SPL.best = Math.max(SPL.best, SPL.combo); SPL.right++;
+    const gain = Math.max(4, 12 + Math.min(8, SPL.combo * 2) - SPL.hints * 2);
+    SPL.score += gain; P.xp += 5;
+    $("sp-fb").textContent = "✓ 拼对了! +" + gain + (SPL.hints ? " 分(用了" + SPL.hints + "次提示)" : " 分");
+  } else {
+    SPL.combo = 0;
+    $("sp-fb").textContent = "✗ 正确拼写是 " + e.w + " · 你拼的是 " + got;
+  }
+  speak(e.w);
+  schedHit(e.w, ok);
+  setTimeout(() => { SPL.i++; if (SPL.i >= SPL.list.length) finishSpell(); else renderSpell(); }, ok ? 1100 : 2600);
+}
+handlers.spell = {
+  key(k) {
+    if (k === "BACK") { show("home"); return; }
+    if (k === "MENU" || k === "PLAY") { speak(SPL.list[SPL.i].w); return; }
+    if (SPL.lock) return;
+    const n = SPL_KEYS.length;                     // 28 键,7列×4行
+    if (k === "UP") SPL.ki = (SPL.ki - 7 + n) % n;
+    else if (k === "DOWN") SPL.ki = (SPL.ki + 7) % n;
+    else if (k === "LEFT") SPL.ki = (SPL.ki + n - 1) % n;
+    else if (k === "RIGHT") SPL.ki = (SPL.ki + 1) % n;
+    else if (k === "OK") {
+      const key = SPL_KEYS[SPL.ki];
+      if (key === "DEL") { if (SPL.input.length > 1) SPL.input.pop(); }
+      else if (key === "HINT") {
+        if (SPL.input.length < SPL.ans.length) { SPL.input.push(SPL.ans[SPL.input.length]); SPL.hints++; }
+      } else if (SPL.input.length < SPL.ans.length) SPL.input.push(key);
+      if (SPL.input.length >= SPL.ans.length) { drawSpell(); spellJudge(); return; }
+    }
+    drawSpell();
+  }
+};
+function finishSpell() {
+  const acc = SPL.list.length ? Math.round(SPL.right / SPL.list.length * 100) : 100;
+  $("f-title").textContent = SPL.right === SPL.list.length ? "全部拼对!" : "拼写完成";
+  $("f-xp").textContent = "+" + (SPL.right * 5) + " XP · 得分 " + SPL.score;
+  $("f-stats").innerHTML = '<div class="stat"><div class="n" style="color:var(--good)">' + SPL.right + '/' + SPL.list.length + '</div><div class="l">拼对</div></div>'
+    + '<div class="stat"><div class="n" style="color:var(--gold)">×' + SPL.best + '</div><div class="l">最高连击</div></div>'
+    + '<div class="stat"><div class="n">' + SPL.score + '</div><div class="l">总分</div></div>';
+  $("f-msg").textContent = "拼错的词已安排加密复习 · 考试拼写题就这么练出来";
+  saveP(); show("finish");
+}
+
 /* ================= 启动 ================= */
 function boot() {
+  loadApp();
   loadP();
   loadDecks();
   loadScreens();

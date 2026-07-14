@@ -1,7 +1,8 @@
 {"decks":[
-{"id":"news","name":"新闻核心","icon":"📰","files":["news1.json","news2.json","news3.json","news4.json","news5.json","news6.json"]},
-{"id":"tech","name":"科技媒体","icon":"🤖","files":["tech1.json","tech2.json"]},
-{"id":"bank","name":"银行证券App","icon":"🏦","files":["bank1.json","bank2.json"]},
-{"id":"hksg","name":"港新银行实战","icon":"🏙️","files":["bank3.json","bank4.json"]},
-{"id":"trade","name":"美股交易进阶","icon":"📊","files":["bank5.json"]}
+{"id":"news","name":"新闻核心","icon":"📰","profile":"fin","files":["news1.json","news2.json","news3.json","news4.json","news5.json","news6.json"]},
+{"id":"tech","name":"科技媒体","icon":"🤖","profile":"fin","files":["tech1.json","tech2.json"]},
+{"id":"bank","name":"银行证券App","icon":"🏦","profile":"fin","files":["bank1.json","bank2.json"]},
+{"id":"hksg","name":"港新银行实战","icon":"🏙️","profile":"fin","files":["bank3.json","bank4.json"]},
+{"id":"trade","name":"美股交易进阶","icon":"📊","profile":"fin","files":["bank5.json"]},
+{"id":"zk","name":"中考核心词汇","icon":"🎒","profile":"teen","files":["zk1.json"]}
 ]}
