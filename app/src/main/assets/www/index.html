@@ -339,6 +339,86 @@ body{background:
 .t-note{font-size:2.6vmin;color:var(--mid);margin-top:auto;padding-top:2vmin;min-height:5vmin}
 .t-keys{font-size:2vmin;color:var(--faint);margin-top:1.6vmin}
 .t-keys .k{display:inline-block;border:.25vmin solid var(--faint);border-radius:.8vmin;padding:.1vmin 1vmin;margin:0 .8vmin 0 1.6vmin;color:var(--dim)}
+/* ================= v3.8 Apple 级精修 ================= */
+html,body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;letter-spacing:.01em}
+:root{--glass:rgba(30,40,66,.55);--glass-brd:rgba(255,255,255,.08);--focus:rgba(232,196,107,.9)}
+/* 更柔顺的入场:轻微缩放+上浮,弹性缓动 */
+.screen.active{animation:appIn .42s cubic-bezier(.22,.68,.28,1)}
+@keyframes appIn{from{opacity:0;transform:translateY(2vmin) scale(.985)}to{opacity:1;transform:none}}
+/* 顶栏更精致 */
+.brand{background:linear-gradient(180deg,#F4D588,#D9AE52);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-weight:800}
+.top{margin-bottom:3vmin}
+/* 主菜单卡片:磨砂玻璃 + 图标托盘 + 柔和分层阴影 + 弹性聚焦 */
+.mcard{background:linear-gradient(165deg,rgba(38,50,80,.66),rgba(22,30,52,.66));
+  border:.12vmin solid var(--glass-brd);border-radius:2.4vmin;backdrop-filter:blur(1.4vmin);-webkit-backdrop-filter:blur(1.4vmin);
+  box-shadow:0 1.6vmin 4vmin rgba(0,0,0,.34), inset 0 .12vmin 0 rgba(255,255,255,.06);
+  transition:transform .34s cubic-bezier(.22,.68,.28,1),box-shadow .34s,border-color .34s,background .34s}
+.mcard .ic{font-size:3vmin;width:6.4vmin;height:6.4vmin;display:flex;align-items:center;justify-content:center;
+  background:rgba(255,255,255,.05);border-radius:1.6vmin;box-shadow:inset 0 0 0 .12vmin rgba(255,255,255,.06)}
+.menu.dense .mcard .ic{width:5.2vmin;height:5.2vmin;font-size:2.6vmin}
+.mcard .t{font-weight:700;letter-spacing:.02em}
+.mcard.focus{border-color:var(--focus);background:linear-gradient(165deg,rgba(52,66,104,.82),rgba(30,40,68,.8));
+  transform:translateY(-.5vmin) scale(1.045);
+  box-shadow:0 2.6vmin 6vmin rgba(0,0,0,.46), 0 0 0 .28vmin rgba(232,196,107,.5), 0 0 5vmin rgba(232,196,107,.28)}
+.mcard .badge{background:linear-gradient(180deg,#F4D588,#D9AE52);box-shadow:0 .5vmin 1.4vmin rgba(0,0,0,.35)}
+/* 列表行 / 选项:磨砂 + 柔和聚焦光晕 */
+.rowitem,.opt{background:linear-gradient(165deg,rgba(36,48,78,.6),rgba(22,30,52,.6));
+  border:.12vmin solid var(--glass-brd);backdrop-filter:blur(1vmin);-webkit-backdrop-filter:blur(1vmin);
+  box-shadow:0 1vmin 2.6vmin rgba(0,0,0,.26);
+  transition:transform .28s cubic-bezier(.22,.68,.28,1),box-shadow .28s,border-color .28s,background .28s}
+.rowitem.focus,.opt.focus{border-color:var(--focus);background:linear-gradient(165deg,rgba(52,66,104,.8),rgba(30,40,68,.78));
+  transform:translateY(-.35vmin) scale(1.025);
+  box-shadow:0 2vmin 5vmin rgba(0,0,0,.4), 0 0 0 .26vmin rgba(232,196,107,.5), 0 0 4vmin rgba(232,196,107,.24)}
+.opt.right{border-color:var(--good);background:linear-gradient(165deg,rgba(40,80,60,.85),rgba(24,50,38,.85));color:var(--good);box-shadow:0 0 4vmin rgba(111,211,163,.34)}
+.opt.wrong{border-color:var(--bad);background:linear-gradient(165deg,rgba(80,40,44,.85),rgba(50,26,30,.85));color:var(--bad)}
+/* 学习卡 / 结算 / 弹层:更深邃柔和的阴影与玻璃 */
+.face{background:linear-gradient(165deg,rgba(32,42,70,.9),rgba(20,28,48,.92));border:.12vmin solid var(--glass-brd);
+  box-shadow:0 4vmin 10vmin rgba(0,0,0,.5), inset 0 .15vmin 0 rgba(255,255,255,.05)}
+.aipop{background:rgba(8,11,20,.72);backdrop-filter:blur(2vmin);-webkit-backdrop-filter:blur(2vmin)}
+.aipop .box{background:var(--glass);border:.12vmin solid var(--glass-brd);backdrop-filter:blur(2.4vmin);-webkit-backdrop-filter:blur(2.4vmin);box-shadow:0 3vmin 8vmin rgba(0,0,0,.5)}
+.toast{background:var(--glass);border:.14vmin solid rgba(232,196,107,.6);backdrop-filter:blur(2vmin);-webkit-backdrop-filter:blur(2vmin);box-shadow:0 1.6vmin 4vmin rgba(0,0,0,.4)}
+/* 进度条更细腻 */
+.pbar,.timer{box-shadow:inset 0 .1vmin .4vmin rgba(0,0,0,.4)}
+.pbar i{box-shadow:0 0 2vmin rgba(232,196,107,.5)}
+/* 拼写键盘/字母框:磨砂化 */
+.sp-key,.sp-box{background:linear-gradient(165deg,rgba(36,48,78,.6),rgba(22,30,52,.6));border-color:var(--glass-brd)}
+.sp-key.focus{box-shadow:0 0 0 .26vmin rgba(232,196,107,.5), 0 0 3vmin rgba(232,196,107,.28)}
+
+/* ================= 词怪追逐 场景 ================= */
+#chase.danger{animation:dangerPulse 1s ease-in-out infinite}
+@keyframes dangerPulse{50%{box-shadow:inset 0 0 24vmin rgba(232,121,107,.18)}}
+.ch-scene{position:relative;height:30vmin;margin:1vmin 0 1.4vmin;border-radius:2.6vmin;overflow:hidden;
+  background:linear-gradient(180deg,#243357 0%,#171f38 62%,#10162a 100%);
+  border:.12vmin solid var(--glass-brd);box-shadow:inset 0 2vmin 6vmin rgba(0,0,0,.4)}
+.ch-ground{position:absolute;left:0;right:0;bottom:0;height:8vmin;
+  background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(0,0,0,.25));
+  border-top:.2vmin solid rgba(255,255,255,.08)}
+.ch-ground:after{content:"";position:absolute;inset:0;background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.06) 0 .4vmin,transparent .4vmin 8vmin);animation:groundMove 1.1s linear infinite}
+@keyframes groundMove{to{background-position-x:-8vmin}}
+.ch-runner,.ch-monster{position:absolute;bottom:6.2vmin;font-size:8.4vmin;line-height:1;
+  transition:left .55s cubic-bezier(.3,.7,.3,1);filter:drop-shadow(0 1vmin 1.4vmin rgba(0,0,0,.5))}
+.ch-runner{z-index:4;animation:runBob .5s ease-in-out infinite}
+.ch-monster{z-index:3;animation:monBob .42s ease-in-out infinite;filter:drop-shadow(0 1vmin 1.4vmin rgba(0,0,0,.5)) hue-rotate(-8deg)}
+@keyframes runBob{50%{transform:translateY(-.7vmin)}}
+@keyframes monBob{50%{transform:translateY(-.5vmin) scale(1.03)}}
+.ch-runner.hop{animation:runHop .5s cubic-bezier(.2,.9,.3,1)}
+@keyframes runHop{35%{transform:translateY(-4vmin) rotate(-6deg)}}
+.ch-monster.recoil{animation:monRecoil .5s ease}
+@keyframes monRecoil{30%{transform:translateX(-3vmin) rotate(-10deg) scale(.9)}}
+.ch-monster.lunge{animation:monLunge .5s ease}
+@keyframes monLunge{40%{transform:translateX(3vmin) scale(1.14)}}
+.ch-flag{position:absolute;right:2vmin;bottom:6vmin;font-size:5vmin;opacity:.7}
+.ch-prop{position:absolute;bottom:9vmin;font-size:4.6vmin;opacity:0;z-index:5;filter:drop-shadow(0 0 1.6vmin rgba(232,196,107,.9))}
+.ch-prop.fly{animation:propFly .5s cubic-bezier(.4,.1,.7,1)}
+@keyframes propFly{0%{opacity:1;transform:translateX(0) scale(.7) rotate(0)}100%{opacity:0;transform:translateX(-42vmin) scale(1.2) rotate(-320deg)}}
+#chase.shake .ch-scene{animation:chShake .4s}
+@keyframes chShake{25%{transform:translateX(-1vmin)}50%{transform:translateX(1.2vmin)}75%{transform:translateX(-.8vmin)}}
+.ch-gap{height:1vmin;background:rgba(0,0,0,.35);border-radius:1vmin;overflow:hidden;box-shadow:inset 0 .1vmin .4vmin rgba(0,0,0,.5)}
+.ch-gap i{display:block;height:100%;width:62%;border-radius:1vmin;transition:width .5s cubic-bezier(.3,.7,.3,1),background .3s;
+  background:linear-gradient(90deg,var(--good),var(--gold))}
+.ch-word{text-align:center;font-size:8vmin;font-weight:800;margin:.4vmin 0 .2vmin;line-height:1;letter-spacing:.01em}
+#chase .opts{margin:1.4vmin 0 0;gap:2vmin}
+#chase .opt{min-height:8.4vmin;padding:2vmin 3vmin}
 </style>
 </head>
 <body>
@@ -346,7 +426,7 @@ body{background:
 
   <div class="screen" id="home">
     <div class="top">
-      <div class="brand serif">千词斩<small>QIANCIZHAN · v3.7</small></div>
+      <div class="brand serif">千词斩<small>QIANCIZHAN · v3.8</small></div>
       <div class="meta">
         <span id="h-user" style="color:var(--gold)">💼 爸爸</span>
         <span class="flame">🔥 连续 <b id="h-streak">0</b> 天</span>
@@ -448,6 +528,30 @@ body{background:
     <div class="feedback" id="sp-fb">听发音 · 看释义 · 方向键选字母,OK 输入 · 菜单键重听</div>
   </div>
 
+  <div class="screen" id="chase">
+    <div class="study-top">
+      <div class="mode">👾 词怪追逐</div>
+      <div class="prog" id="ch-prog">逃生 0 / 15</div>
+    </div>
+    <div class="ch-scene">
+      <div class="ch-ground"></div>
+      <div class="ch-monster" id="ch-monster">👾</div>
+      <div class="ch-prop" id="ch-prop">⚡</div>
+      <div class="ch-runner" id="ch-runner">🏃</div>
+      <div class="ch-flag">🏁</div>
+    </div>
+    <div class="ch-gap"><i id="ch-gapbar"></i></div>
+    <div class="quiz-head" style="margin-top:1vmin">
+      <div class="combo" id="ch-combo"></div>
+      <div class="timer" style="width:44vmin"><i id="ch-timer"></i></div>
+      <div class="combo" id="ch-score">0 分</div>
+    </div>
+    <div class="ch-word serif" id="ch-word"></div>
+    <div class="qphon" id="ch-phon"></div>
+    <div class="opts" id="ch-opts"></div>
+    <div class="feedback" id="ch-fb"></div>
+  </div>
+
   <div class="screen" id="sim">
     <div class="top" id="sim-top"><div class="brand serif" id="sim-title">🏦 实景模拟</div>
       <div class="meta"><span id="sim-hint"></span></div></div>
@@ -538,6 +642,7 @@ body{background:
 
   <div class="toast" id="toast"></div>
 </div>
+<script src="sfx.js"></script>
 <script src="app.js"></script>
 <script src="sim.js"></script>
 </body>

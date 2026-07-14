@@ -33,7 +33,7 @@ const DEFAULTS = { xp: 0, streak: 0, lastDay: "", dayLog: {}, dayNew: {}, words:
 const PROFILES = {
   fin: {
     name: "爸爸 · 金融投资", short: "💼 爸爸", icon: "💼", store: "progress",
-    menuHide: {}, deckOk: p => p !== "teen",
+    menuHide: { chase: 1 }, deckOk: p => p !== "teen",
     slogans: ["看懂<em>世界</em>的词汇", "读懂<em>硅谷</em>与华尔街", "今天也在<em>变强</em>", "新闻不再<em>陌生</em>", "词汇是<em>带宽</em>"]
   },
   teen: {
@@ -254,6 +254,14 @@ function show(name) {
 }
 window.onTvKey = k => {
   try { $("toast").classList.remove("show"); } catch (e) { }
+  // 全局导航音效:切换选项柔和轻点,OK 圆润确认,返回下行
+  try {
+    if (window.SFX) {
+      if (k === "UP" || k === "DOWN" || k === "LEFT" || k === "RIGHT") SFX.nav();
+      else if (k === "OK") SFX.ok();
+      else if (k === "BACK") SFX.back();
+    }
+  } catch (e) { }
   const h = handlers[SCREEN];
   try { if (h && h.key) h.key(k); } catch (e) { toast("按键错误:" + (e && e.message)); }
 };
@@ -272,6 +280,7 @@ const MENU = [
   { id: "match", ic: "🀄", t: "词义配对", d: "消除式配对 · 上瘾警告" },
   { id: "tf", ic: "⚖️", t: "极速判断", d: "对错二选一 · 拼反应" },
   { id: "battle", ic: "🤖", t: "人机对战", d: "和AI拼速度拼准度" },
+  { id: "chase", ic: "👾", t: "词怪追逐", d: "答对击退怪物 · 闯关逃生" },
   { id: "sim", ic: "🏦", t: "实景模拟", d: "盈透/港新银行App动画实操课" },
   { id: "screens", ic: "📱", t: "界面对照", d: "对着券商/银行App学界面英文" },
   { id: "browse", ic: "📖", t: "单词本", d: "今日新学 · 全部已学" },
@@ -338,6 +347,7 @@ function openMenu(id) {
   else if (id === "custom") { CU.idx = 0; show("custom"); }
   else if (id === "sim") { simOpen(); }
   else if (id === "spell") { startSpell(); }
+  else if (id === "chase") { startChase(); }
   else if (id === "who") { WHO.idx = CUR === "fin" ? 0 : 1; show("who"); }
   else if (id === "screens") { SC.view = "list"; SC.gi = 0; show("screens"); }
   else if (id === "ai") show("ai");
@@ -394,6 +404,7 @@ function judge(g) {
   const e = ST.queue[ST.i];
   const btn = g === 1 ? "j-no" : g === 2 ? "j-mid" : "j-yes";
   $(btn).classList.add("focus");
+  try { if (window.SFX) (g >= 3 ? SFX.good() : g === 2 ? SFX.ok() : SFX.bad()); } catch (e2) { }
   if (ST.mode === "new" && (!P.words[e.w] || !P.words[e.w].st)) P.dayNew[todayStr()] = (P.dayNew[todayStr()] || 0) + 1;
   rate(e.w, g);
   if (g < 3) { ST.again++; ST.queue.splice(Math.min(ST.queue.length, ST.i + 4), 0, e); ST.total = ST.queue.length; }
@@ -528,6 +539,7 @@ function answer(idx) {
   if (opts[QZ.ansIdx]) opts[QZ.ansIdx].classList.add("right");
   if (!ok && idx >= 0 && opts[idx]) opts[idx].classList.add("wrong");
   if (QZ.mode === "listen") { $("q-word").textContent = e.w; $("q-phon").textContent = e.p ? "/" + e.p + "/" : ""; }
+  try { if (window.SFX) (ok ? SFX.good() : SFX.bad()); } catch (e2) { }
   if (ok) {
     QZ.combo++; QZ.best = Math.max(QZ.best, QZ.combo); QZ.right++;
     const gain = 10 + Math.min(10, QZ.combo * 2);
@@ -813,6 +825,7 @@ function tfAnswer(saysMatch) {
   const e = TF.list[TF.i];
   const ok = saysMatch !== null && saysMatch === TF.truth;
   if (saysMatch !== null) (saysMatch ? $("t-yes") : $("t-no")).classList.add("focus");
+  try { if (window.SFX) (ok ? SFX.good() : SFX.bad()); } catch (e2) { }
   if (ok) {
     TF.combo++; TF.best = Math.max(TF.best, TF.combo); TF.right++;
     const speed = Math.max(0, Math.round((1 - (NOW() - TF.t0) / TF_MS) * 8));
@@ -1404,6 +1417,7 @@ function spellJudge() {
     d.textContent = SPL.ans[i];
     box.appendChild(d);
   }
+  try { if (window.SFX) (ok ? SFX.good() : SFX.bad()); } catch (e2) { }
   if (ok) {
     SPL.combo++; SPL.best = Math.max(SPL.best, SPL.combo); SPL.right++;
     const gain = Math.max(4, 12 + Math.min(8, SPL.combo * 2) - SPL.hints * 2);
@@ -1450,7 +1464,140 @@ function finishSpell() {
 }
 
 /* ================= 启动 ================= */
+/* ================= 词怪追逐(闯关逃生) =================
+   小人在前跑,词怪在后追,间距越拉越近。答对词义→甩出道具击退词怪、向前闯关;
+   答错/超时→词怪逼近。被追上=失败,闯到终点=逃生成功。 */
+const CH = { list: [], i: 0, sel: 0, ansIdx: 0, gap: 62, pos: 0, goal: 15, score: 0, combo: 0, best: 0, right: 0, wrong: 0, lock: false, over: false, timer: null, creep: null, t0: 0 };
+const CH_TIME = 8000, CH_KNOCK = 15, CH_PENALTY = 20, CH_CREEP = 0.14;
+function startChase() {
+  const pool = activeWords().filter(e => e.m);
+  if (pool.length < 8) { toast("当前词库太小,先开一个词库再来玩"); return; }
+  CH.list = shuffle(pool.slice());
+  CH.i = 0; CH.gap = 62; CH.pos = 0; CH.goal = 15; CH.score = 0; CH.combo = 0; CH.best = 0; CH.right = 0; CH.wrong = 0; CH.over = false;
+  show("chase"); renderChase();
+}
+function chaseOpts(e) {
+  const opts = [e];
+  const pool = shuffle(activeWords().filter(x => x.w !== e.w && x.m !== e.m));
+  for (const c of pool) { if (opts.length >= 4) break; opts.push(c); }
+  shuffle(opts);
+  CH.ansIdx = opts.indexOf(e);
+  return opts;
+}
+function renderChase() {
+  CH.lock = false; CH.sel = 0;
+  const e = CH.list[CH.i % CH.list.length];
+  CH.cur = e;
+  $("ch-prog").textContent = "逃生 " + CH.pos + " / " + CH.goal;
+  $("ch-score").textContent = CH.score + " 分";
+  $("ch-combo").textContent = CH.combo > 1 ? "🔥 连击 ×" + CH.combo : "";
+  $("ch-word").textContent = e.w;
+  $("ch-phon").textContent = e.p ? "/" + e.p + "/" : "";
+  $("ch-fb").textContent = "";
+  const opts = chaseOpts(e);
+  const box = $("ch-opts"); box.innerHTML = "";
+  opts.forEach((o, i) => {
+    const d = document.createElement("div");
+    d.className = "opt" + (i === 0 ? " focus" : "");
+    d.innerHTML = '<span class="idx">' + (i + 1) + '</span><span>' + esc(o.m) + '</span>';
+    box.appendChild(d);
+  });
+  drawChase();
+  speak(e.w);
+  // 计时条 + 词怪缓慢逼近(制造紧张)
+  clearInterval(CH.timer); clearInterval(CH.creep); CH.t0 = NOW();
+  $("ch-timer").style.width = "100%";
+  CH.timer = setInterval(() => {
+    const left = 1 - (NOW() - CH.t0) / CH_TIME;
+    $("ch-timer").style.width = Math.max(0, left * 100) + "%";
+    if (left <= 0) chaseAnswer(-1);
+  }, 80);
+  CH.creep = setInterval(() => {
+    if (CH.lock) return;
+    CH.gap = Math.max(0, CH.gap - CH_CREEP);
+    drawChase();
+    if (CH.gap <= 0) chaseAnswer(-1);
+  }, 100);
+}
+function drawChase() {
+  const gap = clamp(CH.gap, 0, 100);
+  // 小人固定靠右,词怪按间距在其身后;间距越小越近
+  const runnerX = 74;
+  const monsterX = clamp(runnerX - gap * 0.66, 4, runnerX - 3);
+  $("ch-runner").style.left = runnerX + "%";
+  $("ch-monster").style.left = monsterX + "%";
+  $("ch-gapbar").style.width = gap + "%";
+  const danger = gap < 26;
+  $("chase").classList.toggle("danger", danger);
+  $("ch-gapbar").style.background = danger ? "var(--bad)" : "linear-gradient(90deg,var(--good),var(--gold))";
+}
+function chaseMove(k) {
+  const n = 4;
+  if (k === "UP") CH.sel = (CH.sel + n - 2) % n;
+  else if (k === "DOWN") CH.sel = (CH.sel + 2) % n;
+  else if (k === "LEFT" || k === "RIGHT") CH.sel = (CH.sel % 2 === 0) ? Math.min(CH.sel + 1, n - 1) : CH.sel - 1;
+  document.querySelectorAll("#ch-opts .opt").forEach((o, i) => o.classList.toggle("focus", i === CH.sel));
+}
+function chaseAnswer(idx) {
+  if (CH.lock) return;
+  CH.lock = true; clearInterval(CH.timer); clearInterval(CH.creep);
+  const e = CH.cur;
+  const opts = document.querySelectorAll("#ch-opts .opt");
+  const ok = idx === CH.ansIdx;
+  if (opts[CH.ansIdx]) opts[CH.ansIdx].classList.add("right");
+  if (!ok && idx >= 0 && opts[idx]) opts[idx].classList.add("wrong");
+  if (ok) {
+    CH.combo++; CH.best = Math.max(CH.best, CH.combo); CH.right++; CH.pos++;
+    CH.gap = Math.min(100, CH.gap + CH_KNOCK + Math.min(6, CH.combo));
+    CH.score += 10 + Math.min(12, CH.combo * 2); P.xp += 4;
+    $("ch-fb").textContent = "✓ 击退! " + e.w + " = " + e.m;
+    try { if (window.SFX) SFX.hit(); } catch (x) { }
+    // 道具飞出 + 小人跃进 + 词怪后退
+    const prop = $("ch-prop");
+    prop.style.left = "70%"; prop.classList.remove("fly"); void prop.offsetWidth; prop.classList.add("fly");
+    $("ch-runner").classList.remove("hop"); void $("ch-runner").offsetWidth; $("ch-runner").classList.add("hop");
+    $("ch-monster").classList.remove("recoil"); void $("ch-monster").offsetWidth; $("ch-monster").classList.add("recoil");
+  } else {
+    CH.combo = 0; CH.wrong++;
+    CH.gap = Math.max(0, CH.gap - CH_PENALTY);
+    $("ch-fb").textContent = (idx < 0 ? "⏱ 超时!" : "✗ ") + e.w + " → " + e.m;
+    try { if (window.SFX) { SFX.bad(); SFX.danger(); } } catch (x) { }
+    $("chase").classList.remove("shake"); void $("chase").offsetWidth; $("chase").classList.add("shake");
+    $("ch-monster").classList.remove("lunge"); void $("ch-monster").offsetWidth; $("ch-monster").classList.add("lunge");
+  }
+  drawChase();
+  schedHit(e.w, ok);
+  if (CH.pos >= CH.goal) { CH.over = true; setTimeout(() => finishChase(true), 800); return; }
+  if (CH.gap <= 0) { CH.over = true; setTimeout(() => finishChase(false), 900); return; }
+  CH.i++;
+  setTimeout(() => { if (SCREEN === "chase" && !CH.over) renderChase(); }, ok ? 750 : 1500);
+}
+handlers.chase = {
+  key(k) {
+    if (k === "BACK") { clearInterval(CH.timer); clearInterval(CH.creep); CH.over = true; show("home"); return; }
+    if (k === "MENU" || k === "PLAY") { if (CH.cur) speak(CH.cur.w); return; }
+    if (CH.lock) return;
+    if (k === "OK") chaseAnswer(CH.sel);
+    else if (["UP", "DOWN", "LEFT", "RIGHT"].includes(k)) chaseMove(k);
+  }
+};
+function finishChase(win) {
+  clearInterval(CH.timer); clearInterval(CH.creep);
+  const tot = CH.right + CH.wrong;
+  const acc = tot ? Math.round(CH.right / tot * 100) : 0;
+  $("f-title").textContent = win ? "🎉 成功逃生!" : "👾 被词怪追上了";
+  $("f-xp").textContent = "+" + (CH.right * 4) + " XP · 得分 " + CH.score;
+  $("f-stats").innerHTML = '<div class="stat"><div class="n" style="color:var(--good)">' + CH.pos + '/' + CH.goal + '</div><div class="l">闯关进度</div></div>'
+    + '<div class="stat"><div class="n" style="color:var(--gold)">×' + CH.best + '</div><div class="l">最高连击</div></div>'
+    + '<div class="stat"><div class="n">' + acc + '%</div><div class="l">正确率</div></div>';
+  $("f-msg").textContent = win ? "词义配对越快越准,道具威力越大!" : "别灰心,答对就能击退它,再来一次!";
+  try { if (window.SFX) (win ? SFX.win() : SFX.danger()); } catch (x) { }
+  saveP(); show("finish");
+}
+
+/* ================= 启动 ================= */
 function boot() {
+  try { if (window.SFX) SFX.resume(); } catch (e) { }
   loadApp();
   loadP();
   loadDecks();

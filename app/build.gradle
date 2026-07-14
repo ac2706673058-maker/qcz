@@ -8,8 +8,8 @@ android {
         applicationId "com.lextv.app"
         minSdk 21
         targetSdk 34
-        versionCode 9
-        versionName "3.7"
+        versionCode 10
+        versionName "3.8"
     }
     signingConfigs {
         debug {
