@@ -477,6 +477,101 @@ body{background:
 .ch-word{text-align:center;font-size:7.6vmin;font-weight:800;margin:.2vmin 0 0;line-height:1;letter-spacing:.01em;color:var(--paper)}
 #chase .opts{margin:1.2vmin 0 0;gap:1.8vmin}
 #chase .opt{min-height:8vmin;padding:1.8vmin 3vmin}
+
+/* ======================================================================
+   v4.0 — Apple 系统级细节精修(SF字体 / 精确iOS系统色 / 材质 / 控件)
+   ====================================================================== */
+:root{
+  /* iOS Light 精确系统色 */
+  --ink:#F2F2F7;            /* systemGroupedBackground */
+  --ink2:#E5E5EA;           /* systemGray5 */
+  --panel:#FFFFFF;          /* card */
+  --panel2:#FFFFFF;
+  --paper:#1C1C1E;          /* label */
+  --dim:rgba(60,60,67,.6);  /* secondaryLabel */
+  --faint:rgba(60,60,67,.3);/* tertiaryLabel */
+  --gold:#007AFF;           /* systemBlue(light) 强调色 */
+  --gold2:#0062CC;
+  --good:#34C759; --bad:#FF3B30; --mid:#FF9500;
+  --brand:#1C1C1E;
+  --hair:rgba(60,60,67,.18);      /* separator on white */
+  --fill:rgba(118,118,128,.12);   /* secondarySystemFill */
+  --fill2:rgba(118,118,128,.2);
+}
+/* SF Pro / PingFang 字体栈(Apple设备用真字体,Android优雅回退Roboto/Noto) */
+html,body,.serif{
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",
+    "PingFang SC","Noto Sans CJK SC","Noto Sans SC",system-ui,Roboto,"Segoe UI",sans-serif;
+}
+html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;letter-spacing:normal}
+/* Apple 大标题:更重的字重 + 收紧字距(负tracking是SF大字的灵魂) */
+#home .hero .big,.ch-word,.headword,.qword,.result .big,.aisay,.sim-title,.sc-title{
+  letter-spacing:-.022em;font-weight:800}
+.brand{letter-spacing:-.008em;font-weight:800;font-size:3.2vmin}
+.brand small{letter-spacing:.03em;font-weight:500;color:var(--faint)}
+/* 数字统一等宽(表格数字),对齐 Apple 计数/比分观感 */
+.today .n,#h-streak,#h-level,#h-mastered,#h-due,.combo,.prog,.study-top .prog,
+.result .stat .n,.scard .n,.ch-prog,.q-score,#q-score,#sp-score,#ch-score,.st-total,.timer i,.mcard .badge{
+  font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+/* 收掉过宽的字距(Apple只在小号大写caption上轻微tracking) */
+#home .hero .eyebrow{letter-spacing:.14em;color:var(--faint);font-weight:600}
+.today .l,.result .stat .l{letter-spacing:.02em}
+.study-top .mode{letter-spacing:.02em;font-weight:600;color:var(--gold)}
+.top .meta{font-weight:500}
+/* 卡片:更克制的分层柔和阴影 + 一致连续圆角 */
+.mcard{border-radius:2vmin;border:none;box-shadow:0 .1vmin .3vmin rgba(0,0,0,.05),0 .9vmin 2.2vmin rgba(0,0,0,.055)}
+.mcard .ic{background:var(--fill);border-radius:1.5vmin}
+.mcard.focus{transform:translateY(-.55vmin) scale(1.038);
+  box-shadow:0 0 0 .26vmin #007AFF,0 2.4vmin 5.4vmin rgba(0,0,0,.14)}
+.mcard .badge{border-radius:10vmin;font-weight:700;box-shadow:none;min-width:4.4vmin}
+.rowitem,.opt,.brow,.scard{border:none;border-radius:1.8vmin;box-shadow:0 .1vmin .3vmin rgba(0,0,0,.05),0 .7vmin 1.8vmin rgba(0,0,0,.05)}
+.rowitem.focus,.opt.focus,.brow.focus{transform:translateY(-.3vmin) scale(1.016);
+  box-shadow:0 0 0 .24vmin #007AFF,0 1.8vmin 4vmin rgba(0,0,0,.12)}
+.opt.right{box-shadow:0 0 0 .24vmin var(--good)}
+.opt.wrong{box-shadow:0 0 0 .24vmin var(--bad)}
+.face{border:none;border-radius:2.6vmin;box-shadow:0 2.4vmin 6vmin rgba(0,0,0,.12)}
+/* 右侧值:iOS 详情灰;可点项才用蓝 */
+.rowitem .val{color:var(--dim);font-weight:500}
+.rowitem .desc{color:var(--dim)}
+/* 真·iOS 开关控件 */
+.ios-sw{display:inline-block;width:5.4vmin;height:3.2vmin;border-radius:3vmin;background:var(--fill2);
+  position:relative;vertical-align:middle;transition:background .28s cubic-bezier(.3,.7,.3,1)}
+.ios-sw.on{background:var(--good)}
+.ios-sw::after{content:"";position:absolute;top:.26vmin;left:.26vmin;width:2.68vmin;height:2.68vmin;border-radius:50%;
+  background:#fff;box-shadow:0 .18vmin .5vmin rgba(0,0,0,.28),0 .1vmin .2vmin rgba(0,0,0,.12);
+  transition:transform .28s cubic-bezier(.3,.7,.3,1)}
+.ios-sw.on::after{transform:translateX(2.2vmin)}
+.val-blue{color:var(--gold) !important;font-weight:600}
+.val-red{color:var(--bad) !important;font-weight:600}
+/* 分段控件(sim 内)对齐 iOS segmented */
+.p-seg{background:var(--fill);border-radius:1vmin;padding:.3vmin}
+.p-seg span.on{background:#fff;color:var(--ptx);box-shadow:0 .1vmin .4vmin rgba(0,0,0,.16),0 0 0 .05vmin rgba(0,0,0,.04)}
+/* 材质:Toast / 弹层 用真 vibrancy */
+.toast{border-radius:10vmin;background:rgba(250,250,252,.72);border:.08vmin solid rgba(0,0,0,.06);
+  backdrop-filter:saturate(1.8) blur(3vmin);-webkit-backdrop-filter:saturate(1.8) blur(3vmin);
+  box-shadow:0 .6vmin 2vmin rgba(0,0,0,.14),0 .1vmin .3vmin rgba(0,0,0,.1)}
+.aipop{background:rgba(0,0,0,.28);backdrop-filter:saturate(1.4) blur(1.2vmin);-webkit-backdrop-filter:saturate(1.4) blur(1.2vmin)}
+.aipop .box{border-radius:2.4vmin;border:none;box-shadow:0 3vmin 8vmin rgba(0,0,0,.28)}
+/* 进度/计时条:更细、圆润、Apple 质感 */
+.pbar{height:.6vmin;border-radius:1vmin} .timer{border-radius:1vmin}
+.pbar i{background:var(--gold);box-shadow:none}
+.timer i{background:var(--gold)}
+/* 判定按钮:iOS 填充胶囊 */
+.jbtn{border:none;border-radius:1.6vmin;box-shadow:0 .5vmin 1.4vmin rgba(0,0,0,.06);font-weight:600}
+/* 顶栏计量更轻盈 */
+.top .meta b{font-weight:700}
+/* 学习卡正面提示更含蓄 */
+.face .tap{letter-spacing:.1em;color:var(--faint)}
+/* 例句填空整句译文用系统蓝更统一 */
+#q-tr{color:var(--gold) !important}
+/* 列表滚动条隐藏(tvOS 无滚动条) */
+.listwrap::-webkit-scrollbar,.aiopts::-webkit-scrollbar{display:none}
+/* 修复:聚焦光环/抬升阴影不被容器裁切(留出内边距,窗口化列表不会溢出) */
+.listwrap{overflow:visible;padding:.8vmin 1vmin}
+.aiopts{padding:1vmin 1.4vmin}
+.menu{padding:.6vmin .8vmin;margin:-.6vmin -.8vmin}
+.opts,.mgrid{padding:.6vmin .8vmin;overflow:visible}
+#b-list,#sc-list{overflow:visible}
 </style>
 </head>
 <body>
@@ -484,7 +579,7 @@ body{background:
 
   <div class="screen" id="home">
     <div class="top">
-      <div class="brand serif">千词斩<small>QIANCIZHAN · v3.9</small></div>
+      <div class="brand serif">千词斩<small>QIANCIZHAN · v4.0</small></div>
       <div class="meta">
         <span id="h-user" style="color:var(--gold)">💼 爸爸</span>
         <span class="flame">🔥 连续 <b id="h-streak">0</b> 天</span>

@@ -39,7 +39,7 @@ jobs:
         with:
           tag_name: v${{ steps.ver.outputs.vn }}-${{ steps.ver.outputs.vc }}
           name: LexTV ${{ steps.ver.outputs.vn }}
-          body: "v3.9 界面焕新为 Apple Light 高级白主题(纯白卡片/系统蓝高亮/柔和分层阴影),更像 iOS 系统;「词怪追逐」大改:修正朝向(小人朝右逃、词怪左后方紧追并越逼越大)、视差草原奔跑、答对冲击波+粒子炸退怪物、答错扑抓+震动+红光危险反馈,真正紧张好玩。含导航音效、中考/高考2256词库、双使用者、原生发音。"
+          body: "v4.0 Apple 系统级细节精修:精确 iOS 系统色(systemBlue #007AFF/systemGray 分隔线/secondaryLabel 灰)、SF Pro 字体栈+负字距大标题+等宽数字、真·iOS 绿色开关控件(发音/自动朗读/词库)、克制柔和的分层阴影、完整蓝色聚焦光环、iOS红蓝语义色。含词怪追逐2.0、导航音效、2256词中考/高考库、双使用者。"
           files: LexTV.apk
           make_latest: true
         env:

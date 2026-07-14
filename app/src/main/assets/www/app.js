@@ -1106,7 +1106,7 @@ handlers.decks = {
         + '<div class="info"><div class="name">' + esc(d.name) + (d.source === "ext" ? ' <span style="color:var(--gold);font-size:2vmin">外部</span>' : "") + '</div>'
         + '<div class="desc">已学 ' + learned + ' / ' + d.total + ' 词 · ' + pct + '%</div>'
         + '<div class="deckbar"><i style="width:' + pct + '%"></i></div></div>'
-        + '<div class="val">' + (deckOn(d.id) ? "已启用" : '<span style="color:var(--faint)">已关闭</span>') + '</div>';
+        + '<div class="val"><span class="ios-sw' + (deckOn(d.id) ? " on" : "") + '"></span></div>';
       box.appendChild(el);
     });
   },
@@ -1178,10 +1178,15 @@ handlers.settings = {
     SETTINGS.forEach((s, i) => {
       const el = document.createElement("div");
       el.className = "rowitem" + (i === setIdx ? " focus" : "");
-      const val = s.opts ? s.fmt(P.set[s.id]) : (resetArm && i === setIdx && s.id === "reset" ? '<span style="color:var(--bad)">再按一次确认</span>' : s.fmt());
+      const isBool = s.opts && s.opts.length === 2 && s.opts[0] === 1 && s.opts[1] === 0;
+      let val, cls = "val";
+      if (isBool) val = '<span class="ios-sw' + (P.set[s.id] ? " on" : "") + '"></span>';
+      else if (!s.opts && s.id === "reset") { val = resetArm && i === setIdx ? "再按一次确认" : s.fmt(); cls = "val val-red"; }
+      else if (!s.opts) { val = s.fmt(); cls = "val val-blue"; }
+      else val = s.fmt(P.set[s.id]);
       el.innerHTML = '<div class="ic">' + (SET_ICON[s.id] || "•") + '</div>'
         + '<div class="info"><div class="name">' + s.name + '</div><div class="desc">' + s.desc + '</div></div>'
-        + '<div class="val">' + val + '</div>';
+        + '<div class="' + cls + '">' + val + '</div>';
       box.appendChild(el);
     });
     try { const fc = box.querySelector(".focus"); if (fc && fc.scrollIntoView) fc.scrollIntoView({ block: "nearest" }); } catch (e) { }
