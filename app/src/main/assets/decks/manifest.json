@@ -4,6 +4,6 @@
 {"id":"bank","name":"银行证券App","icon":"🏦","profile":"fin","files":["bank1.json","bank2.json"]},
 {"id":"hksg","name":"港新银行实战","icon":"🏙️","profile":"fin","files":["bank3.json","bank4.json"]},
 {"id":"trade","name":"美股交易进阶","icon":"📊","profile":"fin","files":["bank5.json"]},
-{"id":"zk","name":"中考核心词汇","icon":"🎒","profile":"teen","files":["zk_a.json","zk_b.json","zk_c.json"]},
+{"id":"zk","name":"中考核心词汇","icon":"🎒","profile":"teen","files":["zk_a.json","zk_b.json","zk_c.json","zk_d.json","zk_e.json","zk_f.json","zk_g.json","zk_h.json","zk_i.json","zk_j.json","zk_k.json"]},
 {"id":"gk","name":"高考进阶词汇","icon":"🎓","profile":"teen","files":[]}
 ]}
