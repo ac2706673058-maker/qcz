@@ -339,86 +339,144 @@ body{background:
 .t-note{font-size:2.6vmin;color:var(--mid);margin-top:auto;padding-top:2vmin;min-height:5vmin}
 .t-keys{font-size:2vmin;color:var(--faint);margin-top:1.6vmin}
 .t-keys .k{display:inline-block;border:.25vmin solid var(--faint);border-radius:.8vmin;padding:.1vmin 1vmin;margin:0 .8vmin 0 1.6vmin;color:var(--dim)}
-/* ================= v3.8 Apple 级精修 ================= */
-html,body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;letter-spacing:.01em}
-:root{--glass:rgba(30,40,66,.55);--glass-brd:rgba(255,255,255,.08);--focus:rgba(232,196,107,.9)}
-/* 更柔顺的入场:轻微缩放+上浮,弹性缓动 */
+/* ================= v3.9 Apple Light 主题(高级白) ================= */
+:root{
+  --ink:#F5F5F7; --ink2:#ECECEF; --panel:#FFFFFF; --panel2:#FFFFFF;
+  --paper:#1D1D1F; --dim:#6E6E73; --faint:#AEAEB2;
+  --gold:#0A84FF; --gold2:#0071E3;            /* 系统蓝作为高亮强调色 */
+  --good:#34C759; --bad:#FF3B30; --mid:#FF9F0A;
+  --brand:#1D1D1F; --hair:rgba(0,0,0,.08); --focus:#0A84FF;
+}
+html,body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;letter-spacing:.005em;color:var(--paper)}
+body{background:
+  radial-gradient(120vmax 90vmax at 85% -20%, #FFFFFF 0%, transparent 55%),
+  radial-gradient(100vmax 80vmax at -10% 110%, #EAF1FB 0%, transparent 55%),
+  var(--ink)}
 .screen.active{animation:appIn .42s cubic-bezier(.22,.68,.28,1)}
-@keyframes appIn{from{opacity:0;transform:translateY(2vmin) scale(.985)}to{opacity:1;transform:none}}
-/* 顶栏更精致 */
-.brand{background:linear-gradient(180deg,#F4D588,#D9AE52);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-weight:800}
-.top{margin-bottom:3vmin}
-/* 主菜单卡片:磨砂玻璃 + 图标托盘 + 柔和分层阴影 + 弹性聚焦 */
-.mcard{background:linear-gradient(165deg,rgba(38,50,80,.66),rgba(22,30,52,.66));
-  border:.12vmin solid var(--glass-brd);border-radius:2.4vmin;backdrop-filter:blur(1.4vmin);-webkit-backdrop-filter:blur(1.4vmin);
-  box-shadow:0 1.6vmin 4vmin rgba(0,0,0,.34), inset 0 .12vmin 0 rgba(255,255,255,.06);
-  transition:transform .34s cubic-bezier(.22,.68,.28,1),box-shadow .34s,border-color .34s,background .34s}
+@keyframes appIn{from{opacity:0;transform:translateY(1.6vmin) scale(.99)}to{opacity:1;transform:none}}
+/* 品牌字改为高级石墨色 */
+.brand{background:none;-webkit-text-fill-color:initial;color:var(--brand);font-weight:800;letter-spacing:.28em}
+.brand small{color:var(--faint)}
+.flame{color:#FF9F0A !important}
+#h-user{color:var(--gold) !important;font-weight:600}
+.top .meta b{color:var(--paper)}
+/* 主菜单卡片:纯白 + 图标浅托盘 + 苹果柔和分层阴影 + 蓝色聚焦光 */
+.mcard{background:var(--panel);border:.1vmin solid var(--hair);border-radius:2.2vmin;
+  box-shadow:0 .2vmin .6vmin rgba(0,0,0,.04), 0 1.4vmin 3.4vmin rgba(0,0,0,.07);
+  transition:transform .34s cubic-bezier(.22,.68,.28,1),box-shadow .34s,border-color .34s}
 .mcard .ic{font-size:3vmin;width:6.4vmin;height:6.4vmin;display:flex;align-items:center;justify-content:center;
-  background:rgba(255,255,255,.05);border-radius:1.6vmin;box-shadow:inset 0 0 0 .12vmin rgba(255,255,255,.06)}
+  background:#F0F1F5;border-radius:1.6vmin}
 .menu.dense .mcard .ic{width:5.2vmin;height:5.2vmin;font-size:2.6vmin}
-.mcard .t{font-weight:700;letter-spacing:.02em}
-.mcard.focus{border-color:var(--focus);background:linear-gradient(165deg,rgba(52,66,104,.82),rgba(30,40,68,.8));
-  transform:translateY(-.5vmin) scale(1.045);
-  box-shadow:0 2.6vmin 6vmin rgba(0,0,0,.46), 0 0 0 .28vmin rgba(232,196,107,.5), 0 0 5vmin rgba(232,196,107,.28)}
-.mcard .badge{background:linear-gradient(180deg,#F4D588,#D9AE52);box-shadow:0 .5vmin 1.4vmin rgba(0,0,0,.35)}
-/* 列表行 / 选项:磨砂 + 柔和聚焦光晕 */
-.rowitem,.opt{background:linear-gradient(165deg,rgba(36,48,78,.6),rgba(22,30,52,.6));
-  border:.12vmin solid var(--glass-brd);backdrop-filter:blur(1vmin);-webkit-backdrop-filter:blur(1vmin);
-  box-shadow:0 1vmin 2.6vmin rgba(0,0,0,.26);
-  transition:transform .28s cubic-bezier(.22,.68,.28,1),box-shadow .28s,border-color .28s,background .28s}
-.rowitem.focus,.opt.focus{border-color:var(--focus);background:linear-gradient(165deg,rgba(52,66,104,.8),rgba(30,40,68,.78));
-  transform:translateY(-.35vmin) scale(1.025);
-  box-shadow:0 2vmin 5vmin rgba(0,0,0,.4), 0 0 0 .26vmin rgba(232,196,107,.5), 0 0 4vmin rgba(232,196,107,.24)}
-.opt.right{border-color:var(--good);background:linear-gradient(165deg,rgba(40,80,60,.85),rgba(24,50,38,.85));color:var(--good);box-shadow:0 0 4vmin rgba(111,211,163,.34)}
-.opt.wrong{border-color:var(--bad);background:linear-gradient(165deg,rgba(80,40,44,.85),rgba(50,26,30,.85));color:var(--bad)}
-/* 学习卡 / 结算 / 弹层:更深邃柔和的阴影与玻璃 */
-.face{background:linear-gradient(165deg,rgba(32,42,70,.9),rgba(20,28,48,.92));border:.12vmin solid var(--glass-brd);
-  box-shadow:0 4vmin 10vmin rgba(0,0,0,.5), inset 0 .15vmin 0 rgba(255,255,255,.05)}
-.aipop{background:rgba(8,11,20,.72);backdrop-filter:blur(2vmin);-webkit-backdrop-filter:blur(2vmin)}
-.aipop .box{background:var(--glass);border:.12vmin solid var(--glass-brd);backdrop-filter:blur(2.4vmin);-webkit-backdrop-filter:blur(2.4vmin);box-shadow:0 3vmin 8vmin rgba(0,0,0,.5)}
-.toast{background:var(--glass);border:.14vmin solid rgba(232,196,107,.6);backdrop-filter:blur(2vmin);-webkit-backdrop-filter:blur(2vmin);box-shadow:0 1.6vmin 4vmin rgba(0,0,0,.4)}
-/* 进度条更细腻 */
-.pbar,.timer{box-shadow:inset 0 .1vmin .4vmin rgba(0,0,0,.4)}
-.pbar i{box-shadow:0 0 2vmin rgba(232,196,107,.5)}
-/* 拼写键盘/字母框:磨砂化 */
-.sp-key,.sp-box{background:linear-gradient(165deg,rgba(36,48,78,.6),rgba(22,30,52,.6));border-color:var(--glass-brd)}
-.sp-key.focus{box-shadow:0 0 0 .26vmin rgba(232,196,107,.5), 0 0 3vmin rgba(232,196,107,.28)}
+.mcard .t{font-weight:700;letter-spacing:.01em;color:var(--paper)}
+.mcard .d{color:var(--dim)}
+.mcard.focus{border-color:transparent;background:var(--panel);transform:translateY(-.5vmin) scale(1.04);
+  box-shadow:0 0 0 .3vmin rgba(10,132,255,.9), 0 2.2vmin 5vmin rgba(10,132,255,.22), 0 1.2vmin 3vmin rgba(0,0,0,.1)}
+.mcard .badge{background:var(--gold);color:#fff;box-shadow:0 .4vmin 1.2vmin rgba(10,132,255,.4)}
+/* 列表行 / 选项:纯白卡 + 蓝色聚焦光晕 */
+.rowitem,.opt{background:var(--panel);border:.1vmin solid var(--hair);
+  box-shadow:0 .2vmin .6vmin rgba(0,0,0,.04), 0 1vmin 2.4vmin rgba(0,0,0,.06);
+  transition:transform .26s cubic-bezier(.22,.68,.28,1),box-shadow .26s,border-color .26s}
+.rowitem .name,.rowitem .val{color:var(--paper)}
+.rowitem.focus,.opt.focus{border-color:transparent;background:var(--panel);transform:translateY(-.3vmin) scale(1.02);
+  box-shadow:0 0 0 .28vmin rgba(10,132,255,.9), 0 1.8vmin 4vmin rgba(10,132,255,.2)}
+.opt .idx{color:var(--faint)}
+.opt.right{border-color:transparent;background:#E7F9EE;color:#248A3D;box-shadow:0 0 0 .28vmin rgba(52,199,89,.85)}
+.opt.wrong{border-color:transparent;background:#FDEBEA;color:#C4271D;box-shadow:0 0 0 .28vmin rgba(255,59,48,.8)}
+/* 通用边框/底色 提亮 */
+.face{background:var(--panel);border:.1vmin solid var(--hair);box-shadow:0 3vmin 7vmin rgba(0,0,0,.14)}
+.phon,.meaning,.headword{color:var(--paper)} .phon{color:var(--gold)}
+.example{color:var(--dim)} .example b{color:var(--gold)}
+.jbtn{background:var(--panel);border:.1vmin solid var(--hair);color:var(--dim);box-shadow:0 .8vmin 2vmin rgba(0,0,0,.06)}
+.jbtn.no.focus{border-color:transparent;color:var(--bad);background:#FDEBEA;box-shadow:0 0 0 .28vmin rgba(255,59,48,.7)}
+.jbtn.mid.focus{border-color:transparent;color:#B25E00;background:#FFF3E0;box-shadow:0 0 0 .28vmin rgba(255,159,10,.7)}
+.jbtn.yes.focus{border-color:transparent;color:#248A3D;background:#E7F9EE;box-shadow:0 0 0 .28vmin rgba(52,199,89,.75)}
+.pbar,.timer{background:var(--ink2);box-shadow:inset 0 .1vmin .3vmin rgba(0,0,0,.06)}
+.qsent{color:var(--paper)} .qsent b{color:var(--gold);border-color:var(--gold)}
+.tab{border:.15vmin solid var(--hair);color:var(--dim);background:var(--panel)}
+.tab.on{border-color:transparent;color:#fff;background:var(--gold)}
+.brow{background:var(--panel);border:.1vmin solid var(--hair);box-shadow:0 .6vmin 1.6vmin rgba(0,0,0,.05)}
+.brow.focus{border-color:transparent;box-shadow:0 0 0 .26vmin rgba(10,132,255,.85)}
+.brow .m{color:var(--paper)} .brow .w{color:var(--paper)}
+.scard{background:var(--panel);box-shadow:0 1vmin 2.4vmin rgba(0,0,0,.06)} .scard .n{color:var(--gold)}
+.deckbar{background:var(--ink2)}
+.cell{background:#E9E9EE}
+.cell.l1{background:#BBD7FF}.cell.l2{background:#7FB2FF}.cell.l3{background:#3F8CFF}.cell.l4{background:var(--gold)}
+.result .big{color:var(--gold)} .result .xp{color:var(--good)} .result .stat .n{color:var(--paper)}
+.sp-key,.sp-box{background:var(--panel);border:.12vmin solid var(--hair);color:var(--paper)}
+.sp-box.lockc{color:var(--gold);border-color:var(--gold)}
+.sp-box.cur{border-color:var(--gold);background:#EAF3FF}
+.sp-box.good{border-color:var(--good);color:#248A3D;background:#E7F9EE}
+.sp-box.bad{border-color:var(--bad);color:#C4271D;background:#FDEBEA}
+.sp-key.focus{border-color:transparent;color:var(--gold);background:#EAF3FF;box-shadow:0 0 0 .26vmin rgba(10,132,255,.85)}
+.sp-mean{color:var(--paper)}
+.combo{color:var(--gold)} .feedback{color:var(--dim)}
+.newtag{color:var(--gold);border-color:var(--gold)} .decktag{color:var(--faint)}
+.toast{background:rgba(255,255,255,.82);border:.1vmin solid var(--hair);color:var(--paper);backdrop-filter:saturate(1.8) blur(2vmin);-webkit-backdrop-filter:saturate(1.8) blur(2vmin);box-shadow:0 1.4vmin 3.4vmin rgba(0,0,0,.16)}
+.aipop{background:rgba(255,255,255,.55);backdrop-filter:saturate(1.6) blur(2vmin);-webkit-backdrop-filter:saturate(1.6) blur(2vmin)}
+.aipop .box{background:var(--panel);border:.1vmin solid var(--hair);color:var(--paper);box-shadow:0 3vmin 7vmin rgba(0,0,0,.2)}
+.empty{color:var(--dim)} .empty .e2{color:var(--paper)}
+.tip{color:var(--faint)}
+.aisay{color:var(--paper)} .aicn{color:var(--dim)}
+.hint-bar .k{border-color:var(--hair);color:var(--dim)}
 
-/* ================= 词怪追逐 场景 ================= */
-#chase.danger{animation:dangerPulse 1s ease-in-out infinite}
-@keyframes dangerPulse{50%{box-shadow:inset 0 0 24vmin rgba(232,121,107,.18)}}
-.ch-scene{position:relative;height:30vmin;margin:1vmin 0 1.4vmin;border-radius:2.6vmin;overflow:hidden;
-  background:linear-gradient(180deg,#243357 0%,#171f38 62%,#10162a 100%);
-  border:.12vmin solid var(--glass-brd);box-shadow:inset 0 2vmin 6vmin rgba(0,0,0,.4)}
-.ch-ground{position:absolute;left:0;right:0;bottom:0;height:8vmin;
-  background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(0,0,0,.25));
-  border-top:.2vmin solid rgba(255,255,255,.08)}
-.ch-ground:after{content:"";position:absolute;inset:0;background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.06) 0 .4vmin,transparent .4vmin 8vmin);animation:groundMove 1.1s linear infinite}
-@keyframes groundMove{to{background-position-x:-8vmin}}
-.ch-runner,.ch-monster{position:absolute;bottom:6.2vmin;font-size:8.4vmin;line-height:1;
-  transition:left .55s cubic-bezier(.3,.7,.3,1);filter:drop-shadow(0 1vmin 1.4vmin rgba(0,0,0,.5))}
-.ch-runner{z-index:4;animation:runBob .5s ease-in-out infinite}
-.ch-monster{z-index:3;animation:monBob .42s ease-in-out infinite;filter:drop-shadow(0 1vmin 1.4vmin rgba(0,0,0,.5)) hue-rotate(-8deg)}
-@keyframes runBob{50%{transform:translateY(-.7vmin)}}
-@keyframes monBob{50%{transform:translateY(-.5vmin) scale(1.03)}}
-.ch-runner.hop{animation:runHop .5s cubic-bezier(.2,.9,.3,1)}
-@keyframes runHop{35%{transform:translateY(-4vmin) rotate(-6deg)}}
-.ch-monster.recoil{animation:monRecoil .5s ease}
-@keyframes monRecoil{30%{transform:translateX(-3vmin) rotate(-10deg) scale(.9)}}
-.ch-monster.lunge{animation:monLunge .5s ease}
-@keyframes monLunge{40%{transform:translateX(3vmin) scale(1.14)}}
-.ch-flag{position:absolute;right:2vmin;bottom:6vmin;font-size:5vmin;opacity:.7}
-.ch-prop{position:absolute;bottom:9vmin;font-size:4.6vmin;opacity:0;z-index:5;filter:drop-shadow(0 0 1.6vmin rgba(232,196,107,.9))}
-.ch-prop.fly{animation:propFly .5s cubic-bezier(.4,.1,.7,1)}
-@keyframes propFly{0%{opacity:1;transform:translateX(0) scale(.7) rotate(0)}100%{opacity:0;transform:translateX(-42vmin) scale(1.2) rotate(-320deg)}}
-#chase.shake .ch-scene{animation:chShake .4s}
-@keyframes chShake{25%{transform:translateX(-1vmin)}50%{transform:translateX(1.2vmin)}75%{transform:translateX(-.8vmin)}}
-.ch-gap{height:1vmin;background:rgba(0,0,0,.35);border-radius:1vmin;overflow:hidden;box-shadow:inset 0 .1vmin .4vmin rgba(0,0,0,.5)}
+/* ================= 词怪追逐 2.0(逃生闯关·Apple Light) ================= */
+#chase{--spd:1}
+#chase.danger .ch-scene{box-shadow:inset 0 0 0 .3vmin rgba(255,59,48,.5), inset 0 0 16vmin rgba(255,59,48,.28)}
+#chase.danger .ch-vignette{opacity:1;animation:vigPulse .7s ease-in-out infinite}
+@keyframes vigPulse{50%{opacity:.55}}
+.ch-scene{position:relative;height:34vmin;margin:.6vmin 0 1.2vmin;border-radius:2.6vmin;overflow:hidden;
+  background:linear-gradient(180deg,#BFE0FF 0%,#E6F1FF 55%,#F3F8FF 100%);
+  border:.1vmin solid var(--hair);box-shadow:0 1.4vmin 3.4vmin rgba(0,0,0,.1), inset 0 0 0 .1vmin rgba(255,255,255,.6)}
+/* 视差层:越远越慢 */
+.ch-layer{position:absolute;left:0;right:0;bottom:0;background-repeat:repeat-x;will-change:background-position}
+.ch-far{height:16vmin;bottom:7vmin;background:radial-gradient(6vmin 4vmin at 8vmin 100%,#CFE6C9 60%,transparent 62%) repeat-x;background-size:22vmin 8vmin;opacity:.7;animation:pxMove calc(9s / var(--spd)) linear infinite}
+.ch-mid{height:11vmin;bottom:7vmin;background:radial-gradient(4vmin 6vmin at 6vmin 100%,#A9C6A0 60%,transparent 62%) repeat-x;background-size:15vmin 11vmin;opacity:.85;animation:pxMove calc(5s / var(--spd)) linear infinite}
+@keyframes pxMove{to{background-position-x:-100vmax}}
+.ch-ground{position:absolute;left:0;right:0;bottom:0;height:7vmin;
+  background:linear-gradient(180deg,#8FB98A,#6FA06A);border-top:.25vmin solid rgba(255,255,255,.5)}
+.ch-ground:after{content:"";position:absolute;inset:0;
+  background-image:repeating-linear-gradient(90deg,rgba(255,255,255,.35) 0 .5vmin,transparent .5vmin 7vmin);
+  animation:groundMove calc(.8s / var(--spd)) linear infinite}
+@keyframes groundMove{to{background-position-x:-7vmin}}
+.ch-safe{position:absolute;right:0;bottom:7vmin;font-size:9vmin;z-index:2;filter:drop-shadow(0 1vmin 1.4vmin rgba(0,0,0,.18))}
+.ch-runner,.ch-monster{position:absolute;bottom:6.6vmin;z-index:4;transition:left .5s cubic-bezier(.3,.7,.3,1)}
+.ch-runner .fig{display:inline-block;font-size:8.6vmin;line-height:1;transform:scaleX(-1);
+  filter:drop-shadow(.4vmin 1vmin 1vmin rgba(0,0,0,.28));animation:runBob .42s ease-in-out infinite}
+.ch-monster{z-index:3}
+.ch-monster .fig{display:inline-block;line-height:1;transform:scaleX(-1);
+  filter:drop-shadow(-.4vmin 1vmin 1vmin rgba(0,0,0,.3));animation:monBob .36s ease-in-out infinite}
+@keyframes runBob{50%{transform:scaleX(-1) translateY(-.8vmin) rotate(3deg)}}
+@keyframes monBob{50%{transform:scaleX(-1) translateY(-.6vmin) scale(1.04)}}
+.ch-runner.dash{animation:runDash .5s cubic-bezier(.2,.9,.3,1)}
+@keyframes runDash{40%{transform:translateX(3vmin) translateY(-2.4vmin)}}
+.ch-monster.recoil{animation:monRecoil .5s cubic-bezier(.2,.8,.3,1)}
+@keyframes monRecoil{35%{transform:translateX(-5vmin) rotate(8deg)}}
+.ch-monster.lunge{animation:monLunge .45s ease}
+@keyframes monLunge{45%{transform:translateX(4vmin) rotate(-6deg)}}
+/* 速度线 */
+.ch-speed{position:absolute;inset:0;pointer-events:none;opacity:0;z-index:5;
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,.7) 0 .3vmin,transparent .3vmin 9vmin);
+  background-size:18vmin 100%}
+.ch-runner.dash ~ .ch-speed,.ch-speed.on{opacity:.5;animation:speedRun .4s linear}
+@keyframes speedRun{from{background-position-x:0}to{background-position-x:-40vmin}}
+/* 冲击波 + 粒子 */
+.ch-shock{position:absolute;bottom:9vmin;z-index:5;width:6vmin;height:6vmin;border-radius:50%;
+  border:.6vmin solid rgba(255,159,10,.9);opacity:0;transform:translate(-50%,50%)}
+.ch-shock.go{animation:shock .5s ease-out}
+@keyframes shock{0%{opacity:.9;transform:translate(-50%,50%) scale(.2)}100%{opacity:0;transform:translate(-50%,50%) scale(3.4)}}
+#ch-particles{position:absolute;inset:0;pointer-events:none;z-index:6;overflow:hidden}
+.ch-pt{position:absolute;width:1.4vmin;height:1.4vmin;border-radius:50%;will-change:transform,opacity}
+.ch-vignette{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .3s;z-index:7;
+  box-shadow:inset 0 0 12vmin 3vmin rgba(255,59,48,.45)}
+#chase.shake .ch-scene{animation:chShake .38s}
+@keyframes chShake{20%{transform:translateX(-1.2vmin)}50%{transform:translateX(1.4vmin) rotate(.3deg)}80%{transform:translateX(-.8vmin)}}
+/* 追逐距离条(HUD) */
+.ch-gap{position:relative;height:1.6vmin;background:var(--ink2);border-radius:1vmin;overflow:hidden;box-shadow:inset 0 .1vmin .3vmin rgba(0,0,0,.08)}
 .ch-gap i{display:block;height:100%;width:62%;border-radius:1vmin;transition:width .5s cubic-bezier(.3,.7,.3,1),background .3s;
   background:linear-gradient(90deg,var(--good),var(--gold))}
-.ch-word{text-align:center;font-size:8vmin;font-weight:800;margin:.4vmin 0 .2vmin;line-height:1;letter-spacing:.01em}
-#chase .opts{margin:1.4vmin 0 0;gap:2vmin}
-#chase .opt{min-height:8.4vmin;padding:2vmin 3vmin}
+.ch-word{text-align:center;font-size:7.6vmin;font-weight:800;margin:.2vmin 0 0;line-height:1;letter-spacing:.01em;color:var(--paper)}
+#chase .opts{margin:1.2vmin 0 0;gap:1.8vmin}
+#chase .opt{min-height:8vmin;padding:1.8vmin 3vmin}
 </style>
 </head>
 <body>
@@ -426,7 +484,7 @@ html,body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;l
 
   <div class="screen" id="home">
     <div class="top">
-      <div class="brand serif">千词斩<small>QIANCIZHAN · v3.8</small></div>
+      <div class="brand serif">千词斩<small>QIANCIZHAN · v3.9</small></div>
       <div class="meta">
         <span id="h-user" style="color:var(--gold)">💼 爸爸</span>
         <span class="flame">🔥 连续 <b id="h-streak">0</b> 天</span>
@@ -534,11 +592,16 @@ html,body{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;l
       <div class="prog" id="ch-prog">逃生 0 / 15</div>
     </div>
     <div class="ch-scene">
+      <div class="ch-layer ch-far"></div>
+      <div class="ch-layer ch-mid"></div>
       <div class="ch-ground"></div>
-      <div class="ch-monster" id="ch-monster">👾</div>
-      <div class="ch-prop" id="ch-prop">⚡</div>
-      <div class="ch-runner" id="ch-runner">🏃</div>
-      <div class="ch-flag">🏁</div>
+      <div class="ch-safe">🏁</div>
+      <div class="ch-monster" id="ch-monster"><span class="fig" id="ch-mfig">👹</span></div>
+      <div class="ch-shock" id="ch-shock"></div>
+      <div class="ch-runner" id="ch-runner"><span class="fig">🏃</span></div>
+      <div class="ch-speed" id="ch-speed"></div>
+      <div id="ch-particles"></div>
+      <div class="ch-vignette"></div>
     </div>
     <div class="ch-gap"><i id="ch-gapbar"></i></div>
     <div class="quiz-head" style="margin-top:1vmin">

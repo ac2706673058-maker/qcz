@@ -1521,15 +1521,35 @@ function renderChase() {
 }
 function drawChase() {
   const gap = clamp(CH.gap, 0, 100);
-  // 小人固定靠右,词怪按间距在其身后;间距越小越近
-  const runnerX = 74;
-  const monsterX = clamp(runnerX - gap * 0.66, 4, runnerX - 3);
+  // 小人朝右逃(靠右),词怪在其左后方紧追;间距越小词怪越近、越大越狰狞
+  const runnerX = 60;
+  const monsterX = clamp(runnerX - 6 - gap * 0.5, 2, runnerX - 6);
   $("ch-runner").style.left = runnerX + "%";
   $("ch-monster").style.left = monsterX + "%";
+  const prox = clamp(1 - gap / 60, 0, 1);            // 0=远 1=贴脸
+  const mfig = $("ch-mfig"); if (mfig) mfig.style.fontSize = (7 + prox * 4.5).toFixed(2) + "vmin";
   $("ch-gapbar").style.width = gap + "%";
-  const danger = gap < 26;
+  const danger = gap < 28;
   $("chase").classList.toggle("danger", danger);
   $("ch-gapbar").style.background = danger ? "var(--bad)" : "linear-gradient(90deg,var(--good),var(--gold))";
+  // 连击 → 奔跑越快(视差/地面加速)
+  const spd = (1 + Math.min(CH.combo, 8) * 0.16).toFixed(2);
+  $("chase").style.setProperty("--spd", spd);
+}
+function chaseParticles(xPct, color, n) {
+  const box = $("ch-particles"); if (!box || !box.appendChild) return;
+  for (let i = 0; i < n; i++) {
+    const p = document.createElement("div"); p.className = "ch-pt";
+    p.style.background = color; p.style.left = xPct + "%"; p.style.bottom = (9 + Math.random() * 7) + "vmin";
+    const dx = (Math.random() * 2 - 1) * 26, dy = -(8 + Math.random() * 22), rot = Math.random() * 360;
+    try {
+      p.animate([{ transform: "translate(0,0) scale(1)", opacity: 1 },
+      { transform: "translate(" + dx + "vmin," + dy + "vmin) scale(.2) rotate(" + rot + "deg)", opacity: 0 }],
+        { duration: 480 + Math.random() * 320, easing: "cubic-bezier(.2,.7,.3,1)" });
+    } catch (e) { }
+    box.appendChild(p);
+    setTimeout(() => { try { box.removeChild(p); } catch (e) { } }, 840);
+  }
 }
 function chaseMove(k) {
   const n = 4;
@@ -1552,18 +1572,23 @@ function chaseAnswer(idx) {
     CH.score += 10 + Math.min(12, CH.combo * 2); P.xp += 4;
     $("ch-fb").textContent = "✓ 击退! " + e.w + " = " + e.m;
     try { if (window.SFX) SFX.hit(); } catch (x) { }
-    // 道具飞出 + 小人跃进 + 词怪后退
-    const prop = $("ch-prop");
-    prop.style.left = "70%"; prop.classList.remove("fly"); void prop.offsetWidth; prop.classList.add("fly");
-    $("ch-runner").classList.remove("hop"); void $("ch-runner").offsetWidth; $("ch-runner").classList.add("hop");
-    $("ch-monster").classList.remove("recoil"); void $("ch-monster").offsetWidth; $("ch-monster").classList.add("recoil");
+    // 小人急冲 + 速度线 + 冲击波炸退词怪 + 粒子迸溅
+    const r = $("ch-runner"); r.classList.remove("dash"); void r.offsetWidth; r.classList.add("dash");
+    const sp = $("ch-speed"); sp.classList.remove("on"); void sp.offsetWidth; sp.classList.add("on");
+    const monX = Math.max(2, 54 - CH.gap * 0.5);
+    const sh = $("ch-shock"); sh.style.left = (monX + 6) + "%"; sh.classList.remove("go"); void sh.offsetWidth; sh.classList.add("go");
+    const m = $("ch-monster"); m.classList.remove("recoil"); void m.offsetWidth; m.classList.add("recoil");
+    chaseParticles(monX + 6, "#FF9F0A", 12);
+    chaseParticles(monX + 6, "#0A84FF", 6);
   } else {
     CH.combo = 0; CH.wrong++;
     CH.gap = Math.max(0, CH.gap - CH_PENALTY);
     $("ch-fb").textContent = (idx < 0 ? "⏱ 超时!" : "✗ ") + e.w + " → " + e.m;
     try { if (window.SFX) { SFX.bad(); SFX.danger(); } } catch (x) { }
     $("chase").classList.remove("shake"); void $("chase").offsetWidth; $("chase").classList.add("shake");
-    $("ch-monster").classList.remove("lunge"); void $("ch-monster").offsetWidth; $("ch-monster").classList.add("lunge");
+    const m = $("ch-monster"); m.classList.remove("lunge"); void m.offsetWidth; m.classList.add("lunge");
+    const v = document.querySelector("#chase .ch-vignette"); if (v) { v.style.opacity = "1"; setTimeout(() => { if (CH.gap >= 28) v.style.opacity = ""; }, 260); }
+    chaseParticles(Math.max(6, 54 - CH.gap * 0.5) + 6, "#FF3B30", 8);
   }
   drawChase();
   schedHit(e.w, ok);
