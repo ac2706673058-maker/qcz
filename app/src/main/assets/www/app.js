@@ -318,7 +318,7 @@ handlers.home = {
       let badge = "";
       if (it.id === "review" && due) badge = '<div class="badge">' + due + '</div>';
       if (it.id === "new" && newRemain) badge = '<div class="badge">' + newRemain + '</div>';
-      el.innerHTML = badge + '<div class="ic">' + it.ic + '</div><div><div class="t">' + it.t + '</div><div class="d">' + it.d + '</div></div>';
+      el.innerHTML = badge + (window.iconTile ? iconTile(it.id) : '<div class="ic">' + it.ic + '</div>') + '<div><div class="t">' + it.t + '</div><div class="d">' + it.d + '</div></div>';
       m.appendChild(el);
     });
   },
@@ -331,9 +331,15 @@ handlers.home = {
     else if (k === "DOWN") homeIdx = (homeIdx + cols) % n;
     else if (k === "OK") { openMenu(items[homeIdx].id); return; }
     else if (k === "BACK") { NativeBridge.exitApp(); return; }
-    handlers.home.enter();
+    homeFocus();   // 只切换焦点类,不重建DOM → 聚焦平滑滑动
   }
 };
+function homeFocus() {
+  const cards = document.querySelectorAll("#menu .mcard");
+  cards.forEach((c, i) => c.classList.toggle("focus", i === homeIdx));
+  const fc = cards[homeIdx];
+  try { if (fc && fc.scrollIntoView) fc.scrollIntoView({ block: "nearest" }); } catch (e) { }
+}
 function openMenu(id) {
   if (id === "new") startStudy("new");
   else if (id === "review") startStudy("review");
@@ -1102,7 +1108,7 @@ handlers.decks = {
       const pct = d.total ? Math.round(learned / d.total * 100) : 0;
       const el = document.createElement("div");
       el.className = "rowitem" + (i === deckIdx ? " focus" : "");
-      el.innerHTML = '<div class="ic">' + d.icon + '</div>'
+      el.innerHTML = (window.iconTile ? iconTile('decks') : '<div class="ic">' + d.icon + '</div>')
         + '<div class="info"><div class="name">' + esc(d.name) + (d.source === "ext" ? ' <span style="color:var(--gold);font-size:2vmin">外部</span>' : "") + '</div>'
         + '<div class="desc">已学 ' + learned + ' / ' + d.total + ' 词 · ' + pct + '%</div>'
         + '<div class="deckbar"><i style="width:' + pct + '%"></i></div></div>'
@@ -1184,7 +1190,7 @@ handlers.settings = {
       else if (!s.opts && s.id === "reset") { val = resetArm && i === setIdx ? "再按一次确认" : s.fmt(); cls = "val val-red"; }
       else if (!s.opts) { val = s.fmt(); cls = "val val-blue"; }
       else val = s.fmt(P.set[s.id]);
-      el.innerHTML = '<div class="ic">' + (SET_ICON[s.id] || "•") + '</div>'
+      el.innerHTML = (window.iconTile ? iconTile(s.id) : '<div class="ic">' + (SET_ICON[s.id] || "•") + '</div>')
         + '<div class="info"><div class="name">' + s.name + '</div><div class="desc">' + s.desc + '</div></div>'
         + '<div class="' + cls + '">' + val + '</div>';
       box.appendChild(el);

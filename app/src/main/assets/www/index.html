@@ -498,9 +498,15 @@ body{background:
   --fill:rgba(118,118,128,.12);   /* secondarySystemFill */
   --fill2:rgba(118,118,128,.2);
 }
-/* SF Pro / PingFang 字体栈(Apple设备用真字体,Android优雅回退Roboto/Noto) */
+/* Inter(开源·近似 SF)自包含字体,电视端真正渲染出接近 SF 的字形 */
+@font-face{font-family:"Inter";font-style:normal;font-weight:400;font-display:swap;src:url("fonts/inter-400.woff2") format("woff2")}
+@font-face{font-family:"Inter";font-style:normal;font-weight:500;font-display:swap;src:url("fonts/inter-500.woff2") format("woff2")}
+@font-face{font-family:"Inter";font-style:normal;font-weight:600;font-display:swap;src:url("fonts/inter-600.woff2") format("woff2")}
+@font-face{font-family:"Inter";font-style:normal;font-weight:700;font-display:swap;src:url("fonts/inter-700.woff2") format("woff2")}
+@font-face{font-family:"Inter";font-style:normal;font-weight:800;font-display:swap;src:url("fonts/inter-800.woff2") format("woff2")}
+/* 字体栈:Inter/SF 处理拉丁与数字,中文回退 PingFang/思源 */
 html,body,.serif{
-  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",
+  font-family:"Inter",-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",
     "PingFang SC","Noto Sans CJK SC","Noto Sans SC",system-ui,Roboto,"Segoe UI",sans-serif;
 }
 html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;letter-spacing:normal}
@@ -572,6 +578,15 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;l
 .menu{padding:.6vmin .8vmin;margin:-.6vmin -.8vmin}
 .opts,.mgrid{padding:.6vmin .8vmin;overflow:visible}
 #b-list,#sc-list{overflow:visible}
+
+/* ===== iOS 图标 tile(彩色渐变圆角 + 白色线性图标 + 顶部微光) ===== */
+.itile{border-radius:1.7vmin;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;
+  box-shadow:inset 0 .16vmin 0 rgba(255,255,255,.4),inset 0 -.2vmin .4vmin rgba(0,0,0,.12),0 .5vmin 1.3vmin rgba(0,0,0,.16)}
+.itile::before{content:"";position:absolute;top:0;left:0;right:0;height:48%;background:linear-gradient(180deg,rgba(255,255,255,.28),transparent)}
+.gicon{width:60%;height:60%;display:block;position:relative}
+.rowitem .itile{width:7vmin;height:7vmin;border-radius:1.8vmin}
+.menu.dense .itile{border-radius:1.4vmin}
+.who-list .itile{width:9vmin;height:9vmin;border-radius:2.2vmin}
 </style>
 </head>
 <body>
@@ -579,7 +594,7 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;l
 
   <div class="screen" id="home">
     <div class="top">
-      <div class="brand serif">千词斩<small>QIANCIZHAN · v4.0</small></div>
+      <div class="brand serif">千词斩<small>QIANCIZHAN · v4.1</small></div>
       <div class="meta">
         <span id="h-user" style="color:var(--gold)">💼 爸爸</span>
         <span class="flame">🔥 连续 <b id="h-streak">0</b> 天</span>
@@ -801,6 +816,7 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;l
   <div class="toast" id="toast"></div>
 </div>
 <script src="sfx.js"></script>
+<script src="icons.js"></script>
 <script src="app.js"></script>
 <script src="sim.js"></script>
 </body>
