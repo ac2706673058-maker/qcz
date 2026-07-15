@@ -810,6 +810,24 @@ html.eye #home .brand::before{background:linear-gradient(145deg,#2C6A4A,#1F4E36)
 .jbtn.focus{transform:translateY(-.22vmin) scale(1.04)!important}
 .screen.active{animation:v5-screen-in .15s var(--ease) both}
 
+/* ====== v5.2 —— 放大主菜单按钮/字号(远距离更清晰) + 今日=英文日期+鸡汤 ====== */
+.menu{gap:1.5vmin}
+.mcard,.menu.dense .mcard{min-height:13.8vmin;padding:1.8vmin 2vmin;column-gap:1.65vmin;border-radius:2.05vmin}
+.mcard .itile,.menu.dense .mcard .itile{width:7vmin;height:7vmin;border-radius:1.75vmin}
+.mcard .t,.menu.dense .mcard .t{font-size:2.72vmin;letter-spacing:-.02em}
+.mcard .d,.menu.dense .mcard .d{font-size:1.72vmin;margin-top:.55vmin}
+.mcard .badge{font-size:1.78vmin;padding:.34vmin 1.05vmin;min-width:3.4vmin;top:1vmin;right:1vmin;border-radius:10vmin}
+.mcard.focus .itile,.menu.dense .mcard.focus .itile{transform:scale(1.06) translateY(-.2vmin)!important}
+/* 今日区:英文日期(小号大写)+ 鸡汤(英文 serif 大标题)+ 中文副行 */
+#home .hero{padding:1.95vmin 2.5vmin;margin:.2vmin 0 1.9vmin}
+#home .hero .word-of{max-width:62%}
+#home .hero .eyebrow{font-size:1.85vmin;letter-spacing:.24em;font-weight:700;color:var(--faint);margin-bottom:.7vmin}
+#home .hero .big{font-size:3.55vmin;line-height:1.18;font-weight:700;letter-spacing:-.008em;color:var(--paper);white-space:normal}
+#home .hero .sub{font-size:2.25vmin;margin-top:.85vmin;color:var(--dim)}
+#home .today{padding:1.2vmin 1.65vmin}
+#home .today .n{font-size:6.2vmin}
+#home .today .l{font-size:1.78vmin}
+
 @media (prefers-reduced-motion:reduce){.screen.active,.mcard,.rowitem,.opt,.brow,.sp-key,.card{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
 </head>
@@ -818,7 +836,7 @@ html.eye #home .brand::before{background:linear-gradient(145deg,#2C6A4A,#1F4E36)
 
   <div class="screen" id="home">
     <div class="top">
-      <div class="brand serif">千词斩<small>QIANCIZHAN · v5.1</small></div>
+      <div class="brand serif">千词斩<small>QIANCIZHAN · v5.2</small></div>
       <div class="meta">
         <span class="chip chip-user pf-fin" id="h-user-chip"><b id="h-user">爸爸</b></span>
         <span class="chip"><i class="g g-flame" id="h-flame"></i><b id="h-streak">0</b><small>连续天</small></span>
@@ -828,9 +846,9 @@ html.eye #home .brand::before{background:linear-gradient(145deg,#2C6A4A,#1F4E36)
     </div>
     <div class="hero">
       <div class="word-of">
-        <div class="eyebrow">TODAY / 今日任务</div>
-        <div class="big serif" id="h-slogan">看懂<em>世界</em>的词汇</div>
-        <div class="sub" id="h-sub">今天还有新词和复习等着你</div>
+        <div class="eyebrow" id="h-date">TODAY</div>
+        <div class="big serif" id="h-slogan">Small steps, every single day.</div>
+        <div class="sub" id="h-sub">每天一小步,终会到达。</div>
       </div>
       <div class="today">
         <div class="n" id="h-due">0</div>

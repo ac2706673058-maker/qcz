@@ -297,6 +297,37 @@ const MENU = [
 ];
 function homeItems() { return MENU.filter(it => !PF().menuHide[it.id]); }
 function homeCols() { return homeItems().length > 16 ? 5 : 4; }
+
+/* 首页每日:英文日期 + 一句鸡汤(中英),按年内天数轮换,每天自动换一句 */
+const WEEKDAYS = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
+const MONTHS = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
+const QUOTES = [
+  { en: "Little by little, one goes far.", zh: "积跬步,方能至千里。" },
+  { en: "Every word is a new door.", zh: "每一个单词,都是一扇新的门。" },
+  { en: "Small steps, every single day.", zh: "每天一小步,终会到达。" },
+  { en: "Consistency beats intensity.", zh: "细水长流,胜过一时猛进。" },
+  { en: "Today's effort, tomorrow's ease.", zh: "今天的努力,是明天的从容。" },
+  { en: "Slow is smooth, smooth is fast.", zh: "慢即是稳,稳即是快。" },
+  { en: "One page a day becomes a book.", zh: "每天一页,终成一书。" },
+  { en: "Words are the bandwidth of thought.", zh: "词汇,是思想的带宽。" },
+  { en: "Show up — that's half the battle.", zh: "坚持出现,就已赢了一半。" },
+  { en: "Knowledge compounds like interest.", zh: "知识,会像利息一样滚雪球。" },
+  { en: "Fall in love with the process.", zh: "爱上过程,结果自来。" },
+  { en: "A little each day adds up to a lot.", zh: "每天一点点,终成一大片。" },
+  { en: "The best time to start is now.", zh: "开始的最好时机,就是现在。" },
+  { en: "Practice makes progress.", zh: "练习,造就进步。" },
+  { en: "Better done well than done fast.", zh: "做得精,胜过做得快。" },
+  { en: "Learn something today, keep it forever.", zh: "今天学到的,会陪你很久。" }
+];
+function dailyIndex() {
+  const n = new Date();
+  return Math.floor((n - new Date(n.getFullYear(), 0, 0)) / 86400000);
+}
+function dateLabel() {
+  const n = new Date();
+  return WEEKDAYS[n.getDay()] + " · " + MONTHS[n.getMonth()] + " " + n.getDate();
+}
+function dailyQuote() { return QUOTES[dailyIndex() % QUOTES.length]; }
 let homeIdx = 0;
 handlers.home = {
   enter() {
@@ -317,8 +348,10 @@ handlers.home = {
       const uc = $("h-user-chip");
       if (uc) { uc.className = "chip chip-user pf-" + CUR; uc.innerHTML = window.avatar(CUR) + '<b>' + PF().short + '</b>'; }
     } else { $("h-user").textContent = PF().short; }
-    $("h-slogan").innerHTML = PF().slogans[new Date().getDate() % PF().slogans.length];
-    $("h-sub").textContent = due > 0 ? ("待复习 " + due + " 个 · 今日新词剩余 " + newRemain + " 个") : ("今日新词剩余 " + newRemain + " 个 · 无待复习,棒!");
+    const dq = dailyQuote();
+    if ($("h-date")) $("h-date").textContent = dateLabel();
+    $("h-slogan").textContent = dq.en;
+    $("h-sub").textContent = dq.zh;
     const m = $("menu"); m.innerHTML = "";
     m.style.gridTemplateColumns = "repeat(" + homeCols() + ",1fr)";
     m.classList.toggle("dense", items.length > 16);
