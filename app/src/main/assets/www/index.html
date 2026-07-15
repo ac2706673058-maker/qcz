@@ -388,15 +388,15 @@ body{background:
 .menu.dense .mcard .ic{width:5.2vmin;height:5.2vmin;font-size:2.6vmin}
 .mcard .t{font-weight:700;letter-spacing:.01em;color:var(--paper)}
 .mcard .d{color:var(--dim)}
-.mcard.focus{border-color:transparent;background:var(--panel);transform:translateY(-.5vmin) scale(1.04);
+.mcard.focus{border-color:transparent;background:var(--panel);transform:translateY(-.5vmin) scale(1.03);z-index:3;
   box-shadow:0 0 0 .3vmin rgba(10,132,255,.9), 0 2.2vmin 5vmin rgba(10,132,255,.22), 0 1.2vmin 3vmin rgba(0,0,0,.1)}
 .mcard .badge{background:var(--gold);color:#fff;box-shadow:0 .4vmin 1.2vmin rgba(10,132,255,.4)}
 /* 列表行 / 选项:纯白卡 + 蓝色聚焦光晕 */
-.rowitem,.opt{background:var(--panel);border:.1vmin solid var(--hair);
+.rowitem,.opt{background:var(--panel);border:.1vmin solid var(--hair);position:relative;
   box-shadow:0 .2vmin .6vmin rgba(0,0,0,.04), 0 1vmin 2.4vmin rgba(0,0,0,.06);
   transition:transform .26s cubic-bezier(.22,.68,.28,1),box-shadow .26s,border-color .26s}
 .rowitem .name,.rowitem .val{color:var(--paper)}
-.rowitem.focus,.opt.focus{border-color:transparent;background:var(--panel);transform:translateY(-.3vmin) scale(1.02);
+.rowitem.focus,.opt.focus{border-color:transparent;background:var(--panel);transform:translateY(-.3vmin) scale(1.02);z-index:3;
   box-shadow:0 0 0 .28vmin rgba(10,132,255,.9), 0 1.8vmin 4vmin rgba(10,132,255,.2)}
 .opt .idx{color:var(--faint)}
 .opt.right{border-color:transparent;background:#E7F9EE;color:#248A3D;box-shadow:0 0 0 .28vmin rgba(52,199,89,.85)}
@@ -528,7 +528,13 @@ html,body,.serif{
   font-family:"Inter",-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",
     "PingFang SC","Noto Sans CJK SC","Noto Sans SC",system-ui,Roboto,"Segoe UI",sans-serif;
 }
-html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;letter-spacing:normal}
+html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;letter-spacing:normal;
+  text-rendering:optimizeLegibility}
+/* 清晰度:焦点卡片单独提层合成,避免缩放位图被相邻元素采样发虚 */
+.mcard,.rowitem,.opt,.itile,.mcard.focus{backface-visibility:hidden;-webkit-backface-visibility:hidden}
+/* 收紧过于弥散的柔和阴影,让白卡边缘更"实"更清爽(替代雾蒙蒙的大模糊) */
+.mcard{box-shadow:0 .1vmin .4vmin rgba(0,0,0,.05),0 .9vmin 2.2vmin rgba(17,24,39,.07) !important}
+.mcard.focus{box-shadow:0 0 0 .3vmin rgba(10,132,255,.92),0 1.6vmin 3.6vmin rgba(10,132,255,.18),0 .8vmin 2vmin rgba(0,0,0,.1) !important}
 /* Apple 大标题:更重的字重 + 收紧字距(负tracking是SF大字的灵魂) */
 #home .hero .big,.ch-word,.headword,.qword,.result .big,.aisay,.sim-title,.sc-title{
   letter-spacing:-.022em;font-weight:800}
@@ -613,7 +619,7 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;l
 
   <div class="screen" id="home">
     <div class="top">
-      <div class="brand serif">千词斩<small>QIANCIZHAN · v4.2</small></div>
+      <div class="brand serif">千词斩<small>QIANCIZHAN · v4.3</small></div>
       <div class="meta">
         <span class="chip chip-user pf-fin" id="h-user-chip"><b id="h-user">爸爸</b></span>
         <span class="chip"><i class="g g-flame" id="h-flame"></i><b id="h-streak">0</b><small>连续天</small></span>

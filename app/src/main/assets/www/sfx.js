@@ -77,11 +77,11 @@
   var SFX = {
     resume: function () { ensure(); },
     setEnabled: function (v) { enabled = !!v; },
-    // 方向键:极短柔和木质轻点(带节流,防连按爆音)
+    // 方向键:温暖柔和的低频轻点(去掉高次泛音的尖锐感,音量更足,类 tvOS 聚焦)
     nav: function () {
       var now = (window.performance && performance.now) ? performance.now() : Date.now();
-      if (now - lastNav < 45) return; lastNav = now;
-      blip({ f: 1180, type: "sine", dur: 0.055, gain: 0.05, cut: 2600, spark: true });
+      if (now - lastNav < 40) return; lastNav = now;
+      blip({ f: 500, f2: 430, type: "sine", dur: 0.07, gain: 0.11, cut: 1300, attack: 0.004 });
     },
     // OK 确认:温暖的圆润"啵"
     ok: function () { blip({ f: 660, f2: 560, type: "sine", dur: 0.1, gain: 0.075, cut: 2600, spark: true }); },
