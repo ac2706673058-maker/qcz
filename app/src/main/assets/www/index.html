@@ -747,6 +747,69 @@ html.eye .sp-box,html.eye .sp-key{background:rgba(242,240,233,.94)}
 html.eye .result .stat{background:rgba(242,240,233,.74)}
 .itile{box-shadow:inset 0 .1vmin 0 rgba(255,255,255,.35),inset 0 -.12vmin .28vmin rgba(0,0,0,.12),0 .28vmin .7vmin rgba(24,24,28,.13)}
 .ch-scene{box-shadow:0 .25vmin .75vmin rgba(24,24,28,.07),0 1vmin 2.4vmin rgba(24,24,28,.08)}
+
+/* ======================================================================
+   v5.1 覆盖 —— 暖奶油护眼为默认(仿苹果备忘录) + iOS 亮色悬浮焦点 + 更快弹性遥控动效
+   建立在 Codex v5.0 结构之上,仅重映射配色与焦点表现,不改布局
+   ====================================================================== */
+:root{
+  --ink:#F3ECDE;--ink2:#EAE1D0;--panel:#FBF7EE;--panel2:#FFFDF7;
+  --paper:#2C2822;--dim:rgba(62,54,40,.62);--faint:rgba(62,54,40,.34);
+  --gold:#0A6CF0;--gold2:#0554C8;--focus:#0A6CF0;
+  --good:#2FA64F;--bad:#E0402F;--mid:#E08A10;--brand:#2C2822;
+  --hair:rgba(80,64,32,.13);--fill:rgba(150,124,74,.12);--fill2:rgba(150,124,74,.2);
+  --focus-surface:#FFFDF7;--focus-text:#2C2822;
+  --lift-shadow:0 0 0 .3vmin var(--focus),0 1.5vmin 3.4vmin rgba(10,108,240,.18),0 .7vmin 1.8vmin rgba(60,40,10,.12);
+  --ease-spring:cubic-bezier(.2,.9,.26,1.34);
+}
+/* 护眼(夜间档)= 更暖更暗、低蓝光的奶油,强调改暖绿 */
+html.eye{
+  --ink:#E7DECB;--ink2:#DCD2BC;--panel:#F3EEE0;--panel2:#F8F4E8;
+  --paper:#2B2720;--dim:rgba(60,52,36,.64);--faint:rgba(60,52,36,.36);
+  --gold:#2C6A4A;--gold2:#1F4E36;--focus:#2C6A4A;
+  --focus-surface:#F8F4E8;--focus-text:#2B2720;
+}
+body{background:
+  radial-gradient(88vmax 58vmax at 88% -22%,#FFFDF5,transparent 62%),
+  radial-gradient(70vmax 48vmax at -12% 112%,#F0E6D0,transparent 62%),var(--ink)!important}
+html.eye body{background:
+  radial-gradient(88vmax 58vmax at 88% -22%,#F6EFDD,transparent 62%),
+  radial-gradient(70vmax 48vmax at -12% 112%,#E9DEC4,transparent 62%),var(--ink)!important}
+/* 图标恢复鲜艳(去掉降饱和),Q 标暖化 */
+.mcard .itile,.rowitem .itile,.menu.dense .mcard .itile,.who-list .itile{filter:none!important}
+#home .brand::before{background:linear-gradient(145deg,#0A6CF0,#0554C8)!important}
+html.eye #home .brand::before{background:linear-gradient(145deg,#2C6A4A,#1F4E36)!important}
+
+/* —— iOS 亮色悬浮焦点:焦点卡保持亮色 + 深色文字 + 蓝环 + 弹性上浮缩放(取代深色石墨) —— */
+.mcard.focus,.menu.dense .mcard.focus,html.eye .mcard.focus{
+  background:var(--focus-surface)!important;color:var(--paper)!important;
+  transform:translate3d(0,-.6vmin,0) scale(1.05)!important;box-shadow:var(--lift-shadow)!important;z-index:6}
+.mcard.focus .t,.menu.dense .mcard.focus .t{color:var(--paper)!important}
+.mcard.focus .d,.menu.dense .mcard.focus .d{color:var(--dim)!important}
+.mcard.focus .itile,.menu.dense .mcard.focus .itile{filter:none!important;transform:scale(1.07) translateY(-.2vmin)}
+.opt.focus:not(.right):not(.wrong):not(.selw),html.eye .opt.focus:not(.right):not(.wrong):not(.selw){
+  background:var(--focus-surface)!important;color:var(--paper)!important;
+  transform:translateY(-.4vmin) scale(1.03)!important;box-shadow:var(--lift-shadow)!important;z-index:6}
+.opt.focus:not(.right):not(.wrong):not(.selw) .idx{color:var(--faint)!important}
+.rowitem.focus,html.eye .rowitem.focus{background:var(--focus-surface)!important;color:var(--paper)!important;
+  transform:translate3d(0,-.4vmin,0) scale(1.02)!important;box-shadow:var(--lift-shadow)!important;z-index:6}
+.rowitem.focus .name,.rowitem.focus .val{color:var(--paper)!important}
+.rowitem.focus .val-blue{color:var(--gold)!important}.rowitem.focus .val-red{color:var(--bad)!important}
+.rowitem.focus .desc{color:var(--dim)!important}
+.brow.focus,html.eye .brow.focus{background:var(--focus-surface)!important;color:var(--paper)!important;
+  transform:translateY(-.35vmin) scale(1.02)!important;box-shadow:var(--lift-shadow)!important}
+.brow.focus .w,.brow.focus .m,.brow.focus .p,.brow.focus .g{color:var(--paper)!important}
+.sp-key.focus,html.eye .sp-key.focus{background:var(--focus-surface)!important;color:var(--gold)!important;
+  transform:translateY(-.3vmin) scale(1.06)!important;box-shadow:var(--lift-shadow)!important}
+
+/* —— 更快 + 弹性:压缩焦点过渡时长并加轻微回弹(遥控移动即时跟手) —— */
+.mcard,.menu.dense .mcard,.opt,.rowitem,.brow{
+  transition:transform .1s var(--ease-spring),background-color .085s ease,color .085s ease,box-shadow .1s ease!important}
+.sp-key{transition:transform .09s var(--ease-spring),background .08s,color .08s,box-shadow .09s!important}
+.jbtn{transition:transform .1s var(--ease-spring),background .085s,box-shadow .09s!important}
+.jbtn.focus{transform:translateY(-.22vmin) scale(1.04)!important}
+.screen.active{animation:v5-screen-in .15s var(--ease) both}
+
 @media (prefers-reduced-motion:reduce){.screen.active,.mcard,.rowitem,.opt,.brow,.sp-key,.card{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
 </head>
@@ -755,7 +818,7 @@ html.eye .result .stat{background:rgba(242,240,233,.74)}
 
   <div class="screen" id="home">
     <div class="top">
-      <div class="brand serif">千词斩<small>QIANCIZHAN · v5.0</small></div>
+      <div class="brand serif">千词斩<small>QIANCIZHAN · v5.1</small></div>
       <div class="meta">
         <span class="chip chip-user pf-fin" id="h-user-chip"><b id="h-user">爸爸</b></span>
         <span class="chip"><i class="g g-flame" id="h-flame"></i><b id="h-streak">0</b><small>连续天</small></span>
