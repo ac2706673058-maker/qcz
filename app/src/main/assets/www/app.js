@@ -32,12 +32,12 @@ const DEFAULTS = { xp: 0, streak: 0, lastDay: "", dayLog: {}, dayNew: {}, words:
    teen = 弟弟·中考冲刺(独立进度,隐藏金融功能,词库按 profile 过滤) */
 const PROFILES = {
   fin: {
-    name: "爸爸 · 金融投资", short: "💼 爸爸", icon: "💼", store: "progress",
+    name: "爸爸 · 金融投资", short: "爸爸", icon: "💼", store: "progress",
     menuHide: { chase: 1 }, deckOk: p => p !== "teen",
     slogans: ["看懂<em>世界</em>的词汇", "读懂<em>硅谷</em>与华尔街", "今天也在<em>变强</em>", "新闻不再<em>陌生</em>", "词汇是<em>带宽</em>"]
   },
   teen: {
-    name: "弟弟 · 中考冲刺", short: "🎒 弟弟", icon: "🎒", store: "progress_teen",
+    name: "弟弟 · 中考冲刺", short: "弟弟", icon: "🎒", store: "progress_teen",
     menuHide: { sim: 1, screens: 1 }, deckOk: p => p !== "fin",
     slogans: ["中考词汇<em>稳稳拿下</em>", "每天进步<em>一点点</em>", "单词是<em>分数</em>", "背过的词<em>不会背叛你</em>", "考场见<em>真章</em>"]
   }
@@ -306,7 +306,13 @@ handlers.home = {
     $("h-level").textContent = level();
     $("h-mastered").textContent = Object.values(P.words).filter(r => r.st === 2 && r.S >= 21).length;
     $("h-due").textContent = due + newRemain;
-    $("h-user").textContent = PF().short;
+    if (window.glyph) {
+      $("h-flame").innerHTML = glyph("flame");
+      $("h-lvg").innerHTML = glyph("star");
+      $("h-sealg").innerHTML = glyph("seal");
+      const uc = $("h-user-chip");
+      if (uc) { uc.className = "chip chip-user pf-" + CUR; uc.innerHTML = window.avatar(CUR) + '<b>' + PF().short + '</b>'; }
+    } else { $("h-user").textContent = PF().short; }
     $("h-slogan").innerHTML = PF().slogans[new Date().getDate() % PF().slogans.length];
     $("h-sub").textContent = due > 0 ? ("待复习 " + due + " 个 · 今日新词剩余 " + newRemain + " 个") : ("今日新词剩余 " + newRemain + " 个 · 无待复习,棒!");
     const m = $("menu"); m.innerHTML = "";
@@ -446,7 +452,7 @@ function finishSession() {
   $("f-stats").innerHTML =
     '<div class="stat"><div class="n">' + ST.total + '</div><div class="l">完成卡片</div></div>'
     + '<div class="stat"><div class="n" style="color:var(--good)">' + acc + '%</div><div class="l">初见即会</div></div>'
-    + '<div class="stat"><div class="n" style="color:var(--gold)">🔥' + P.streak + '</div><div class="l">连续天数</div></div>';
+    + '<div class="stat"><div class="n nflame">' + (window.glyph ? glyph("flame") : "") + P.streak + '</div><div class="l">连续天数</div></div>';
   $("f-msg").textContent = acc >= 85 ? "状态极佳,记忆曲线已为你安排好下次复习" : "没关系,忘记是记忆的必经之路,算法会加密复习";
   show("finish");
 }
@@ -926,7 +932,7 @@ handlers.ai = {
   enter() {
     AIS.phase = 0; AIS.idx = 0;
     $("ai-topics").style.display = ""; $("ai-chat").style.display = "none";
-    $("ai-title").textContent = "👨‍🏫 AI 外教";
+    $("ai-title").textContent = "AI 外教";
     $("ai-hint").textContent = "选一个模式开始 · OK 确认";
     renderAiTopics();
   },
@@ -1143,7 +1149,7 @@ handlers.stats = {
       '<div class="scard"><div class="n">' + learned + '</div><div class="l">已学单词</div></div>'
       + '<div class="scard"><div class="n">' + mastered + '</div><div class="l">已掌握(≥21天)</div></div>'
       + '<div class="scard"><div class="n">' + todayN + '</div><div class="l">今日学习次数</div></div>'
-      + '<div class="scard"><div class="n">🔥' + P.streak + '</div><div class="l">连续天数 · Lv.' + level() + '</div></div>';
+      + '<div class="scard"><div class="n nflame">' + (window.glyph ? glyph("flame") : "") + P.streak + '</div><div class="l">连续天数 · Lv.' + level() + '</div></div>';
     const hm = $("heatmap"); hm.innerHTML = "";
     const days = 18 * 7;
     const start = NOW() - (days - 1) * DAY;
@@ -1255,7 +1261,7 @@ handlers.screens = {
   }
 };
 function renderScList() {
-  $("sc-title").textContent = "📱 界面对照教学";
+  $("sc-title").textContent = "界面对照教学";
   $("sc-hint").textContent = "选一个App界面 · OK 进入 · 对着你手机上的App一起看";
   const box = $("sc-list"); box.innerHTML = "";
   if (!SCREENS.length) { box.innerHTML = '<div class="empty"><div class="e1">🍃</div><div class="e3">暂无对照数据</div></div>'; return; }
@@ -1360,7 +1366,7 @@ handlers.who = {
       const p = PROFILES[it[0]];
       const el = document.createElement("div");
       el.className = "rowitem" + (i === WHO.idx ? " focus" : "");
-      el.innerHTML = '<div class="ic" style="font-size:6vmin">' + p.icon + '</div>'
+      el.innerHTML = (window.avatar ? window.avatar(it[0]) : '<div class="ic" style="font-size:6vmin">' + p.icon + '</div>')
         + '<div class="info"><div class="name" style="font-size:4vmin">' + p.name + (it[0] === CUR ? ' <span style="color:var(--good);font-size:2.2vmin">● 当前</span>' : '') + '</div>'
         + '<div class="desc" style="font-size:2.4vmin;margin-top:1vmin">' + it[1] + '</div></div>'
         + '<div class="val">' + (it[0] === CUR ? "使用中" : "OK 切换") + '</div>';

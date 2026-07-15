@@ -51,4 +51,24 @@
     var c = C[id] || C._default;
     return '<div class="ic itile ' + (extra || '') + '" style="background:linear-gradient(160deg,' + c[0] + ',' + c[1] + ')">' + iconSvg(id) + '</div>';
   };
+
+  /* --------- 小号纯色字形(状态栏/内联,fill=currentColor,类 SF Symbols) --------- */
+  var G = {
+    user: '<path d="M12 12.5a4.25 4.25 0 1 0 0-8.5 4.25 4.25 0 0 0 0 8.5z"/><path d="M4.2 20c0-3.4 3.5-5.5 7.8-5.5s7.8 2.1 7.8 5.5c0 .9-.5 1.4-1.4 1.4H5.6C4.7 21.4 4.2 20.9 4.2 20z"/>',
+    flame: '<path d="M12.9 2.2c.3 2.4-.8 4-2.3 5.5C9 9.4 7 11 7 14.2A5 5 0 0 0 17 14c0-2-.9-3.4-1.7-4.5-.3.8-.9 1.3-1.6 1.6.4-2.8-.4-6.4-.8-8.9z"/>',
+    star: '<path d="m12 3 2.5 5.1 5.6.8-4.05 4 .96 5.6L12 15.9l-5.01 2.6.96-5.6L3.9 8.9l5.6-.8L12 3z"/>',
+    seal: '<path d="m12 2.4 2 1.6 2.6-.15.85 2.45 2.35 1.1-.6 2.55L23 12l-1.75 2 .6 2.55-2.35 1.1-.85 2.45L16 20l-2 1.6-2-1.6-2.6.15-.85-2.45L6.2 16.6l.6-2.55L5.05 12l1.75-2-.6-2.55 2.35-1.1L9.4 3.85 12 4l2-1.6z"/>',
+    check: '<path d="m8 12.4 2.6 2.6L16.4 9" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"/>'
+  };
+  window.glyph = function (id) {
+    var extra = id === 'seal' ? G.check : '';
+    return '<svg viewBox="0 0 24 24" fill="currentColor" class="mglyph">' + (G[id] || '') + extra + '</svg>';
+  };
+  // 头像:渐变圆 + 白色人形,按档案着色
+  var AV = { fin: ['#0A84FF', '#0060E6'], teen: ['#FF9F0A', '#FF6A00'] };
+  window.avatar = function (prof, cls) {
+    var c = AV[prof] || AV.fin;
+    return '<span class="av ' + (cls || '') + '" style="background:linear-gradient(160deg,' + c[0] + ',' + c[1] + ')">' +
+      '<svg viewBox="0 0 24 24" fill="#fff" class="mglyph">' + G.user + '</svg></span>';
+  };
 })();

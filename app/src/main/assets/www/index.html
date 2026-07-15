@@ -357,8 +357,27 @@ body{background:
 /* 品牌字改为高级石墨色 */
 .brand{background:none;-webkit-text-fill-color:initial;color:var(--brand);font-weight:800;letter-spacing:.28em}
 .brand small{color:var(--faint)}
-.flame{color:#FF9F0A !important}
-#h-user{color:var(--gold) !important;font-weight:600}
+/* iOS 状态胶囊:半透明填充 + 内联小字形,取代突兀 emoji */
+.top{align-items:center}
+.top .meta{display:flex;align-items:center;gap:1.1vmin}
+.top .meta .chip{display:inline-flex;align-items:center;gap:.7vmin;line-height:1;
+  background:rgba(120,120,128,.12);border-radius:999px;padding:.72vmin 1.35vmin;
+  font-size:2.05vmin;color:var(--dim);font-weight:500}
+.top .meta .chip b{color:var(--paper);font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.top .meta .chip small{font-size:1.7vmin;color:var(--faint);font-weight:500}
+.top .meta .g{width:2.3vmin;height:2.3vmin;display:inline-flex;flex:0 0 auto}
+.top .meta .g .mglyph{width:100%;height:100%}
+.g-flame{color:#FF9F0A}.g-star{color:#FFB300}.g-seal{color:#34C759}
+.nflame{display:inline-flex;align-items:center;justify-content:center;gap:.4vmin}
+.nflame .mglyph{width:.78em;height:.78em;color:#FF9F0A}
+.chip-user{padding:.5vmin .5vmin;gap:.9vmin}
+.chip-user .av,.rowitem .av{border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;
+  box-shadow:inset 0 0 0 .1vmin rgba(255,255,255,.14)}
+.chip-user .av{width:3.1vmin;height:3.1vmin}
+.chip-user .av .mglyph{width:2vmin;height:2vmin}
+.chip-user b{color:var(--paper);padding-right:.9vmin;font-weight:600}
+.rowitem .av{width:8vmin;height:8vmin}
+.rowitem .av .mglyph{width:5vmin;height:5vmin}
 .top .meta b{color:var(--paper)}
 /* 主菜单卡片:纯白 + 图标浅托盘 + 苹果柔和分层阴影 + 蓝色聚焦光 */
 .mcard{background:var(--panel);border:.1vmin solid var(--hair);border-radius:2.2vmin;
@@ -594,12 +613,12 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;l
 
   <div class="screen" id="home">
     <div class="top">
-      <div class="brand serif">千词斩<small>QIANCIZHAN · v4.1</small></div>
+      <div class="brand serif">千词斩<small>QIANCIZHAN · v4.2</small></div>
       <div class="meta">
-        <span id="h-user" style="color:var(--gold)">💼 爸爸</span>
-        <span class="flame">🔥 连续 <b id="h-streak">0</b> 天</span>
-        <span>Lv.<b id="h-level">1</b></span>
-        <span>已掌握 <b id="h-mastered">0</b></span>
+        <span class="chip chip-user pf-fin" id="h-user-chip"><b id="h-user">爸爸</b></span>
+        <span class="chip"><i class="g g-flame" id="h-flame"></i><b id="h-streak">0</b><small>连续天</small></span>
+        <span class="chip"><i class="g g-star" id="h-lvg"></i><small>Lv.</small><b id="h-level">1</b></span>
+        <span class="chip"><i class="g g-seal" id="h-sealg"></i><b id="h-mastered">0</b><small>已掌握</small></span>
       </div>
     </div>
     <div class="hero">
@@ -681,7 +700,7 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;l
   </div>
 
   <div class="screen" id="who">
-    <div class="top"><div class="brand serif">👥 谁在使用?</div>
+    <div class="top"><div class="brand serif">谁在使用?</div>
       <div class="meta"><span>▲▼选择 · OK 切换 · 两人的学习进度完全独立、互不影响</span></div></div>
     <div class="listwrap" id="who-list" style="justify-content:center;gap:4vmin;max-width:150vmin;width:100%;align-self:center"></div>
   </div>

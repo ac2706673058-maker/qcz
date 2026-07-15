@@ -499,7 +499,7 @@ function simList() {
   SIM.view = "list";
   $("sim-top").style.display = "";
   $("sim-play").style.display = "none";
-  $("sim-title").textContent = "🏦 实景模拟 · 金融App实操课";
+  $("sim-title").textContent = "实景模拟 · 金融App实操课";
   $("sim-hint").textContent = "▲▼选课 · OK 开始 · 像看真机演示一样学";
   var box = $("sim-list"); box.style.display = ""; box.innerHTML = "";
   var done = simDoneMap();
