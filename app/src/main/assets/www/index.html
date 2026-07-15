@@ -612,6 +612,142 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;l
 .rowitem .itile{width:7vmin;height:7vmin;border-radius:1.8vmin}
 .menu.dense .itile{border-radius:1.4vmin}
 .who-list .itile{width:9vmin;height:9vmin;border-radius:2.2vmin}
+
+/* ======================================================================
+   v5.0 — Quiet Glass / Android TV
+   雾灰与淡白分层、石墨焦点、低延迟遥控动效、可切换护眼暖灰主题
+   ====================================================================== */
+:root{
+  --ink:#E9EAED;--ink2:#D9DBE0;--panel:#F8F8FA;--panel2:#FFFFFF;
+  --paper:#202023;--dim:#66666D;--faint:#96969D;--gold:#3478C6;--gold2:#245D9B;
+  --good:#3B8C58;--bad:#D64B4B;--mid:#C27A28;--brand:#202023;
+  --hair:rgba(32,32,35,.105);--fill:rgba(90,90,98,.10);--fill2:rgba(90,90,98,.18);
+  --focus:#3478C6;--focus-surface:#303034;--focus-text:#FFFFFF;
+  --surface-shadow:0 .18vmin .55vmin rgba(24,24,28,.055),0 .8vmin 1.9vmin rgba(24,24,28,.055);
+  --lift-shadow:0 0 0 .28vmin var(--focus),0 1.15vmin 2.7vmin rgba(24,24,28,.16);
+  --ease:cubic-bezier(.2,.78,.2,1);
+}
+html.eye{
+  --ink:#DEDDD6;--ink2:#D1CFC5;--panel:#F2F0E9;--panel2:#F7F5EF;
+  --paper:#292823;--dim:#67645A;--faint:#8E897B;--gold:#52755F;--gold2:#3D5948;
+  --good:#527A5C;--bad:#B95C52;--mid:#A57238;--brand:#292823;
+  --hair:rgba(55,52,43,.12);--fill:rgba(99,93,75,.10);--fill2:rgba(99,93,75,.18);
+  --focus:#557A65;--focus-surface:#343832;
+}
+html,body{background:var(--ink);color:var(--paper);font-family:"Inter",-apple-system,BlinkMacSystemFont,
+  "SF Pro Display","SF Pro Text","PingFang SC","Noto Sans CJK SC","Noto Sans SC",system-ui,Roboto,sans-serif}
+body{background:
+  radial-gradient(88vmax 58vmax at 88% -22%,rgba(255,255,255,.62),transparent 62%),
+  radial-gradient(70vmax 48vmax at -12% 112%,rgba(255,255,255,.34),transparent 62%),var(--ink)}
+html.eye body{background:
+  radial-gradient(86vmax 56vmax at 88% -22%,rgba(255,252,236,.38),transparent 62%),
+  radial-gradient(68vmax 46vmax at -12% 112%,rgba(255,249,226,.24),transparent 62%),var(--ink)}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.26;background:
+  linear-gradient(115deg,rgba(255,255,255,.22),transparent 36%),
+  repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0 1px,transparent 1px 4px)}
+#app{isolation:isolate}
+.screen{padding:3.2vmin 4.4vmin;transform:translateZ(0)}
+.screen.active{animation:v5-screen-in .18s var(--ease) both}
+@keyframes v5-screen-in{from{opacity:0;transform:translate3d(0,.65vmin,0) scale(.998)}to{opacity:1;transform:translate3d(0,0,0) scale(1)}}
+
+/* 顶部系统栏 */
+.top{align-items:center;min-height:5.3vmin;margin-bottom:1.55vmin}
+.brand{display:flex;align-items:center;font-size:3.15vmin;line-height:1;letter-spacing:-.025em;color:var(--brand)}
+#home .brand::before{content:"Q";width:4.4vmin;height:4.4vmin;margin-right:1.35vmin;border-radius:1.25vmin;
+  display:grid;place-items:center;background:linear-gradient(145deg,#3B3B40,#252529);color:#fff;font-size:2.35vmin;
+  font-weight:800;letter-spacing:-.08em;box-shadow:inset 0 .12vmin 0 rgba(255,255,255,.18),0 .35vmin .9vmin rgba(24,24,28,.14)}
+.brand small{font-size:1.62vmin;margin-left:1.25vmin;letter-spacing:.055em;color:var(--faint)}
+html.eye #home .brand small::after{content:" · 护眼";color:var(--gold);font-weight:650}
+.top .meta{gap:.75vmin;font-size:1.75vmin;color:var(--dim)}
+.top .meta .chip,.top .meta>span{min-height:4vmin;padding:.5vmin 1.1vmin;background:rgba(248,248,250,.66);
+  border:.1vmin solid rgba(255,255,255,.72);box-shadow:inset 0 -.08vmin 0 var(--hair);border-radius:10vmin}
+html.eye .top .meta .chip,html.eye .top .meta>span{background:rgba(242,240,233,.68);border-color:rgba(255,252,238,.52)}
+
+/* 首页摘要与应用网格 */
+#home .hero{margin:.15vmin 0 1.35vmin;padding:1.25vmin 1.85vmin;align-items:center;border-radius:2.2vmin;
+  background:rgba(248,248,250,.56);border:.1vmin solid rgba(255,255,255,.7);box-shadow:inset 0 -.1vmin 0 var(--hair)}
+html.eye #home .hero{background:rgba(242,240,233,.58);border-color:rgba(255,252,238,.5)}
+#home .hero .eyebrow{font-size:1.52vmin;letter-spacing:.14em;margin-bottom:.5vmin;color:var(--faint)}
+#home .hero .big{font-size:4.85vmin;line-height:1;font-weight:800;letter-spacing:-.045em}
+#home .hero .sub{font-size:1.85vmin;margin-top:.72vmin;color:var(--dim)}
+#home .today{display:grid;grid-template-columns:auto auto;align-items:baseline;column-gap:1vmin;text-align:right;padding:1vmin 1.35vmin;
+  border-radius:1.6vmin;background:rgba(255,255,255,.52);border:.1vmin solid rgba(255,255,255,.8)}
+#home .today .n{grid-row:1 / span 2;font-size:5.4vmin;color:var(--paper);letter-spacing:-.065em}
+#home .today .l{font-size:1.58vmin;letter-spacing:.02em;color:var(--faint);align-self:end}
+.menu{gap:1.15vmin;padding:.45vmin .55vmin;margin:-.45vmin -.55vmin;align-content:start}
+.mcard,.menu.dense .mcard{min-height:10.8vmin;padding:1.18vmin 1.35vmin;display:grid;grid-template-columns:auto minmax(0,1fr);
+  grid-template-rows:auto;align-items:center;justify-content:initial;column-gap:1.25vmin;background:rgba(248,248,250,.94);
+  border:.1vmin solid rgba(255,255,255,.85);border-radius:1.75vmin;box-shadow:var(--surface-shadow)!important;
+  transition:transform .11s var(--ease),background-color .11s,color .11s,box-shadow .11s;transform:translateZ(0)}
+html.eye .mcard{background:rgba(242,240,233,.94);border-color:rgba(255,252,238,.52)}
+.mcard>div:not(.ic):not(.badge){min-width:0}
+.mcard .itile,.menu.dense .mcard .itile{width:5.35vmin;height:5.35vmin;border-radius:1.45vmin;filter:saturate(.86)}
+.mcard .t,.menu.dense .mcard .t{font-size:2.15vmin;font-weight:720;margin:0;color:var(--paper);letter-spacing:-.018em;white-space:nowrap}
+.mcard .d,.menu.dense .mcard .d{font-size:1.38vmin;margin-top:.38vmin;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mcard.focus,.menu.dense .mcard.focus,html.eye .mcard.focus{background:var(--focus-surface);color:var(--focus-text);transform:translate3d(0,-.25vmin,0) scale(1.022);
+  box-shadow:var(--lift-shadow)!important;z-index:4}
+.mcard.focus .t,.menu.dense .mcard.focus .t{color:#fff}.mcard.focus .d,.menu.dense .mcard.focus .d{color:rgba(255,255,255,.68)}
+.mcard.focus .itile,.menu.dense .mcard.focus .itile{filter:saturate(.92) brightness(1.03);transform:scale(1.025)}
+.mcard .badge{top:.72vmin;right:.72vmin;padding:.24vmin .72vmin;min-width:2.7vmin;font-size:1.4vmin;background:var(--focus);color:#fff}
+#home .hint-bar{display:flex;margin-top:.72vmin;font-size:1.42vmin;gap:2.4vmin}
+.hint-bar .k{padding:.12vmin .72vmin;margin-right:.5vmin;border:.1vmin solid var(--hair);background:rgba(255,255,255,.45);border-radius:.62vmin}
+
+/* 学习卡与题目 */
+.study-top{margin-bottom:1.25vmin}.study-top .mode{font-size:2.25vmin;color:var(--paper);font-weight:700}.study-top .prog{font-size:2vmin}
+.pbar{height:.55vmin;margin-bottom:2vmin;background:var(--ink2)}.pbar i,.timer i{background:var(--focus)}
+.card{height:55vmin;transition:transform .36s var(--ease)}
+.face{background:rgba(248,248,250,.96);border:.1vmin solid rgba(255,255,255,.9);border-radius:2.65vmin;
+  box-shadow:0 .22vmin .7vmin rgba(24,24,28,.06),0 1.6vmin 4vmin rgba(24,24,28,.10)}
+html.eye .face{background:rgba(242,240,233,.97);border-color:rgba(255,252,238,.58)}
+.headword{font-size:12vmin;letter-spacing:-.055em}.back .headword{font-size:7.3vmin}.phon{font-size:3.1vmin;color:var(--gold)}
+.meaning{font-size:4.15vmin}.example{font-size:2.75vmin;font-style:normal}.face .tap{font-size:1.72vmin;letter-spacing:.06em}
+.judge{height:8.2vmin;gap:1.6vmin;margin-top:2vmin}.jbtn{border-radius:1.55vmin;transition:transform .105s var(--ease),background .105s,color .105s,box-shadow .105s}
+.jbtn.focus{transform:translateY(-.18vmin) scale(1.025)}
+.quiz-head{margin:.65vmin 0 1.35vmin}.qword{font-size:9.4vmin;margin:1.2vmin 0 .6vmin}.qphon{font-size:2.65vmin;margin-bottom:2vmin}
+.qsent{font-size:3.65vmin;margin:2vmin 7vmin}.opts,.mgrid{gap:1.45vmin;padding:.45vmin .55vmin}
+.opt{min-height:8.7vmin;padding:2vmin 2.5vmin;border:.1vmin solid rgba(255,255,255,.84);border-radius:1.55vmin;
+  background:rgba(248,248,250,.94);box-shadow:var(--surface-shadow);transition:transform .095s var(--ease),background .095s,color .095s,box-shadow .095s}
+html.eye .opt{background:rgba(242,240,233,.94);border-color:rgba(255,252,238,.5)}
+.opt.focus,html.eye .opt.focus{background:var(--focus-surface);color:#fff;transform:translateY(-.18vmin) scale(1.012);box-shadow:var(--lift-shadow)}
+.opt.focus .idx{color:rgba(255,255,255,.62)}
+.opt.selw{background:#E5EFFA;color:var(--gold);box-shadow:0 0 0 .2vmin var(--focus)}
+html.eye .opt.selw{background:#E1E8DF}.opt.right,.opt.right.focus{background:#E5F3E8;color:#2F7648;box-shadow:0 0 0 .2vmin var(--good)}
+.opt.wrong,.opt.wrong.focus{background:#F8E5E4;color:#B43C3C;box-shadow:0 0 0 .2vmin var(--bad)}
+
+/* 列表与系统设置 */
+.listwrap{gap:.9vmin;padding:.45vmin .65vmin;margin:-.45vmin -.65vmin;overflow:visible}
+.rowitem{min-height:8.35vmin;padding:.85vmin 1.55vmin;gap:1.55vmin;border:.1vmin solid rgba(255,255,255,.82);border-radius:1.55vmin;
+  background:rgba(248,248,250,.93);box-shadow:var(--surface-shadow);transition:transform .1s var(--ease),background .1s,color .1s,box-shadow .1s}
+html.eye .rowitem{background:rgba(242,240,233,.94);border-color:rgba(255,252,238,.5)}
+.rowitem .itile{width:5.45vmin;height:5.45vmin;border-radius:1.45vmin;filter:saturate(.86)}
+.rowitem .name{font-size:2.5vmin;letter-spacing:-.012em}.rowitem .desc{font-size:1.72vmin;margin-top:.25vmin}.rowitem .val{font-size:2.2vmin}
+.rowitem.focus,html.eye .rowitem.focus{background:var(--focus-surface);color:#fff;transform:translate3d(.25vmin,0,0) scale(1.008);box-shadow:var(--lift-shadow);z-index:3}
+.rowitem.focus .name,.rowitem.focus .val,.rowitem.focus .val-blue,.rowitem.focus .val-red{color:#fff!important}
+.rowitem.focus .desc{color:rgba(255,255,255,.66)}
+.rowitem.focus .itile{filter:saturate(.92) brightness(1.03)}
+.ios-sw{width:5.2vmin;height:3vmin}.ios-sw::after{width:2.48vmin;height:2.48vmin}.ios-sw.on::after{transform:translateX(2.18vmin)}
+.brow{min-height:6.8vmin;padding:1.05vmin 1.8vmin;border-radius:1.35vmin;background:rgba(248,248,250,.93);
+  box-shadow:var(--surface-shadow);transition:transform .095s var(--ease),background .095s,color .095s,box-shadow .095s}
+html.eye .brow{background:rgba(242,240,233,.94)}.brow.focus,html.eye .brow.focus{background:var(--focus-surface);color:#fff;transform:translateX(.25vmin);box-shadow:var(--lift-shadow)}
+.brow.focus .w,.brow.focus .m,.brow.focus .p,.brow.focus .g{color:#fff}.tabs{gap:.8vmin;margin-bottom:1.2vmin}.tab{padding:.75vmin 2vmin}
+.tab.on{background:var(--focus)}
+.scard{background:rgba(248,248,250,.94);border:.1vmin solid rgba(255,255,255,.84);box-shadow:var(--surface-shadow)}
+html.eye .scard{background:rgba(242,240,233,.94)}.scard .n{color:var(--paper)}
+
+/* 拼写、弹层与反馈 */
+.sp-box,.sp-key{border:.1vmin solid rgba(255,255,255,.84);background:rgba(248,248,250,.94);box-shadow:var(--surface-shadow)}
+html.eye .sp-box,html.eye .sp-key{background:rgba(242,240,233,.94)}
+.sp-key{transition:transform .085s var(--ease),background .085s,color .085s,box-shadow .085s}.sp-key.focus,html.eye .sp-key.focus{background:var(--focus-surface);color:#fff;
+  transform:translateY(-.14vmin) scale(1.018);box-shadow:var(--lift-shadow)}
+.toast{background:#303034;color:#fff;border:none;box-shadow:0 .8vmin 2vmin rgba(24,24,28,.2);backdrop-filter:none;-webkit-backdrop-filter:none;
+  transition:transform .18s var(--ease),opacity .15s}
+.aipop{background:rgba(34,34,38,.38);backdrop-filter:none;-webkit-backdrop-filter:none}.aipop .box{background:var(--panel2);border:.1vmin solid var(--hair);
+  box-shadow:0 1.8vmin 5vmin rgba(24,24,28,.24)}
+.result .big{color:var(--paper)}.result .stat{padding:1.6vmin 2.3vmin;border-radius:1.5vmin;background:rgba(248,248,250,.72)}
+html.eye .result .stat{background:rgba(242,240,233,.74)}
+.itile{box-shadow:inset 0 .1vmin 0 rgba(255,255,255,.35),inset 0 -.12vmin .28vmin rgba(0,0,0,.12),0 .28vmin .7vmin rgba(24,24,28,.13)}
+.ch-scene{box-shadow:0 .25vmin .75vmin rgba(24,24,28,.07),0 1vmin 2.4vmin rgba(24,24,28,.08)}
+@media (prefers-reduced-motion:reduce){.screen.active,.mcard,.rowitem,.opt,.brow,.sp-key,.card{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
 </head>
 <body>
@@ -619,7 +755,7 @@ html,body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;l
 
   <div class="screen" id="home">
     <div class="top">
-      <div class="brand serif">千词斩<small>QIANCIZHAN · v4.3</small></div>
+      <div class="brand serif">千词斩<small>QIANCIZHAN · v5.0</small></div>
       <div class="meta">
         <span class="chip chip-user pf-fin" id="h-user-chip"><b id="h-user">爸爸</b></span>
         <span class="chip"><i class="g g-flame" id="h-flame"></i><b id="h-streak">0</b><small>连续天</small></span>

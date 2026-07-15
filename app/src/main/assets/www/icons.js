@@ -1,4 +1,4 @@
-/* ================= iOS 风格图标库 (v4.1) =================
+/* ================= iOS 风格图标库 (v5.0) =================
    线性白色图标 + 彩色渐变圆角方块(iOS 设置/主屏那种 tile),取代 emoji。
    全部内联 SVG,自绘,离线可用。 */
 "use strict";
@@ -27,21 +27,22 @@
     newPerDay: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="1"/>',
     tts: '<path d="M4 9.5v5h3.5L13 19V5L7.5 9.5H4z"/><path d="M16.5 9a4 4 0 0 1 0 6"/>',
     auto: '<path d="M7 4.5 19 12 7 19.5V4.5z"/>',
+    eye: '<path d="M2.5 12s3.5-5.5 9.5-5.5 9.5 5.5 9.5 5.5-3.5 5.5-9.5 5.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>',
     rate: '<path d="M4 17a9 9 0 1 1 16 0"/><path d="M12 13.5a1.6 1.6 0 1 0 0-3.2"/><path d="M13.4 10.4 17.5 7"/>',
     update: '<path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v4h-4"/>',
     reset: '<path d="M4 7h16M9.5 7V4h5v3M6.5 7l1 13h9l1-13"/>',
     _default: '<circle cx="12" cy="12" r="8"/>'
   };
   var C = {
-    new: ['#0A84FF', '#0060E6'], review: ['#5E5CE6', '#3D3BB0'], quiz: ['#FFCC00', '#FF9F0A'],
-    listen: ['#FF375F', '#E6006A'], cloze: ['#40C8E0', '#0A84FF'], spell: ['#BF5AF2', '#8944AB'],
-    match: ['#FF9F0A', '#FF6A00'], tf: ['#00C7BE', '#019A8E'], battle: ['#8E8E93', '#5B5B60'],
-    chase: ['#FF453A', '#D70015'], sim: ['#34C759', '#248A3D'], screens: ['#64D2FF', '#0A84FF'],
-    browse: ['#FF9500', '#E96A00'], custom: ['#FF375F', '#C9006E'], ai: ['#5E5CE6', '#3D3BB0'],
-    decks: ['#0A84FF', '#0060E6'], stats: ['#30D158', '#1E7B34'], who: ['#40C8E0', '#0A84FF'],
-    settings: ['#8E8E93', '#5B5B60'],
-    newPerDay: ['#0A84FF', '#0060E6'], tts: ['#FF9500', '#E96A00'], auto: ['#34C759', '#248A3D'],
-    rate: ['#BF5AF2', '#8944AB'], update: ['#0A84FF', '#0060E6'], reset: ['#FF453A', '#D70015'],
+    new: ['#4A91DE', '#286CB6'], review: ['#7469D1', '#5047A4'], quiz: ['#E7A925', '#CE7914'],
+    listen: ['#E45577', '#C22D59'], cloze: ['#50AEC2', '#2E7E9F'], spell: ['#A969C4', '#754693'],
+    match: ['#E18A31', '#BF5A1B'], tf: ['#3BA9A0', '#267A75'], battle: ['#76767E', '#4A4A50'],
+    chase: ['#DF5A53', '#B83238'], sim: ['#4DA16B', '#307A4E'], screens: ['#51A0C4', '#2D72A1'],
+    browse: ['#D78634', '#AF5C24'], custom: ['#D6607C', '#A84063'], ai: ['#7469D1', '#5047A4'],
+    decks: ['#4A91DE', '#286CB6'], stats: ['#51A66C', '#327C4C'], who: ['#50AEC2', '#2E7E9F'],
+    settings: ['#76767E', '#4A4A50'],
+    newPerDay: ['#4A91DE', '#286CB6'], tts: ['#D78634', '#AF5C24'], auto: ['#4DA16B', '#307A4E'],
+    eye: ['#A58A58', '#71603F'], rate: ['#A969C4', '#754693'], update: ['#4A91DE', '#286CB6'], reset: ['#DF5A53', '#B83238'],
     _default: ['#8E8E93', '#5B5B60']
   };
   window.iconSvg = function (id) {

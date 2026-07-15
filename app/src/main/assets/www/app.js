@@ -25,7 +25,7 @@ window.onTtsReady = ok => { ttsOK = !!ok; };
 let WORDS = {};
 let DECKS = [];
 let P = null;
-const DEFAULTS = { xp: 0, streak: 0, lastDay: "", dayLog: {}, dayNew: {}, words: {}, decksOff: {}, tr: {}, set: { newPerDay: 20, tts: 1, auto: 1, rate: 0.9 } };
+const DEFAULTS = { xp: 0, streak: 0, lastDay: "", dayLog: {}, dayNew: {}, words: {}, decksOff: {}, tr: {}, set: { newPerDay: 20, tts: 1, auto: 1, eye: 0, rate: 0.9 } };
 
 /* ================= 使用者档案(双模式) =================
    fin  = 爸爸·金融投资(沿用老进度key,升级无损)
@@ -54,6 +54,10 @@ function loadP() {
   if (!P) P = JSON.parse(JSON.stringify(DEFAULTS));
   P.set = Object.assign({}, DEFAULTS.set, P.set || {});
   ["dayLog", "dayNew", "words", "decksOff", "tr"].forEach(k => { if (!P[k]) P[k] = {}; });
+  applyVisualPrefs();
+}
+function applyVisualPrefs() {
+  document.documentElement.classList.toggle("eye", !!(P && P.set && P.set.eye));
 }
 let saveTimer = null;
 function saveP() { clearTimeout(saveTimer); saveTimer = setTimeout(() => { try { NativeBridge.save(PF().store, JSON.stringify(P)); } catch (e) { } }, 600); }
@@ -342,9 +346,7 @@ handlers.home = {
 };
 function homeFocus() {
   const cards = document.querySelectorAll("#menu .mcard");
-  cards.forEach((c, i) => c.classList.toggle("focus", i === homeIdx));
-  const fc = cards[homeIdx];
-  try { if (fc && fc.scrollIntoView) fc.scrollIntoView({ block: "nearest" }); } catch (e) { }
+  for (let i = 0; i < cards.length; i++) cards[i].classList.toggle("focus", i === homeIdx);
 }
 function openMenu(id) {
   if (id === "new") startStudy("new");
@@ -640,6 +642,7 @@ handlers.browse = {
       const r = P.words[e.w];
       const gap = r.due <= NOW() ? '<span style="color:var(--mid)">待复习</span>' : "间隔" + Math.max(1, Math.round(r.S)) + "天";
       const el = document.createElement("div");
+      el.dataset.index = start + i;
       el.className = "brow" + (start + i === BR.idx ? " focus" : "");
       el.innerHTML = '<div class="w serif">' + esc(e.w) + '</div><div class="p">' + (e.p ? "/" + esc(e.p) + "/" : "") + '</div><div class="m">' + esc(e.m) + '</div><div class="g">' + gap + '</div>';
       box.appendChild(el);
@@ -647,14 +650,23 @@ handlers.browse = {
   },
   key(k) {
     if (k === "BACK") { show("home"); return; }
-    if (k === "LEFT") { BR.tab = (BR.tab + 2) % 3; BR.idx = 0; }
-    else if (k === "RIGHT") { BR.tab = (BR.tab + 1) % 3; BR.idx = 0; }
-    else if (k === "UP") BR.idx = Math.max(0, BR.idx - 1);
-    else if (k === "DOWN") BR.idx = Math.min(BR.list.length - 1, BR.idx + 1);
+    if (k === "LEFT") { BR.tab = (BR.tab + 2) % 3; BR.idx = 0; handlers.browse.enter(); return; }
+    else if (k === "RIGHT") { BR.tab = (BR.tab + 1) % 3; BR.idx = 0; handlers.browse.enter(); return; }
+    else if (k === "UP") { BR.idx = Math.max(0, BR.idx - 1); if (!browseFocus()) handlers.browse.enter(); return; }
+    else if (k === "DOWN") { BR.idx = Math.min(BR.list.length - 1, BR.idx + 1); if (!browseFocus()) handlers.browse.enter(); return; }
     else if ((k === "OK" || k === "PLAY") && BR.list[BR.idx]) { const e = BR.list[BR.idx]; speak(e.w + ". " + (e.x || "")); return; }
     handlers.browse.enter();
   }
 };
+function browseFocus() {
+  const rows = $("b-list").children;
+  let found = false;
+  for (let i = 0; i < rows.length; i++) {
+    const on = Number(rows[i].dataset.index) === BR.idx;
+    rows[i].classList.toggle("focus", on); found = found || on;
+  }
+  return found;
+}
 
 /* ================= 自选复习 ================= */
 const CU = { idx: 0, dates: [] };
@@ -673,6 +685,7 @@ handlers.custom = {
     const win = 9, start = Math.max(0, Math.min(CU.idx - 4, CU.dates.length - win));
     CU.dates.slice(start, start + win).forEach((it, i) => {
       const el = document.createElement("div");
+      el.dataset.index = start + i;
       el.className = "rowitem" + (start + i === CU.idx ? " focus" : "");
       el.innerHTML = '<div class="ic">📅</div><div class="info"><div class="name">' + it.d + (it.d === td ? ' <span style="color:var(--gold);font-size:2vmin">今天</span>' : "") + '</div><div class="desc">该日新学 ' + it.n + ' 个单词</div></div><div class="val">OK 复习</div>';
       box.appendChild(el);
@@ -681,8 +694,8 @@ handlers.custom = {
   key(k) {
     if (k === "BACK") { show("home"); return; }
     if (!CU.dates.length) return;
-    if (k === "UP") CU.idx = Math.max(0, CU.idx - 1);
-    else if (k === "DOWN") CU.idx = Math.min(CU.dates.length - 1, CU.idx + 1);
+    if (k === "UP") { CU.idx = Math.max(0, CU.idx - 1); if (!customFocus()) handlers.custom.enter(); return; }
+    else if (k === "DOWN") { CU.idx = Math.min(CU.dates.length - 1, CU.idx + 1); if (!customFocus()) handlers.custom.enter(); return; }
     else if (k === "OK") {
       const d = CU.dates[CU.idx].d;
       const list = activeWords().filter(e => P.words[e.w] && P.words[e.w].st > 0 && P.words[e.w].fd === d);
@@ -694,6 +707,15 @@ handlers.custom = {
     handlers.custom.enter();
   }
 };
+function customFocus() {
+  const rows = $("c-list").children;
+  let found = false;
+  for (let i = 0; i < rows.length; i++) {
+    const on = Number(rows[i].dataset.index) === CU.idx;
+    rows[i].classList.toggle("focus", on); found = found || on;
+  }
+  return found;
+}
 
 function schedHit(w, ok) { const r = P.words[w]; if (r && r.due <= NOW() + DAY / 2) rate(w, ok ? 3 : 1); else { bumpDay(); saveP(); } }
 
@@ -723,20 +745,25 @@ function drawMatch() {
     [row, 4 + row].forEach(i => {
       const c = MT.cells[i];
       const d = document.createElement("div");
+      d.dataset.cell = i;
       d.className = "opt" + (c.done ? " done" : "") + (i === MT.idx ? " focus" : "") + (i === MT.sel ? " selw" : "") + (MT.err && MT.err.indexOf(i) >= 0 ? " wrong" : "");
       d.innerHTML = c.t === "w" ? '<span class="serif" style="font-size:3.6vmin">' + esc(c.e.w) + '</span>' : '<span>' + esc(c.e.m) + '</span>';
       g.appendChild(d);
     });
   }
 }
+function matchFocus() {
+  const cells = $("m-grid").children;
+  for (let i = 0; i < cells.length; i++) cells[i].classList.toggle("focus", Number(cells[i].dataset.cell) === MT.idx);
+}
 handlers.match = {
   key(k) {
     if (k === "BACK") { show("home"); return; }
     if (MT.lock) return;
     const col = MT.idx < 4 ? 0 : 1, row = MT.idx % 4;
-    if (k === "UP") MT.idx = col * 4 + (row + 3) % 4;
-    else if (k === "DOWN") MT.idx = col * 4 + (row + 1) % 4;
-    else if (k === "LEFT" || k === "RIGHT") MT.idx = (col === 0 ? 4 : 0) + row;
+    if (k === "UP") { MT.idx = col * 4 + (row + 3) % 4; matchFocus(); return; }
+    else if (k === "DOWN") { MT.idx = col * 4 + (row + 1) % 4; matchFocus(); return; }
+    else if (k === "LEFT" || k === "RIGHT") { MT.idx = (col === 0 ? 4 : 0) + row; matchFocus(); return; }
     else if (k === "OK") {
       const c = MT.cells[MT.idx];
       if (!c || c.done) { drawMatch(); return; }
@@ -939,8 +966,8 @@ handlers.ai = {
   key(k) {
     if (AIS.phase === 0) {
       if (k === "BACK") { show("home"); return; }
-      if (k === "UP") AIS.idx = (AIS.idx + AI_TOPICS.length - 1) % AI_TOPICS.length;
-      else if (k === "DOWN") AIS.idx = (AIS.idx + 1) % AI_TOPICS.length;
+      if (k === "UP") { AIS.idx = (AIS.idx + AI_TOPICS.length - 1) % AI_TOPICS.length; if (!aiTopicFocus()) renderAiTopics(); return; }
+      else if (k === "DOWN") { AIS.idx = (AIS.idx + 1) % AI_TOPICS.length; if (!aiTopicFocus()) renderAiTopics(); return; }
       else if (k === "OK") { startAiChat(AIS.idx); return; }
       renderAiTopics();
     } else {
@@ -971,7 +998,7 @@ handlers.ai = {
         aiTurn();
         return;
       }
-      drawAiReplies();
+      aiReplyFocus();
     }
   }
 };
@@ -981,6 +1008,7 @@ function renderAiTopics() {
   AI_TOPICS.slice(start, start + win).forEach((t, ii) => {
     const i = start + ii;
     const el = document.createElement("div");
+    el.dataset.index = i;
     el.className = "rowitem" + (i === AIS.idx ? " focus" : "");
     el.innerHTML = '<div class="ic">' + t.ic + '</div><div class="info"><div class="name">' + t.n + '</div><div class="desc">' + t.d + '</div></div><div class="val">OK</div>';
     box.appendChild(el);
@@ -1044,6 +1072,21 @@ function drawAiReplies() {
     box.appendChild(d);
   });
   try { const fc = box.querySelector(".focus"); if (fc && fc.scrollIntoView) fc.scrollIntoView({ block: "nearest" }); } catch (e) { }
+}
+function aiTopicFocus() {
+  const rows = $("ai-topics").children;
+  let found = false;
+  for (let i = 0; i < rows.length; i++) {
+    const on = Number(rows[i].dataset.index) === AIS.idx;
+    rows[i].classList.toggle("focus", on); found = found || on;
+  }
+  return found;
+}
+function aiReplyFocus() {
+  const items = $("ai-opts").children;
+  for (let i = 0; i < items.length; i++) items[i].classList.toggle("focus", i === AIS.sel);
+  const fc = items[AIS.sel];
+  try { if (fc && fc.scrollIntoView) fc.scrollIntoView({ block: "nearest" }); } catch (e) { }
 }
 
 /* ---------- 语音输入(录音→GLM-ASR云端识别) ---------- */
@@ -1125,8 +1168,8 @@ handlers.decks = {
   key(k) {
     if (k === "BACK") { show("home"); return; }
     if (!DECKS.length) return;
-    if (k === "UP") deckIdx = (deckIdx + DECKS.length - 1) % DECKS.length;
-    else if (k === "DOWN") deckIdx = (deckIdx + 1) % DECKS.length;
+    if (k === "UP") { deckIdx = (deckIdx + DECKS.length - 1) % DECKS.length; deckFocus(); return; }
+    else if (k === "DOWN") { deckIdx = (deckIdx + 1) % DECKS.length; deckFocus(); return; }
     else if (k === "OK") {
       const d = DECKS[deckIdx];
       if (deckOn(d.id)) P.decksOff[d.id] = 1; else delete P.decksOff[d.id];
@@ -1178,12 +1221,13 @@ const SETTINGS = [
   { id: "newPerDay", name: "每日新词量", desc: "每天最多学多少个新词", opts: [5, 10, 15, 20, 30, 50], fmt: v => v + " 词" },
   { id: "tts", name: "发音", desc: "在线真人发音,需电视联网;离线时自动尝试系统TTS", opts: [1, 0], fmt: v => v ? "开启" : "关闭" },
   { id: "auto", name: "自动朗读", desc: "出示卡片时自动读单词", opts: [1, 0], fmt: v => v ? "开启" : "关闭" },
+  { id: "eye", name: "护眼模式", desc: "暖灰低蓝光配色,降低大屏亮度刺激", opts: [1, 0], fmt: v => v ? "开启" : "关闭" },
   { id: "rate", name: "语速", desc: "朗读速度", opts: [0.7, 0.9, 1.0, 1.2], fmt: v => v + "×" },
   { id: "update", name: "检查更新", desc: "在线检查新版本并一键下载安装,进度保留", opts: null, fmt: () => "OK 检查" },
   { id: "reset", name: "重置全部进度", desc: "清空学习记录,不可恢复", opts: null, fmt: () => "OK 按两次" }
 ];
 let resetArm = false;
-const SET_ICON = { newPerDay: "🎯", tts: "🔊", auto: "▶️", rate: "⏩", update: "🔄", reset: "🗑️" };
+const SET_ICON = { newPerDay: "🎯", tts: "🔊", auto: "▶️", eye: "◐", rate: "⏩", update: "🔄", reset: "🗑️" };
 handlers.settings = {
   enter() {
     const box = $("set-list"); box.innerHTML = "";
@@ -1206,26 +1250,40 @@ handlers.settings = {
   key(k) {
     if (k === "BACK") { resetArm = false; show("home"); return; }
     const s = SETTINGS[setIdx];
-    if (k === "UP") { setIdx = (setIdx + SETTINGS.length - 1) % SETTINGS.length; resetArm = false; }
-    else if (k === "DOWN") { setIdx = (setIdx + 1) % SETTINGS.length; resetArm = false; }
+    if (k === "UP") {
+      const wasArmed = resetArm; setIdx = (setIdx + SETTINGS.length - 1) % SETTINGS.length; resetArm = false;
+      if (wasArmed) handlers.settings.enter(); else settingsFocus(); return;
+    }
+    else if (k === "DOWN") {
+      const wasArmed = resetArm; setIdx = (setIdx + 1) % SETTINGS.length; resetArm = false;
+      if (wasArmed) handlers.settings.enter(); else settingsFocus(); return;
+    }
     else if ((k === "LEFT" || k === "RIGHT") && s.opts) {
       const cur = s.opts.indexOf(P.set[s.id]);
       const nx = (cur + (k === "RIGHT" ? 1 : s.opts.length - 1)) % s.opts.length;
-      P.set[s.id] = s.opts[nx]; saveP();
+      P.set[s.id] = s.opts[nx]; if (s.id === "eye") applyVisualPrefs(); saveP();
     } else if (k === "OK") {
       if (s.id === "update") { checkUpdate(); return; }
       else if (s.id === "reset") {
         if (!resetArm) { resetArm = true; }
-        else { P = JSON.parse(JSON.stringify(DEFAULTS)); saveP(); resetArm = false; toast("已重置全部进度"); }
+        else { P = JSON.parse(JSON.stringify(DEFAULTS)); applyVisualPrefs(); saveP(); resetArm = false; toast("已重置全部进度"); }
       } else if (s.opts) {
         const cur = s.opts.indexOf(P.set[s.id]);
-        P.set[s.id] = s.opts[(cur + 1) % s.opts.length]; saveP();
+        P.set[s.id] = s.opts[(cur + 1) % s.opts.length]; if (s.id === "eye") applyVisualPrefs(); saveP();
         if (s.id === "tts" || s.id === "rate") speak("Welcome to Lex TV");
       }
     }
     handlers.settings.enter();
   }
 };
+function deckFocus() {
+  const rows = $("deck-list").children;
+  for (let i = 0; i < rows.length; i++) rows[i].classList.toggle("focus", i === deckIdx);
+}
+function settingsFocus() {
+  const rows = $("set-list").children;
+  for (let i = 0; i < rows.length; i++) rows[i].classList.toggle("focus", i === setIdx);
+}
 
 /* ================= 界面对照教学 ================= */
 let SCREENS = [];
@@ -1407,6 +1465,16 @@ function renderSpell() {
   speak(e.w);
 }
 function drawSpell() {
+  drawSpellInput();
+  const kb = $("sp-kb"); kb.innerHTML = "";
+  SPL_KEYS.forEach((kk, i) => {
+    const d = document.createElement("div");
+    d.className = "sp-key" + (i === SPL.ki ? " focus" : "") + (kk.length > 1 ? " fn" : "");
+    d.textContent = kk === "DEL" ? "⌫ 删除" : (kk === "HINT" ? "提示" : kk);
+    kb.appendChild(d);
+  });
+}
+function drawSpellInput() {
   const box = $("sp-boxes"); box.innerHTML = "";
   for (let i = 0; i < SPL.ans.length; i++) {
     const d = document.createElement("div");
@@ -1414,13 +1482,10 @@ function drawSpell() {
     d.textContent = SPL.input[i] || "";
     box.appendChild(d);
   }
-  const kb = $("sp-kb"); kb.innerHTML = "";
-  SPL_KEYS.forEach((kk, i) => {
-    const d = document.createElement("div");
-    d.className = "sp-key" + (i === SPL.ki ? " focus" : "") + (kk.length > 1 ? " fn" : "");
-    d.textContent = kk === "DEL" ? "⌫ 删除" : (kk === "HINT" ? "💡 提示" : kk);
-    kb.appendChild(d);
-  });
+}
+function spellFocus() {
+  const keys = $("sp-kb").children;
+  for (let i = 0; i < keys.length; i++) keys[i].classList.toggle("focus", i === SPL.ki);
 }
 function spellJudge() {
   SPL.lock = true;
@@ -1454,19 +1519,19 @@ handlers.spell = {
     if (k === "MENU" || k === "PLAY") { speak(SPL.list[SPL.i].w); return; }
     if (SPL.lock) return;
     const n = SPL_KEYS.length;                     // 28 键,7列×4行
-    if (k === "UP") SPL.ki = (SPL.ki - 7 + n) % n;
-    else if (k === "DOWN") SPL.ki = (SPL.ki + 7) % n;
-    else if (k === "LEFT") SPL.ki = (SPL.ki + n - 1) % n;
-    else if (k === "RIGHT") SPL.ki = (SPL.ki + 1) % n;
+    if (k === "UP") { SPL.ki = (SPL.ki - 7 + n) % n; spellFocus(); return; }
+    else if (k === "DOWN") { SPL.ki = (SPL.ki + 7) % n; spellFocus(); return; }
+    else if (k === "LEFT") { SPL.ki = (SPL.ki + n - 1) % n; spellFocus(); return; }
+    else if (k === "RIGHT") { SPL.ki = (SPL.ki + 1) % n; spellFocus(); return; }
     else if (k === "OK") {
       const key = SPL_KEYS[SPL.ki];
       if (key === "DEL") { if (SPL.input.length > 1) SPL.input.pop(); }
       else if (key === "HINT") {
         if (SPL.input.length < SPL.ans.length) { SPL.input.push(SPL.ans[SPL.input.length]); SPL.hints++; }
       } else if (SPL.input.length < SPL.ans.length) SPL.input.push(key);
-      if (SPL.input.length >= SPL.ans.length) { drawSpell(); spellJudge(); return; }
+      if (SPL.input.length >= SPL.ans.length) { drawSpellInput(); spellJudge(); return; }
     }
-    drawSpell();
+    drawSpellInput();
   }
 };
 function finishSpell() {
