@@ -1,4 +1,4 @@
-/* ================= iOS 风格图标库 (v5.0) =================
+/* ================= iOS 风格图标库 (v6.0) =================
    线性白色图标 + 彩色渐变圆角方块(iOS 设置/主屏那种 tile),取代 emoji。
    全部内联 SVG,自绘,离线可用。 */
 "use strict";
@@ -6,10 +6,15 @@
   var I = {
     new: '<path d="M4 20l4.5-1L20 7.5a2.1 2.1 0 0 0-3-3L5.5 15.5 4 20z"/><path d="M14.5 6.5l3 3"/>',
     review: '<path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v4h-4"/>',
+    weak: '<path d="M12 3 5 6v5c0 4.8 2.8 8.1 7 10 4.2-1.9 7-5.2 7-10V6l-7-3z"/><path d="m8.7 12 2.1 2.1 4.6-4.6"/>',
+    arcade: '<path d="M7.2 8h9.6a4.7 4.7 0 0 1 4.5 5.9l-1 3.7a2.5 2.5 0 0 1-4.3 1l-1.5-1.8h-5l-1.5 1.8a2.5 2.5 0 0 1-4.3-1l-1-3.7A4.7 4.7 0 0 1 7.2 8z"/><path d="M8 11v4M6 13h4M16.5 12h.01M18.5 14h.01"/>',
     quiz: '<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/>',
     listen: '<path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3" y="13.5" width="4.2" height="6.5" rx="1.6"/><rect x="16.8" y="13.5" width="4.2" height="6.5" rx="1.6"/>',
     cloze: '<rect x="5" y="3" width="14" height="18" rx="2.4"/><path d="M9 8h6M9 12h6M9 16h4"/>',
     spell: '<rect x="3" y="6.5" width="18" height="11" rx="2.2"/><path d="M7 10.3h.01M11 10.3h.01M15 10.3h.01M8 14h8"/>',
+    chunks: '<path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z"/><path d="M17 14v6M14 17h6"/>',
+    sentence: '<path d="M4 5h16v11H9l-5 4V5z"/><path d="M8 9h8M8 12h5"/>',
+    starship: '<path d="M12 2.8c3.7 2.4 5.7 6 5.7 10.2L15 17H9l-2.7-4C6.3 8.8 8.3 5.2 12 2.8z"/><circle cx="12" cy="10" r="2"/><path d="m8.8 15-3.3 1.8V12l1.2-1.3M15.2 15l3.3 1.8V12l-1.2-1.3M10 19l2 2 2-2"/>',
     match: '<path d="M9.5 7H6.5a3 3 0 0 0 0 6h3"/><path d="M14.5 7h3a3 3 0 0 1 0 6h-3"/><path d="M8.5 10h7"/>',
     tf: '<path d="M12 3v18"/><path d="M5 7h14"/><path d="M8 21h8"/><path d="M5 7 2.5 13a2.7 2.7 0 0 0 5 0L5 7z"/><path d="M19 7l-2.5 6a2.7 2.7 0 0 0 5 0L19 7z"/>',
     battle: '<rect x="5" y="7" width="14" height="12" rx="2.4"/><path d="M9 7V4.2M15 7V4.2M9.5 12h.01M14.5 12h.01M9.5 16h5"/>',
@@ -34,8 +39,10 @@
     _default: '<circle cx="12" cy="12" r="8"/>'
   };
   var C = {
-    new: ['#4A91DE', '#286CB6'], review: ['#7469D1', '#5047A4'], quiz: ['#E7A925', '#CE7914'],
+    new: ['#4A91DE', '#286CB6'], review: ['#7469D1', '#5047A4'], weak: ['#50A46C', '#2F774A'], arcade: ['#5964D8', '#3943A4'], quiz: ['#E7A925', '#CE7914'],
     listen: ['#E45577', '#C22D59'], cloze: ['#50AEC2', '#2E7E9F'], spell: ['#A969C4', '#754693'],
+    chunks: ['#D98242', '#AD5527'], sentence: ['#4AA39A', '#2E7771'],
+    starship: ['#5B6CE1', '#3441A8'],
     match: ['#E18A31', '#BF5A1B'], tf: ['#3BA9A0', '#267A75'], battle: ['#76767E', '#4A4A50'],
     chase: ['#DF5A53', '#B83238'], sim: ['#4DA16B', '#307A4E'], screens: ['#51A0C4', '#2D72A1'],
     browse: ['#D78634', '#AF5C24'], custom: ['#D6607C', '#A84063'], ai: ['#7469D1', '#5047A4'],

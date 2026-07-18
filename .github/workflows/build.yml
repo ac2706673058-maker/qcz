@@ -39,7 +39,16 @@ jobs:
         with:
           tag_name: v${{ steps.ver.outputs.vn }}-${{ steps.ver.outputs.vc }}
           name: LexTV ${{ steps.ver.outputs.vn }}
-          body: "v4.0 Apple 系统级细节精修:精确 iOS 系统色(systemBlue #007AFF/systemGray 分隔线/secondaryLabel 灰)、SF Pro 字体栈+负字距大标题+等宽数字、真·iOS 绿色开关控件(发音/自动朗读/词库)、克制柔和的分层阴影、完整蓝色聚焦光环、iOS红蓝语义色。含词怪追逐2.0、导航音效、2256词中考/高考库、双使用者。"
+          body: |
+            LexTV 6.0 训练系统升级
+
+            - 首页完成信息架构减法，8 个原有游戏集中到独立训练馆
+            - 新增词块拼装、句子拼图、词汇星舰，共 11 种高收益记忆游戏
+            - 新增弱项突围，结合遗忘次数、词汇难度、稳定度、到期程度与练习错题精准选题
+            - 训练成绩与薄弱记录按爸爸/弟弟双使用者独立保存
+            - 限时玩法改为合成线程计时动画，遥控响应更快
+            - 修复退出游戏后延迟回调继续运行的问题
+            - 保留 FSRS、2256 词中考/高考库、整句发音、例句填空、词怪追逐与自动更新
           files: LexTV.apk
           make_latest: true
         env:

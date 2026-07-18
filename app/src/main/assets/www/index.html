@@ -828,7 +828,78 @@ html.eye #home .brand::before{background:linear-gradient(145deg,#2C6A4A,#1F4E36)
 #home .today .n{font-size:6.2vmin}
 #home .today .l{font-size:1.78vmin}
 
-@media (prefers-reduced-motion:reduce){.screen.active,.mcard,.rowitem,.opt,.brow,.sp-key,.card{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+/* ======================================================================
+   v6.0 —— 信息架构减法 + 训练馆 + 三款高收益新玩法
+   卡片只在焦点变化时动,计时条由合成线程完成,避免低端电视重复重绘。
+   ====================================================================== */
+#home .menu{gap:1.45vmin}
+#home .mcard,#home .menu.dense .mcard{min-height:14.2vmin}
+.stats-grid{grid-template-columns:repeat(6,1fr);gap:1.45vmin;margin-bottom:2.5vmin}.stats-grid .scard{padding:2.35vmin 1.2vmin}.stats-grid .scard .n{font-size:5.2vmin}.stats-grid .scard .l{font-size:1.65vmin;letter-spacing:.06em}
+
+#arcade .top{margin-bottom:1.2vmin}
+.arc-reco{min-height:9.2vmin;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:2vmin;
+  padding:1.4vmin 2vmin;margin-bottom:1.35vmin;border-radius:2vmin;background:linear-gradient(115deg,rgba(10,108,240,.1),rgba(255,255,255,.52));
+  border:.1vmin solid rgba(255,255,255,.72);box-shadow:0 .5vmin 1.5vmin rgba(40,32,20,.06)}
+html.eye .arc-reco{background:linear-gradient(115deg,rgba(44,106,74,.1),rgba(248,244,232,.66));border-color:rgba(255,252,238,.5)}
+.arc-label{font-size:1.45vmin;font-weight:800;letter-spacing:.18em;color:var(--gold);padding:.55vmin 1vmin;border-radius:10vmin;background:rgba(10,108,240,.1)}
+html.eye .arc-label{background:rgba(44,106,74,.1)}
+.arc-copy{display:flex;align-items:baseline;gap:1.5vmin;min-width:0}.arc-copy b{font-size:2.85vmin}.arc-copy span{font-size:1.8vmin;color:var(--dim)}
+.arc-mark{width:5.2vmin;height:5.2vmin;border-radius:1.45vmin;display:flex;align-items:center;justify-content:center;background:var(--paper);color:var(--panel);font-size:2.1vmin;font-weight:800}
+.arc-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:1.25vmin;flex:1;align-content:start;padding:.5vmin .6vmin;margin:-.5vmin -.6vmin;overflow:visible}
+.arc-grid .mcard{min-height:16.4vmin;padding:1.55vmin;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:1.25vmin;background:rgba(251,247,238,.92)}
+html.eye .arc-grid .mcard{background:rgba(243,238,224,.94)}
+.arc-grid .mcard .itile{width:6.2vmin;height:6.2vmin;border-radius:1.55vmin}
+.arc-grid .mcard .t{font-size:2.35vmin;margin:0}.arc-grid .mcard .d{font-size:1.48vmin;margin-top:.35vmin;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.arc-grid .game-meta{font-size:1.28vmin;margin-top:.7vmin;color:var(--gold);font-weight:650;white-space:nowrap}
+.arc-grid .mcard.focus{transform:translate3d(0,-.45vmin,0) scale(1.035)!important}
+.arc-grid[style*="repeat(6"] .mcard{padding:1.3vmin;gap:1vmin}.arc-grid[style*="repeat(6"] .mcard .itile{width:5.5vmin;height:5.5vmin;border-radius:1.4vmin}
+.arc-grid[style*="repeat(6"] .mcard .t{font-size:2.05vmin}.arc-grid[style*="repeat(6"] .mcard .d{font-size:1.28vmin}.arc-grid[style*="repeat(6"] .game-meta{font-size:1.14vmin}
+
+#puzzle{padding-left:7vmin;padding-right:7vmin}
+.puzzle-clue{font-size:3.35vmin;line-height:1.45;text-align:center;color:var(--paper);font-weight:700;margin:.5vmin auto .6vmin;max-width:145vmin}
+.puzzle-target{text-align:center;font-size:1.95vmin;color:var(--dim);min-height:3vmin}
+.puzzle-build{min-height:9.4vmin;margin:1.2vmin auto 1.3vmin;width:min(145vmin,100%);display:flex;align-items:center;justify-content:center;text-align:center;
+  padding:1.2vmin 2.5vmin;border-radius:2vmin;background:rgba(255,253,247,.82);box-shadow:inset 0 0 0 .16vmin var(--hair),0 .5vmin 1.5vmin rgba(40,32,20,.06);
+  font-size:3.35vmin;font-weight:750;letter-spacing:.015em;color:var(--paper);transition:background .12s,color .12s,box-shadow .12s}
+html.eye .puzzle-build{background:rgba(248,244,232,.8)}.puzzle-build.empty{color:var(--faint);font-weight:550}
+.puzzle-build.good{background:#E6F4E9;color:#247840;box-shadow:inset 0 0 0 .22vmin var(--good)}
+.puzzle-build.bad{background:#F8E8E5;color:#A93631;box-shadow:inset 0 0 0 .22vmin var(--bad)}
+.puzzle-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.25vmin;width:min(150vmin,100%);margin:0 auto;padding:.5vmin .6vmin;overflow:visible}
+.piece{min-height:7.8vmin;display:flex;align-items:center;justify-content:center;padding:.8vmin 1.2vmin;border-radius:1.55vmin;background:rgba(251,247,238,.94);
+  color:var(--paper);font-size:2.45vmin;font-weight:720;box-shadow:0 .1vmin .3vmin rgba(0,0,0,.05),0 .65vmin 1.5vmin rgba(40,32,20,.055);
+  transition:transform .09s var(--ease-spring),box-shadow .09s,opacity .09s,background .09s;color .09s;will-change:transform}
+html.eye .piece{background:rgba(243,238,224,.95)}
+.piece.focus{transform:translateY(-.35vmin) scale(1.035);box-shadow:var(--lift-shadow);z-index:4;background:var(--focus-surface);color:var(--gold)}
+.piece.used{opacity:.24;box-shadow:none}.piece.used.focus{opacity:.42}.piece.undo{color:var(--dim);font-weight:650}.piece.undo.focus{color:var(--gold)}
+#puzzle .feedback{margin-top:1.25vmin;min-height:3.5vmin}
+
+/* 词汇星舰:纯 CSS 合成场景,粒子只在命中瞬间创建,没有常驻 JS 帧循环 */
+#starship{padding-left:6vmin;padding-right:6vmin}.ss-scene{height:31vmin;position:relative;overflow:hidden;border-radius:2.4vmin;margin:.5vmin 0 1vmin;
+  background:radial-gradient(circle at 78% 34%,rgba(97,118,255,.34),transparent 18%),linear-gradient(145deg,#11172B,#242B55 58%,#17213B);
+  box-shadow:0 1.2vmin 3vmin rgba(22,27,55,.2);isolation:isolate}
+.ss-stars{position:absolute;inset:-30%;opacity:.7;background-image:radial-gradient(circle,#fff 0 .12vmin,transparent .15vmin);background-size:5.5vmin 5.5vmin;animation:ssDrift 8s linear infinite}
+.ss-stars.b{opacity:.34;background-size:9vmin 9vmin;transform:rotate(17deg);animation-duration:14s;animation-direction:reverse}
+@keyframes ssDrift{to{background-position:-22vmin 11vmin}}
+.ss-planet{position:absolute;right:-6vmin;bottom:-14vmin;width:38vmin;height:38vmin;border-radius:50%;background:radial-gradient(circle at 35% 30%,#9C8FEB,#4B4A9B 45%,#252A67 72%);box-shadow:0 0 5vmin rgba(109,97,220,.42)}
+.ss-ship{position:absolute;left:10vmin;top:13vmin;width:12vmin;height:6vmin;z-index:4;border-radius:55% 65% 65% 55%;background:linear-gradient(180deg,#F8FAFF,#AFC3E7 65%,#61779F);box-shadow:0 0 2.4vmin rgba(112,193,255,.65)}
+.ss-ship::before{content:"";position:absolute;left:-4.2vmin;top:1.3vmin;border-width:1.7vmin 4.5vmin 1.7vmin 0;border-style:solid;border-color:transparent #55C9FF transparent transparent;filter:drop-shadow(0 0 .7vmin #55C9FF)}
+.ss-ship::after{content:"";position:absolute;left:4vmin;bottom:-2.2vmin;border-left:3vmin solid transparent;border-right:1vmin solid transparent;border-top:3vmin solid #7387B2}
+.ss-ship i{position:absolute;right:1.8vmin;top:1.2vmin;width:3vmin;height:3vmin;border-radius:50%;background:#66D7FF;box-shadow:inset -.5vmin -.5vmin 0 rgba(23,61,108,.25)}
+.ss-ship b{position:absolute;right:-1.3vmin;top:2.2vmin;width:2.2vmin;height:1.5vmin;border-radius:1vmin;background:#EAF5FF}
+.ss-enemy{position:absolute;right:24vmin;top:6.1vmin;width:33vmin;min-height:15vmin;padding:2vmin;z-index:4;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+  border-radius:50% 48% 52% 46%;background:radial-gradient(circle at 40% 32%,#6674D9,#313A86 72%);color:#fff;border:.18vmin solid rgba(198,211,255,.5);box-shadow:0 0 0 .8vmin rgba(105,120,232,.13),0 0 4vmin rgba(107,121,242,.52)}
+.ss-enemy span{font-size:4.4vmin;font-weight:800;line-height:1.15;max-width:29vmin}.ss-enemy.long span{font-size:2.65vmin;line-height:1.2}.ss-enemy small{font-size:1.45vmin;letter-spacing:.12em;margin-top:1vmin;color:rgba(255,255,255,.66)}
+.ss-enemy.hit{animation:ssHit .48s ease-out}.ss-enemy.miss{animation:ssMiss .45s ease}
+@keyframes ssHit{45%{transform:scale(1.16);filter:brightness(2.1)}100%{transform:scale(.15);opacity:0}}
+@keyframes ssMiss{35%{transform:translateX(-2.5vmin) rotate(-4deg);filter:hue-rotate(120deg)}}
+.ss-laser{position:absolute;left:20vmin;top:15.3vmin;width:93vmin;height:.55vmin;z-index:3;transform:scaleX(0);transform-origin:left;background:linear-gradient(90deg,#8CEAFF,#fff,#80A4FF);box-shadow:0 0 1.2vmin #7DE8FF}
+.ss-laser.fire{animation:ssLaser .42s ease-out}@keyframes ssLaser{0%{transform:scaleX(0);opacity:1}45%{transform:scaleX(1);opacity:1}100%{transform:scaleX(1);opacity:0}}
+.ss-scene.damage{animation:ssDamage .38s ease}@keyframes ssDamage{35%{transform:translateX(-1vmin);box-shadow:inset 0 0 7vmin rgba(255,65,62,.75)}70%{transform:translateX(1vmin)}}
+.ss-hud{position:absolute;left:2vmin;right:2vmin;top:1.5vmin;z-index:8;display:flex;align-items:center;justify-content:space-between;color:rgba(255,255,255,.85);font-size:1.75vmin}.ss-hud b{font-size:2.1vmin;color:#fff}.ss-hud #ss-shield{color:#78E8FF;font-weight:750}.ss-hud #ss-combo{color:#FFD66B;font-weight:750}
+.ss-burst{position:absolute;inset:0;z-index:7;pointer-events:none}.ss-particle{position:absolute;width:1.1vmin;height:1.1vmin;border-radius:50%;background:#9DEBFF;box-shadow:0 0 .8vmin currentColor;will-change:transform,opacity}
+.ss-timer{width:60vmin;align-self:center;margin:.1vmin auto .7vmin}#starship .opts{margin:.5vmin auto .7vmin;gap:1.25vmin}#starship .opt{min-height:7.7vmin;padding:1.45vmin 2.2vmin}#starship .feedback{min-height:3vmin}
+
+@media (prefers-reduced-motion:reduce){.screen.active,.mcard,.rowitem,.opt,.brow,.sp-key,.piece,.card,.ss-stars{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
 </head>
 <body>
@@ -836,7 +907,7 @@ html.eye #home .brand::before{background:linear-gradient(145deg,#2C6A4A,#1F4E36)
 
   <div class="screen" id="home">
     <div class="top">
-      <div class="brand serif">千词斩<small>QIANCIZHAN · v5.2</small></div>
+      <div class="brand serif">千词斩<small>QIANCIZHAN · v6.0</small></div>
       <div class="meta">
         <span class="chip chip-user pf-fin" id="h-user-chip"><b id="h-user">爸爸</b></span>
         <span class="chip"><i class="g g-flame" id="h-flame"></i><b id="h-streak">0</b><small>连续天</small></span>
@@ -857,6 +928,20 @@ html.eye #home .brand::before{background:linear-gradient(145deg,#2C6A4A,#1F4E36)
     </div>
     <div class="menu" id="menu"></div>
     <div class="hint-bar"><span><span class="k">方向键</span>选择</span><span><span class="k">OK</span>进入</span><span><span class="k">返回</span>退出</span></div>
+  </div>
+
+  <div class="screen" id="arcade">
+    <div class="top">
+      <div class="brand serif">训练馆<small>MEMORY GAME LAB</small></div>
+      <div class="meta"><span>方向键选择 · OK 开始 · 成绩按使用者独立保存</span></div>
+    </div>
+    <div class="arc-reco">
+      <div class="arc-label">TODAY'S PICK</div>
+      <div class="arc-copy"><b id="arc-rec-name">今日推荐</b><span id="arc-rec-desc">换一种记忆通道,效果更稳</span></div>
+      <div class="arc-mark" id="arc-mark">10</div>
+    </div>
+    <div class="arc-grid" id="arc-grid"></div>
+    <div class="hint-bar"><span><span class="k">方向键</span>选择</span><span><span class="k">OK</span>开始</span><span><span class="k">返回</span>主页</span></div>
   </div>
 
   <div class="screen" id="study">
@@ -912,7 +997,7 @@ html.eye #home .brand::before{background:linear-gradient(145deg,#2C6A4A,#1F4E36)
       <div class="xp" id="f-xp">+120 XP</div>
       <div class="stats-row" id="f-stats"></div>
       <div class="msg" id="f-msg"></div>
-      <div class="hint-bar"><span><span class="k">OK</span>返回主页</span></div>
+      <div class="hint-bar"><span><span class="k">OK</span>返回</span></div>
     </div>
   </div>
 
@@ -936,6 +1021,32 @@ html.eye #home .brand::before{background:linear-gradient(145deg,#2C6A4A,#1F4E36)
     <div class="sp-boxes" id="sp-boxes"></div>
     <div class="sp-kb" id="sp-kb"></div>
     <div class="feedback" id="sp-fb">听发音 · 看释义 · 方向键选字母,OK 输入 · 菜单键重听</div>
+  </div>
+
+  <div class="screen" id="puzzle">
+    <div class="study-top"><div class="mode" id="pz-title">词块拼装</div><div class="prog" id="pz-prog">1 / 10</div></div>
+    <div class="quiz-head"><div class="combo" id="pz-combo"></div><div class="combo" id="pz-score">0 分</div></div>
+    <div class="puzzle-clue" id="pz-clue">释义或句子线索</div>
+    <div class="puzzle-target" id="pz-target"></div>
+    <div class="puzzle-build empty" id="pz-build">选择词块…</div>
+    <div class="puzzle-grid" id="pz-grid"></div>
+    <div class="feedback" id="pz-fb">按正确顺序选择全部片段</div>
+  </div>
+
+  <div class="screen" id="starship">
+    <div class="study-top"><div class="mode">词汇星舰</div><div class="prog" id="ss-prog">波次 1 / 15</div></div>
+    <div class="ss-scene" id="ss-scene">
+      <div class="ss-stars a"></div><div class="ss-stars b"></div>
+      <div class="ss-planet"></div>
+      <div class="ss-ship"><i></i><b></b></div>
+      <div class="ss-laser" id="ss-laser"></div>
+      <div class="ss-enemy" id="ss-enemy"><span id="ss-prompt">word</span><small id="ss-direction">EN → 中文</small></div>
+      <div class="ss-burst" id="ss-burst"></div>
+      <div class="ss-hud"><span id="ss-shield">护盾 ◆◆◆</span><span id="ss-combo"></span><b id="ss-score">0 分</b></div>
+    </div>
+    <div class="timer ss-timer"><i id="ss-timer"></i></div>
+    <div class="opts" id="ss-opts"></div>
+    <div class="feedback" id="ss-fb">选择正确译义,为星舰锁定目标</div>
   </div>
 
   <div class="screen" id="chase">

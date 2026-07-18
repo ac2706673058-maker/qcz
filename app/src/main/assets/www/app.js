@@ -25,7 +25,7 @@ window.onTtsReady = ok => { ttsOK = !!ok; };
 let WORDS = {};
 let DECKS = [];
 let P = null;
-const DEFAULTS = { xp: 0, streak: 0, lastDay: "", dayLog: {}, dayNew: {}, words: {}, decksOff: {}, tr: {}, set: { newPerDay: 20, tts: 1, auto: 1, eye: 0, rate: 0.9 } };
+const DEFAULTS = { xp: 0, streak: 0, lastDay: "", dayLog: {}, dayNew: {}, words: {}, decksOff: {}, tr: {}, drill: {}, game: {}, set: { newPerDay: 20, tts: 1, auto: 1, eye: 0, rate: 0.9 } };
 
 /* ================= 使用者档案(双模式) =================
    fin  = 爸爸·金融投资(沿用老进度key,升级无损)
@@ -53,7 +53,7 @@ function loadP() {
   try { const s = NativeBridge.load(PF().store); P = s ? JSON.parse(s) : null; } catch (e) { P = null; }
   if (!P) P = JSON.parse(JSON.stringify(DEFAULTS));
   P.set = Object.assign({}, DEFAULTS.set, P.set || {});
-  ["dayLog", "dayNew", "words", "decksOff", "tr"].forEach(k => { if (!P[k]) P[k] = {}; });
+  ["dayLog", "dayNew", "words", "decksOff", "tr", "drill", "game"].forEach(k => { if (!P[k]) P[k] = {}; });
   applyVisualPrefs();
 }
 function applyVisualPrefs() {
@@ -122,6 +122,28 @@ function bumpDay() {
 }
 const level = () => Math.floor(Math.sqrt(P.xp / 60)) + 1;
 
+/* 游戏练习不擅自改写未到期的 FSRS 排程,但会记录答题表现供“弱项突围”选题。
+   到期或即将到期的词仍走原有 rate(),保证复习算法与旧进度完全兼容。 */
+function practiceHit(w, ok) {
+  if (!P.drill) P.drill = {};
+  const d = P.drill[w] || { ok: 0, bad: 0, last: 0 };
+  if (ok) d.ok++; else d.bad++;
+  d.last = NOW();
+  P.drill[w] = d;
+}
+function gameResult(id, right, total, score) {
+  if (!P.game) P.game = {};
+  const g = P.game[id] || { sessions: 0, best: 0, bestAcc: 0, lastAcc: 0, last: 0 };
+  const acc = total ? Math.round(right / total * 100) : 0;
+  g.sessions++;
+  g.best = Math.max(g.best || 0, score || 0);
+  g.bestAcc = Math.max(g.bestAcc || 0, acc);
+  g.lastAcc = acc;
+  g.last = NOW();
+  P.game[id] = g;
+  saveP();
+}
+
 function loadDecks() {
   let list = [];
   try { list = JSON.parse(NativeBridge.getDecks()); } catch (e) { list = []; }
@@ -159,6 +181,17 @@ function dueWords() {
     .sort((a, b) => P.words[a.w].due - P.words[b.w].due);
 }
 function seenWords() { return activeWords().filter(e => { const r = P.words[e.w]; return r && r.st > 0; }); }
+function weakScore(e) {
+  const r = P.words[e.w] || {};
+  const d = (P.drill && P.drill[e.w]) || {};
+  const overdue = r.due ? Math.max(0, (NOW() - r.due) / DAY) : 0;
+  const missRate = (d.bad || 0) / Math.max(1, (d.ok || 0) + (d.bad || 0));
+  return (r.lapses || 0) * 16 + (r.D || 5) * 1.7 + Math.max(0, 14 - (r.S || 0)) * .45
+    + Math.min(30, overdue) * .8 + (d.bad || 0) * 5 + missRate * 10;
+}
+function weakWords() {
+  return seenWords().slice().sort((a, b) => weakScore(b) - weakScore(a));
+}
 
 let _player = null;
 let _speakSeq = 0;
@@ -247,7 +280,43 @@ function webSpeak(t) {
 let toastT = null;
 function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2600); }
 
+/* 计时条交给合成线程做线性动画,主线程只保留一个到点回调。
+   电视端不再每 80~100ms 改一次宽度,低端 WebView 也能保持遥控响应。 */
+function timerBar(id, ms, done) {
+  const el = $(id);
+  el.style.transition = "none";
+  el.style.width = "100%";
+  void el.offsetWidth;
+  el.style.transition = "width " + ms + "ms linear";
+  requestAnimationFrame(() => { el.style.width = "0%"; });
+  return setTimeout(done, ms + 20);
+}
+function stopTimerBar(handle, id) {
+  clearTimeout(handle);
+  const el = $(id);
+  if (!el || !el.style) return;
+  let width = "0%";
+  try { width = getComputedStyle(el).width; } catch (e) { }
+  el.style.transition = "none";
+  el.style.width = width;
+}
+function gridMoveIndex(index, key, n, cols) {
+  if (n <= 1) return 0;
+  if (key === "LEFT") return (index + n - 1) % n;
+  if (key === "RIGHT") return (index + 1) % n;
+  const row = Math.floor(index / cols), col = index % cols, rows = Math.ceil(n / cols);
+  const step = key === "UP" ? -1 : 1;
+  if (key !== "UP" && key !== "DOWN") return index;
+  for (let d = 1; d <= rows; d++) {
+    const r = (row + step * d + rows * 2) % rows;
+    const next = r * cols + col;
+    if (next < n) return next;
+  }
+  return index;
+}
+
 let SCREEN = "home";
+let RETURN_SCREEN = "home";
 const handlers = {};
 function show(name) {
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
@@ -277,14 +346,8 @@ document.addEventListener("keydown", e => {
 const MENU = [
   { id: "new", ic: "✒️", t: "学新词", d: "衬线大字卡 · 自动发音" },
   { id: "review", ic: "🧠", t: "智能复习", d: "FSRS 记忆算法调度" },
-  { id: "quiz", ic: "⚡", t: "闪电测验", d: "限时四选一 · 连击得分" },
-  { id: "listen", ic: "🎧", t: "听音辨义", d: "只听发音 · 训练听力反应" },
-  { id: "cloze", ic: "📝", t: "例句填空", d: "读懂整句中文选英文词" },
-  { id: "spell", ic: "⌨️", t: "拼写挑战", d: "听音看义 · 遥控器拼单词" },
-  { id: "match", ic: "🀄", t: "词义配对", d: "消除式配对 · 上瘾警告" },
-  { id: "tf", ic: "⚖️", t: "极速判断", d: "对错二选一 · 拼反应" },
-  { id: "battle", ic: "🤖", t: "人机对战", d: "和AI拼速度拼准度" },
-  { id: "chase", ic: "👾", t: "词怪追逐", d: "答对击退怪物 · 闯关逃生" },
+  { id: "weak", ic: "🛡️", t: "弱项突围", d: "按遗忘风险精准选题" },
+  { id: "arcade", ic: "🎮", t: "训练馆", d: "多种记忆游戏 · 今日推荐" },
   { id: "sim", ic: "🏦", t: "实景模拟", d: "盈透/港新银行App动画实操课" },
   { id: "screens", ic: "📱", t: "界面对照", d: "对着券商/银行App学界面英文" },
   { id: "browse", ic: "📖", t: "单词本", d: "今日新学 · 全部已学" },
@@ -295,8 +358,23 @@ const MENU = [
   { id: "who", ic: "👥", t: "切换使用者", d: "爸爸金融版 ⇄ 弟弟中考版" },
   { id: "settings", ic: "⚙️", t: "设置", d: "新词量 · 发音 · 语速" }
 ];
+const GAME_MENU = [
+  { id: "quiz", ic: "⚡", t: "闪电测验", d: "限时四选一 · 连击得分" },
+  { id: "listen", ic: "🎧", t: "听音辨义", d: "只听发音 · 训练听力反应" },
+  { id: "cloze", ic: "📝", t: "例句填空", d: "读懂整句中文选英文词" },
+  { id: "spell", ic: "⌨️", t: "拼写挑战", d: "听音看义 · 完整拼写" },
+  { id: "chunks", ic: "🧩", t: "词块拼装", d: "拆成词块 · 重建字形记忆" },
+  { id: "sentence", ic: "💬", t: "句子拼图", d: "重排语序 · 读懂真实用法" },
+  { id: "starship", ic: "🚀", t: "词汇星舰", d: "双向回忆 · 护盾波次生存" },
+  { id: "match", ic: "🀄", t: "词义配对", d: "消除式配对 · 双通道记忆" },
+  { id: "tf", ic: "⚖️", t: "极速判断", d: "对错二选一 · 拼反应" },
+  { id: "battle", ic: "🤖", t: "人机对战", d: "和 AI 拼速度与准确率" },
+  { id: "chase", ic: "👾", t: "词怪追逐", d: "答对击退怪物 · 闯关逃生" }
+];
 function homeItems() { return MENU.filter(it => !PF().menuHide[it.id]); }
-function homeCols() { return homeItems().length > 16 ? 5 : 4; }
+function homeCols() { return homeItems().length >= 13 ? 5 : 4; }
+function arcadeItems() { return GAME_MENU.slice(); }
+function arcadeCols() { return arcadeItems().length > 10 ? 6 : 5; }
 
 /* 首页每日:英文日期 + 一句鸡汤(中英),按年内天数轮换,每天自动换一句 */
 const WEEKDAYS = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
@@ -334,6 +412,7 @@ handlers.home = {
     const items = homeItems();
     if (homeIdx >= items.length) homeIdx = 0;
     const due = dueWords().length;
+    const weakN = Math.min(15, weakWords().length);
     let unseen = 0;
     for (const e of activeWords()) { const r = P.words[e.w]; if (!r || !r.st) unseen++; }
     const newRemain = Math.min(newQuota(), unseen);
@@ -361,6 +440,8 @@ handlers.home = {
       let badge = "";
       if (it.id === "review" && due) badge = '<div class="badge">' + due + '</div>';
       if (it.id === "new" && newRemain) badge = '<div class="badge">' + newRemain + '</div>';
+      if (it.id === "weak" && weakN >= 8) badge = '<div class="badge">推荐</div>';
+      if (it.id === "arcade") badge = '<div class="badge">' + arcadeItems().length + '</div>';
       el.innerHTML = badge + (window.iconTile ? iconTile(it.id) : '<div class="ic">' + it.ic + '</div>') + '<div><div class="t">' + it.t + '</div><div class="d">' + it.d + '</div></div>';
       m.appendChild(el);
     });
@@ -368,11 +449,8 @@ handlers.home = {
   key(k) {
     const items = homeItems();
     const cols = homeCols(), n = items.length;
-    if (k === "LEFT") homeIdx = (homeIdx + n - 1) % n;
-    else if (k === "RIGHT") homeIdx = (homeIdx + 1) % n;
-    else if (k === "UP") homeIdx = (homeIdx - cols + n) % n;
-    else if (k === "DOWN") homeIdx = (homeIdx + cols) % n;
-    else if (k === "OK") { openMenu(items[homeIdx].id); return; }
+    if (["LEFT", "RIGHT", "UP", "DOWN"].includes(k)) homeIdx = gridMoveIndex(homeIdx, k, n, cols);
+    else if (k === "OK") { RETURN_SCREEN = "home"; openMenu(items[homeIdx].id); return; }
     else if (k === "BACK") { NativeBridge.exitApp(); return; }
     homeFocus();   // 只切换焦点类,不重建DOM → 聚焦平滑滑动
   }
@@ -384,6 +462,8 @@ function homeFocus() {
 function openMenu(id) {
   if (id === "new") startStudy("new");
   else if (id === "review") startStudy("review");
+  else if (id === "weak") startQuiz("weak");
+  else if (id === "arcade") { AR.idx = 0; show("arcade"); }
   else if (id === "quiz") startQuiz("quiz");
   else if (id === "listen") startQuiz("listen");
   else if (id === "cloze") startQuiz("cloze");
@@ -394,6 +474,9 @@ function openMenu(id) {
   else if (id === "custom") { CU.idx = 0; show("custom"); }
   else if (id === "sim") { simOpen(); }
   else if (id === "spell") { startSpell(); }
+  else if (id === "chunks") { startChunks(); }
+  else if (id === "sentence") { startSentence(); }
+  else if (id === "starship") { startStarship(); }
   else if (id === "chase") { startChase(); }
   else if (id === "who") { WHO.idx = CUR === "fin" ? 0 : 1; show("who"); }
   else if (id === "screens") { SC.view = "list"; SC.gi = 0; show("screens"); }
@@ -401,9 +484,54 @@ function openMenu(id) {
   else show(id);
 }
 
+/* ================= 训练馆(原有 8 种 + 2 种新玩法) ================= */
+const AR = { idx: 0 };
+function arcadeRecommended(items) {
+  const tried = items.filter(it => P.game && P.game[it.id] && P.game[it.id].sessions);
+  const weak = tried.slice().sort((a, b) => (P.game[a.id].lastAcc || 0) - (P.game[b.id].lastAcc || 0))[0];
+  if (weak && (P.game[weak.id].lastAcc || 0) < 75) return { it: weak, why: "上次正确率 " + P.game[weak.id].lastAcc + "%,今天再巩固一次" };
+  const it = items[dailyIndex() % items.length];
+  return { it: it, why: "今日轮换训练 · 换一种记忆通道,效果更稳" };
+}
+function arcadeFocus() {
+  const cards = document.querySelectorAll("#arc-grid .mcard");
+  for (let i = 0; i < cards.length; i++) cards[i].classList.toggle("focus", i === AR.idx);
+}
+handlers.arcade = {
+  enter() {
+    const items = arcadeItems();
+    if (AR.idx >= items.length) AR.idx = 0;
+    $("arc-mark").textContent = items.length;
+    const reco = arcadeRecommended(items);
+    $("arc-rec-name").textContent = reco.it.t;
+    $("arc-rec-desc").textContent = reco.why;
+    const grid = $("arc-grid"); grid.innerHTML = "";
+    grid.style.gridTemplateColumns = "repeat(" + arcadeCols() + ",1fr)";
+    items.forEach((it, i) => {
+      const g = (P.game && P.game[it.id]) || null;
+      const meta = g && g.sessions ? ("最佳 " + (g.best || 0) + " · 最近 " + (g.lastAcc || 0) + "%") : "尚未挑战 · 从零开始";
+      const el = document.createElement("div");
+      el.className = "mcard" + (i === AR.idx ? " focus" : "");
+      el.dataset.game = it.id;
+      el.innerHTML = (window.iconTile ? iconTile(it.id) : '<div class="ic">' + it.ic + '</div>')
+        + '<div><div class="t">' + it.t + '</div><div class="d">' + it.d + '</div><div class="game-meta">' + meta + '</div></div>';
+      grid.appendChild(el);
+    });
+  },
+  key(k) {
+    const items = arcadeItems(), n = items.length, cols = arcadeCols();
+    if (k === "BACK") { show("home"); return; }
+    if (["LEFT", "RIGHT", "UP", "DOWN"].includes(k)) AR.idx = gridMoveIndex(AR.idx, k, n, cols);
+    else if (k === "OK") { RETURN_SCREEN = "arcade"; openMenu(items[AR.idx].id); return; }
+    arcadeFocus();
+  }
+};
+
 /* ================= 学习(新词/复习/自选) ================= */
-const ST = { queue: [], i: 0, mode: "new", phase: "front", done: 0, again: 0, total: 0, lock: false, label: "" };
+const ST = { queue: [], i: 0, mode: "new", phase: "front", done: 0, again: 0, total: 0, lock: false, label: "", run: 0 };
 function startStudy(mode) {
+  RETURN_SCREEN = "home";
+  ST.run++;
   let q;
   if (mode === "new") {
     const n = newQuota();
@@ -432,7 +560,7 @@ function renderCard() {
   $("s-mean").textContent = e.m;
   $("s-ex").innerHTML = highlight(e.x, e.w);
   document.querySelectorAll(".jbtn").forEach(b => b.classList.remove("focus"));
-  if (P.set.auto) setTimeout(() => speak(e.w), 250);
+  if (P.set.auto) { const run = ST.run; setTimeout(() => { if (SCREEN === "study" && ST.run === run) speak(e.w); }, 250); }
 }
 function highlight(sent, w) {
   if (!sent) return "";
@@ -456,7 +584,9 @@ function judge(g) {
   rate(e.w, g);
   if (g < 3) { ST.again++; ST.queue.splice(Math.min(ST.queue.length, ST.i + 4), 0, e); ST.total = ST.queue.length; }
   ST.done++;
+  const run = ST.run;
   setTimeout(() => {
+    if (SCREEN !== "study" || ST.run !== run) return;
     ST.i++;
     if (ST.i >= ST.queue.length) finishSession();
     else renderCard();
@@ -464,13 +594,13 @@ function judge(g) {
 }
 handlers.study = {
   key(k) {
-    if (k === "BACK") { show("home"); return; }
+    if (k === "BACK") { ST.run++; show("home"); return; }
     if (ST.lock) return;
     if (ST.phase === "front") {
       if (k === "OK") flipCard();
       else if (k === "RIGHT") judge(3);
-      else if (k === "LEFT") { ST.lock = true; flipCard(); setTimeout(() => { ST.lock = false; judge(1); }, 900); }
-      else if (k === "DOWN") { ST.lock = true; flipCard(); setTimeout(() => { ST.lock = false; judge(2); }, 900); }
+      else if (k === "LEFT") { const run = ST.run; ST.lock = true; flipCard(); setTimeout(() => { if (SCREEN === "study" && ST.run === run) { ST.lock = false; judge(1); } }, 900); }
+      else if (k === "DOWN") { const run = ST.run; ST.lock = true; flipCard(); setTimeout(() => { if (SCREEN === "study" && ST.run === run) { ST.lock = false; judge(2); } }, 900); }
       else if (k === "PLAY" || k === "MENU") speak(ST.queue[ST.i].w);
     } else {
       if (k === "RIGHT") judge(3);
@@ -491,24 +621,25 @@ function finishSession() {
   $("f-msg").textContent = acc >= 85 ? "状态极佳,记忆曲线已为你安排好下次复习" : "没关系,忘记是记忆的必经之路,算法会加密复习";
   show("finish");
 }
-handlers.finish = { key(k) { if (k === "OK" || k === "BACK") show("home"); } };
+handlers.finish = { key(k) { if (k === "OK" || k === "BACK") show(RETURN_SCREEN || "home"); } };
 
 /* ================= 测验(闪电/听音/填空) ================= */
-const QZ = { list: [], i: 0, mode: "quiz", sel: 0, score: 0, combo: 0, best: 0, right: 0, lock: false, timer: null, tStart: 0, ansIdx: 0, optCount: 4 };
+const QZ = { list: [], i: 0, mode: "quiz", sel: 0, score: 0, combo: 0, best: 0, right: 0, lock: false, timer: null, tStart: 0, ansIdx: 0, optCount: 4, run: 0 };
 const QUIZ_N = 15, QUIZ_MS = 9000;
 function startQuiz(mode) {
+  QZ.run++;
   if (mode === "listen" && !P.set.tts) { toast("请先在设置中开启发音"); return; }
-  let pool = seenWords();
+  let pool = mode === "weak" ? weakWords() : seenWords();
   if (mode === "cloze") pool = pool.filter(e => e.x && e.x.length > 8);
   if (pool.length < 8) { toast("先学至少 8 个新词再来挑战"); return; }
-  QZ.list = shuffle(pool.slice()).slice(0, QUIZ_N);
+  QZ.list = mode === "weak" ? pool.slice(0, QUIZ_N) : shuffle(pool.slice()).slice(0, QUIZ_N);
   QZ.i = 0; QZ.mode = mode; QZ.score = 0; QZ.combo = 0; QZ.best = 0; QZ.right = 0;
   show("quiz"); renderQuiz();
 }
 function renderQuiz() {
   QZ.lock = false; QZ.sel = 0;
   const e = QZ.list[QZ.i];
-  $("q-mode").textContent = QZ.mode === "quiz" ? "闪电测验" : (QZ.mode === "listen" ? "听音辨义" : "例句填空");
+  $("q-mode").textContent = QZ.mode === "quiz" ? "闪电测验" : (QZ.mode === "listen" ? "听音辨义" : (QZ.mode === "weak" ? "弱项突围" : "例句填空"));
   $("q-prog").textContent = (QZ.i + 1) + " / " + QZ.list.length;
   $("q-score").textContent = QZ.score + " 分";
   $("q-combo").textContent = QZ.combo > 1 ? "⚡连击 ×" + QZ.combo : "";
@@ -522,13 +653,13 @@ function renderQuiz() {
   QZ.ansIdx = opts.indexOf(e);
   QZ.optCount = opts.length;
   const box = $("q-opts"); box.innerHTML = "";
-  if (QZ.mode === "quiz" || QZ.mode === "listen") {
+  if (QZ.mode === "quiz" || QZ.mode === "listen" || QZ.mode === "weak") {
     $("q-word").style.display = ""; $("q-phon").style.display = ""; $("q-sent").style.display = "none";
     if (QZ.mode === "listen") {
       $("q-word").textContent = "🎧";
       $("q-phon").textContent = "仔细听发音,选出正确释义 · 稍等会自动重播";
-      const qi = QZ.i;
-      setTimeout(() => { if (SCREEN === "quiz" && QZ.i === qi && !QZ.lock) speak(e.w); }, 3500);
+      const qi = QZ.i, run = QZ.run;
+      setTimeout(() => { if (SCREEN === "quiz" && QZ.run === run && QZ.i === qi && !QZ.lock) speak(e.w); }, 3500);
     } else {
       $("q-word").textContent = e.w;
       $("q-phon").textContent = e.p ? "/" + e.p + "/" : "";
@@ -556,17 +687,13 @@ function renderQuiz() {
       box.appendChild(d);
     });
   }
-  clearInterval(QZ.timer); QZ.tStart = NOW();
-  if (QZ.mode === "cloze") {
-    // 例句填空不限时:隐藏计时条,不启动倒计时
+  clearTimeout(QZ.timer); QZ.tStart = NOW();
+  if (QZ.mode === "cloze" || QZ.mode === "weak") {
+    // 深度回忆类不限时:避免把“想起来了”误判成“太慢”
+    $("q-timer").style.transition = "none";
     $("q-timer").style.width = "0%";
   } else {
-    $("q-timer").style.width = "100%";
-    QZ.timer = setInterval(() => {
-      const left = 1 - (NOW() - QZ.tStart) / QUIZ_MS;
-      $("q-timer").style.width = Math.max(0, left * 100) + "%";
-      if (left <= 0) answer(-1);
-    }, 100);
+    QZ.timer = timerBar("q-timer", QUIZ_MS, () => answer(-1));
   }
 }
 function moveSel(k) {
@@ -579,7 +706,7 @@ function moveSel(k) {
 }
 function answer(idx) {
   if (QZ.lock) return;
-  QZ.lock = true; clearInterval(QZ.timer);
+  QZ.lock = true; stopTimerBar(QZ.timer, "q-timer");
   const e = QZ.list[QZ.i];
   const opts = document.querySelectorAll("#q-opts .opt");
   const ok = idx === QZ.ansIdx;
@@ -598,23 +725,24 @@ function answer(idx) {
     $("q-fb").textContent = e.w + " → " + e.m;
     speak(e.w);
   }
-  const r = P.words[e.w];
-  if (r && r.due <= NOW() + DAY / 2) rate(e.w, ok ? 3 : 1); else { bumpDay(); saveP(); }
+  schedHit(e.w, ok);
   if (QZ.mode === "cloze" && ok) speak(e.x);
+  const run = QZ.run;
   setTimeout(() => {
+    if (SCREEN !== "quiz" || QZ.run !== run) return;
     QZ.i++;
     if (QZ.i >= QZ.list.length) finishQuiz(); else renderQuiz();
   }, ok ? 900 : 1900);
 }
 function finishQuiz() {
-  $("f-title").textContent = QZ.right === QZ.list.length ? "全对!完美!" : "测验完成";
+  $("f-title").textContent = QZ.right === QZ.list.length ? "全对!完美!" : (QZ.mode === "weak" ? "薄弱词已加固" : "测验完成");
   $("f-xp").textContent = "+" + (QZ.right * 5) + " XP · 得分 " + QZ.score;
   $("f-stats").innerHTML =
     '<div class="stat"><div class="n" style="color:var(--good)">' + QZ.right + '/' + QZ.list.length + '</div><div class="l">答对</div></div>'
     + '<div class="stat"><div class="n" style="color:var(--gold)">×' + QZ.best + '</div><div class="l">最高连击</div></div>'
     + '<div class="stat"><div class="n">' + QZ.score + '</div><div class="l">总分</div></div>';
-  $("f-msg").textContent = QZ.right >= QZ.list.length * 0.8 ? "反应又快又准,词汇正在变成本能" : "错误的词已被算法标记,复习时会重点照顾";
-  saveP(); show("finish");
+  $("f-msg").textContent = QZ.mode === "weak" ? "下一次进入会重新计算风险,把练习留给最需要的词" : (QZ.right >= QZ.list.length * 0.8 ? "反应又快又准,词汇正在变成本能" : "错误的词已被算法标记,复习时会重点照顾");
+  gameResult(QZ.mode, QZ.right, QZ.list.length, QZ.score); show("finish");
 }
 /* 例句填空:显示整句中文翻译。优先用词库内置译文(第5字段),
    否则查本机缓存,再否则调用AI翻译一次并永久缓存。 */
@@ -645,7 +773,7 @@ function setClozeTr(e) {
 
 handlers.quiz = {
   key(k) {
-    if (k === "BACK") { clearInterval(QZ.timer); show("home"); return; }
+    if (k === "BACK") { QZ.run++; stopTimerBar(QZ.timer, "q-timer"); show(RETURN_SCREEN || "home"); return; }
     if (k === "MENU" || k === "PLAY") { speak(QZ.list[QZ.i].w); return; }
     if (QZ.lock) return;
     if (k === "OK") answer(QZ.sel);
@@ -750,11 +878,17 @@ function customFocus() {
   return found;
 }
 
-function schedHit(w, ok) { const r = P.words[w]; if (r && r.due <= NOW() + DAY / 2) rate(w, ok ? 3 : 1); else { bumpDay(); saveP(); } }
+function schedHit(w, ok) {
+  practiceHit(w, ok);
+  const r = P.words[w];
+  if (r && r.due <= NOW() + DAY / 2) rate(w, ok ? 3 : 1);
+  else { bumpDay(); saveP(); }
+}
 
 /* ================= 词义配对 ================= */
-const MT = { cells: [], idx: 0, sel: -1, round: 0, rounds: 5, score: 0, combo: 0, best: 0, right: 0, wrong: 0, pool: [], lock: false, err: null };
+const MT = { cells: [], idx: 0, sel: -1, round: 0, rounds: 5, score: 0, combo: 0, best: 0, right: 0, wrong: 0, pool: [], lock: false, err: null, run: 0 };
 function startMatch() {
+  MT.run++;
   const pool = seenWords();
   if (pool.length < 12) { toast("先学至少 12 个新词再来配对"); return; }
   MT.pool = shuffle(pool.slice()); MT.round = 0; MT.rounds = Math.min(5, Math.floor(MT.pool.length / 4));
@@ -791,7 +925,7 @@ function matchFocus() {
 }
 handlers.match = {
   key(k) {
-    if (k === "BACK") { show("home"); return; }
+    if (k === "BACK") { MT.run++; show(RETURN_SCREEN || "home"); return; }
     if (MT.lock) return;
     const col = MT.idx < 4 ? 0 : 1, row = MT.idx % 4;
     if (k === "UP") { MT.idx = col * 4 + (row + 3) % 4; matchFocus(); return; }
@@ -814,7 +948,8 @@ handlers.match = {
           speak(word.w); schedHit(word.w, true);
           if (MT.cells.every(x => x.done)) {
             MT.lock = true;
-            setTimeout(() => { MT.round++; if (MT.round >= MT.rounds) finishMatch(); else renderMatch(); }, 500);
+            const run = MT.run;
+            setTimeout(() => { if (SCREEN !== "match" || MT.run !== run) return; MT.round++; if (MT.round >= MT.rounds) finishMatch(); else renderMatch(); }, 500);
           }
         } else {
           MT.combo = 0; MT.wrong++;
@@ -824,7 +959,8 @@ handlers.match = {
           $("m-fb").textContent = "✗ 配错了! -5分 · " + word.w + " 的释义是: " + word.m;
           schedHit(word.w, false);
           MT.lock = true;
-          setTimeout(() => { MT.err = null; MT.lock = false; drawMatch(); }, 700);
+          const run = MT.run;
+          setTimeout(() => { if (SCREEN !== "match" || MT.run !== run) return; MT.err = null; MT.lock = false; drawMatch(); }, 700);
         }
       }
     }
@@ -840,13 +976,14 @@ function finishMatch() {
     + '<div class="stat"><div class="n" style="color:var(--gold)">x' + MT.best + '</div><div class="l">最高连击</div></div>'
     + '<div class="stat"><div class="n">' + MT.score + '</div><div class="l">总分</div></div>';
   $("f-msg").textContent = "配对错的词已按记忆算法安排加密复习";
-  saveP(); show("finish");
+  gameResult("match", MT.right, tot, MT.score); show("finish");
 }
 
 /* ================= 极速判断 / 人机对战 ================= */
-const TF = { list: [], i: 0, truth: true, score: 0, combo: 0, best: 0, right: 0, timer: null, t0: 0, lock: false, vs: false, bot: 0, botT: null };
+const TF = { list: [], i: 0, truth: true, score: 0, combo: 0, best: 0, right: 0, timer: null, t0: 0, lock: false, vs: false, bot: 0, botT: null, run: 0 };
 const TF_N = 20, TF_MS = 4000;
 function startTF(vs) {
+  TF.run++;
   const pool = seenWords();
   if (pool.length < 10) { toast("先学至少 10 个新词再来挑战"); return; }
   TF.list = shuffle(pool.slice()).slice(0, TF_N);
@@ -870,9 +1007,9 @@ function renderTF() {
   $("t-score").textContent = (TF.vs ? "你 " : "") + TF.score + " 分";
   clearTimeout(TF.botT);
   if (TF.vs) {
-    const qi = TF.i;
+    const qi = TF.i, run = TF.run;
     TF.botT = setTimeout(() => {
-      if (TF.i !== qi || SCREEN !== "tf") return;
+      if (TF.run !== run || TF.i !== qi || SCREEN !== "tf") return;
       const botOk = Math.random() < 0.78;
       if (botOk) { TF.bot += 10 + Math.floor(Math.random() * 8); $("t-combo").textContent = "🤖 AI " + TF.bot + " 分 ✓"; }
       else { $("t-combo").textContent = "🤖 AI " + TF.bot + " 分 ✗"; }
@@ -883,17 +1020,12 @@ function renderTF() {
   $("t-fb").textContent = "";
   $("t-no").classList.remove("focus"); $("t-yes").classList.remove("focus");
   speak(e.w);
-  clearInterval(TF.timer); TF.t0 = NOW();
-  $("t-timer").style.width = "100%";
-  TF.timer = setInterval(() => {
-    const left = 1 - (NOW() - TF.t0) / TF_MS;
-    $("t-timer").style.width = Math.max(0, left * 100) + "%";
-    if (left <= 0) tfAnswer(null);
-  }, 80);
+  clearTimeout(TF.timer); TF.t0 = NOW();
+  TF.timer = timerBar("t-timer", TF_MS, () => tfAnswer(null));
 }
 function tfAnswer(saysMatch) {
   if (TF.lock) return;
-  TF.lock = true; clearInterval(TF.timer);
+  TF.lock = true; stopTimerBar(TF.timer, "t-timer");
   const e = TF.list[TF.i];
   const ok = saysMatch !== null && saysMatch === TF.truth;
   if (saysMatch !== null) (saysMatch ? $("t-yes") : $("t-no")).classList.add("focus");
@@ -909,11 +1041,12 @@ function tfAnswer(saysMatch) {
     $("t-fb").textContent = "✗ " + e.w + " → " + e.m;
   }
   schedHit(e.w, ok);
-  setTimeout(() => { TF.i++; if (TF.i >= TF.list.length) finishTF(); else renderTF(); }, ok ? 600 : 1600);
+  const run = TF.run;
+  setTimeout(() => { if (SCREEN !== "tf" || TF.run !== run) return; TF.i++; if (TF.i >= TF.list.length) finishTF(); else renderTF(); }, ok ? 600 : 1600);
 }
 handlers.tf = {
   key(k) {
-    if (k === "BACK") { clearInterval(TF.timer); clearTimeout(TF.botT); show("home"); return; }
+    if (k === "BACK") { TF.run++; stopTimerBar(TF.timer, "t-timer"); clearTimeout(TF.botT); show(RETURN_SCREEN || "home"); return; }
     if (k === "MENU" || k === "PLAY") { speak(TF.list[TF.i].w); return; }
     if (TF.lock) return;
     if (k === "LEFT") tfAnswer(false);
@@ -922,6 +1055,7 @@ handlers.tf = {
 };
 function finishTF() {
   clearTimeout(TF.botT);
+  gameResult(TF.vs ? "battle" : "tf", TF.right, TF.list.length, TF.score);
   if (TF.vs) {
     $("f-title").textContent = TF.score > TF.bot ? "🏆 你赢了!" : (TF.score === TF.bot ? "平局!" : "AI 险胜,再来!");
     $("f-xp").textContent = "+" + (TF.right * 4) + " XP";
@@ -929,7 +1063,7 @@ function finishTF() {
       + '<div class="stat"><div class="n" style="color:var(--bad)">' + TF.bot + '</div><div class="l">AI 得分</div></div>'
       + '<div class="stat"><div class="n">' + TF.right + '/' + TF.list.length + '</div><div class="l">你答对</div></div>';
     $("f-msg").textContent = "AI 不会累,但你会变强";
-    saveP(); show("finish"); return;
+    show("finish"); return;
   }
   $("f-title").textContent = TF.right >= TF.list.length * 0.9 ? "反应如闪电!" : "判断完成";
   $("f-xp").textContent = "+" + (TF.right * 4) + " XP · 得分 " + TF.score;
@@ -937,7 +1071,7 @@ function finishTF() {
     + '<div class="stat"><div class="n" style="color:var(--gold)">x' + TF.best + '</div><div class="l">最高连击</div></div>'
     + '<div class="stat"><div class="n">' + TF.score + '</div><div class="l">总分</div></div>';
   $("f-msg").textContent = "速度加分,连击加分,答错的词会加密复习";
-  saveP(); show("finish");
+  show("finish");
 }
 
 /* ================= AI 层 ================= */
@@ -1220,12 +1354,16 @@ handlers.stats = {
     const mastered = recs.filter(r => r.st === 2 && r.S >= 21).length;
     const total = Object.keys(WORDS).length;
     const todayN = P.dayLog[todayStr()] || 0;
+    const gameSessions = GAME_MENU.reduce((n, it) => n + (((P.game || {})[it.id] || {}).sessions || 0), 0);
+    const weakN = Math.min(15, weakWords().length);
     $("st-total").textContent = "词库总量 " + total + " 词";
     $("st-grid").innerHTML =
       '<div class="scard"><div class="n">' + learned + '</div><div class="l">已学单词</div></div>'
       + '<div class="scard"><div class="n">' + mastered + '</div><div class="l">已掌握(≥21天)</div></div>'
       + '<div class="scard"><div class="n">' + todayN + '</div><div class="l">今日学习次数</div></div>'
-      + '<div class="scard"><div class="n nflame">' + (window.glyph ? glyph("flame") : "") + P.streak + '</div><div class="l">连续天数 · Lv.' + level() + '</div></div>';
+      + '<div class="scard"><div class="n nflame">' + (window.glyph ? glyph("flame") : "") + P.streak + '</div><div class="l">连续天数 · Lv.' + level() + '</div></div>'
+      + '<div class="scard"><div class="n">' + gameSessions + '</div><div class="l">训练馆局数</div></div>'
+      + '<div class="scard"><div class="n">' + weakN + '</div><div class="l">弱项突围池</div></div>';
     const hm = $("heatmap"); hm.innerHTML = "";
     const days = 18 * 7;
     const start = NOW() - (days - 1) * DAY;
@@ -1383,7 +1521,10 @@ function renderScWords() {
     box.appendChild(el);
   });
   try { const fc = box.querySelector(".focus"); if (fc && fc.scrollIntoView) fc.scrollIntoView({ block: "nearest" }); } catch (e) { }
-  if (P.set.auto && items[SC.wi]) setTimeout(() => speak(items[SC.wi][0]), 200);
+  if (P.set.auto && items[SC.wi]) {
+    const gi = SC.gi, wi = SC.wi, word = items[SC.wi][0];
+    setTimeout(() => { if (SCREEN === "screens" && SC.view === "words" && SC.gi === gi && SC.wi === wi) speak(word); }, 200);
+  }
 }
 
 /* ================= 检查更新 ================= */
@@ -1474,9 +1615,10 @@ handlers.who = {
 };
 
 /* ================= 拼写挑战(听音看义,遥控器拼单词) ================= */
-const SPL = { list: [], i: 0, ans: "", input: [], ki: 0, score: 0, combo: 0, best: 0, right: 0, lock: false, hints: 0 };
+const SPL = { list: [], i: 0, ans: "", input: [], ki: 0, score: 0, combo: 0, best: 0, right: 0, lock: false, hints: 0, run: 0 };
 const SPL_KEYS = "abcdefghijklmnopqrstuvwxyz".split("").concat(["DEL", "HINT"]);
 function startSpell() {
+  SPL.run++;
   const pool = seenWords().filter(e => /^[a-zA-Z]{3,12}$/.test(e.w));
   if (pool.length < 8) { toast("先学至少 8 个可拼写的单词(纯字母)再来挑战"); return; }
   SPL.list = shuffle(pool.slice()).slice(0, 10);
@@ -1544,11 +1686,12 @@ function spellJudge() {
   }
   speak(e.w);
   schedHit(e.w, ok);
-  setTimeout(() => { SPL.i++; if (SPL.i >= SPL.list.length) finishSpell(); else renderSpell(); }, ok ? 1100 : 2600);
+  const run = SPL.run;
+  setTimeout(() => { if (SCREEN !== "spell" || SPL.run !== run) return; SPL.i++; if (SPL.i >= SPL.list.length) finishSpell(); else renderSpell(); }, ok ? 1100 : 2600);
 }
 handlers.spell = {
   key(k) {
-    if (k === "BACK") { show("home"); return; }
+    if (k === "BACK") { SPL.run++; show(RETURN_SCREEN || "home"); return; }
     if (k === "MENU" || k === "PLAY") { speak(SPL.list[SPL.i].w); return; }
     if (SPL.lock) return;
     const n = SPL_KEYS.length;                     // 28 键,7列×4行
@@ -1575,16 +1718,268 @@ function finishSpell() {
     + '<div class="stat"><div class="n" style="color:var(--gold)">×' + SPL.best + '</div><div class="l">最高连击</div></div>'
     + '<div class="stat"><div class="n">' + SPL.score + '</div><div class="l">总分</div></div>';
   $("f-msg").textContent = "拼错的词已安排加密复习 · 考试拼写题就这么练出来";
-  saveP(); show("finish");
+  gameResult("spell", SPL.right, SPL.list.length, SPL.score); show("finish");
 }
 
-/* ================= 启动 ================= */
+/* ================= 词块拼装 / 句子拼图 =================
+   两种玩法共用一套轻量拼图引擎:前者重建单词字形,后者重建真实例句语序。
+   每块都带稳定序号,即使句子里有重复词也不会误判。 */
+const PG = { mode: "chunks", list: [], i: 0, pieces: [], chosen: [], idx: 0, score: 0, combo: 0, best: 0, right: 0, lock: false, seq: 0 };
+function chunkTokens(w) {
+  const s = String(w).toLowerCase();
+  const count = s.length <= 6 ? 3 : (s.length <= 10 ? 4 : 5);
+  const out = [];
+  let at = 0;
+  for (let i = 0; i < count && at < s.length; i++) {
+    const left = s.length - at, slots = count - i;
+    const n = Math.ceil(left / slots);
+    out.push(s.slice(at, at + n)); at += n;
+  }
+  return out;
+}
+function sentenceTokens(s) {
+  return String(s).trim().replace(/\s+/g, " ").split(" ").filter(Boolean);
+}
+function startChunks() { startPuzzle("chunks"); }
+function startSentence() { startPuzzle("sentence"); }
+function startPuzzle(mode) {
+  let pool;
+  if (mode === "chunks") pool = seenWords().filter(e => /^[a-zA-Z]{5,15}$/.test(e.w));
+  else pool = seenWords().filter(e => e.x && sentenceTokens(e.x).length >= 4 && sentenceTokens(e.x).length <= 10);
+  const minimum = mode === "chunks" ? 8 : 6;
+  if (pool.length < minimum) {
+    toast(mode === "chunks" ? "先学至少 8 个五字母以上的单词再来拼装" : "先学习一些带例句的单词再来挑战句子拼图");
+    return;
+  }
+  PG.mode = mode; PG.list = shuffle(pool.slice()).slice(0, 10); PG.i = 0;
+  PG.score = 0; PG.combo = 0; PG.best = 0; PG.right = 0; PG.seq++;
+  show("puzzle"); renderPuzzle();
+}
+function renderPuzzle() {
+  const e = PG.list[PG.i], tokens = PG.mode === "chunks" ? chunkTokens(e.w) : sentenceTokens(e.x);
+  PG.pieces = shuffle(tokens.map((txt, order) => ({ txt: txt, order: order, used: false })));
+  PG.chosen = []; PG.idx = 0; PG.lock = false; PG.seq++;
+  $("pz-title").textContent = PG.mode === "chunks" ? "词块拼装" : "句子拼图";
+  $("pz-prog").textContent = (PG.i + 1) + " / " + PG.list.length;
+  $("pz-score").textContent = PG.score + " 分";
+  $("pz-combo").textContent = PG.combo > 1 ? "⚡连击 ×" + PG.combo : "";
+  $("pz-clue").textContent = PG.mode === "chunks" ? e.m : (e.tr || (P.tr && P.tr[e.w]) || ("用 “" + e.w + "” 还原这条例句"));
+  $("pz-target").textContent = PG.mode === "chunks"
+    ? ((e.p ? "/" + e.p + "/ · " : "") + e.w.length + " 个字母 · " + tokens.length + " 个词块")
+    : ("核心词: " + e.w + " · " + e.m);
+  $("pz-fb").textContent = PG.mode === "chunks" ? "按正确顺序选择全部词块 · 最后一格可撤销" : "按正确语序选择全部片段 · 最后一格可撤销";
+  drawPuzzle();
+  if (PG.mode === "chunks") speak(e.w);
+}
+function puzzleText(tokens) {
+  return tokens.join(PG.mode === "chunks" ? "" : " ").replace(/\s+([,.!?;:])/g, "$1");
+}
+function drawPuzzle() {
+  const selected = PG.chosen.map(i => PG.pieces[i].txt);
+  const build = $("pz-build");
+  build.textContent = selected.length ? puzzleText(selected) : (PG.mode === "chunks" ? "选择词块…" : "从第一个片段开始…");
+  build.className = "puzzle-build" + (selected.length ? "" : " empty");
+  const grid = $("pz-grid"); grid.innerHTML = "";
+  PG.pieces.forEach((p, i) => {
+    const d = document.createElement("div");
+    d.className = "piece" + (p.used ? " used" : "") + (PG.idx === i ? " focus" : "");
+    d.textContent = p.txt; d.dataset.piece = i; grid.appendChild(d);
+  });
+  const undo = document.createElement("div");
+  undo.className = "piece undo" + (PG.idx === PG.pieces.length ? " focus" : "");
+  undo.textContent = "↶ 撤销"; grid.appendChild(undo);
+}
+function puzzleFocus() {
+  const cells = $("pz-grid").children;
+  for (let i = 0; i < cells.length; i++) cells[i].classList.toggle("focus", i === PG.idx);
+}
+function puzzleMove(k) {
+  const n = PG.pieces.length + 1, cols = 4;
+  PG.idx = gridMoveIndex(PG.idx, k, n, cols);
+  puzzleFocus();
+}
+function puzzleChoose() {
+  if (PG.idx === PG.pieces.length) {
+    const last = PG.chosen.pop();
+    if (last !== undefined) PG.pieces[last].used = false;
+    drawPuzzle(); return;
+  }
+  const p = PG.pieces[PG.idx];
+  if (!p || p.used) return;
+  p.used = true; PG.chosen.push(PG.idx); drawPuzzle();
+  if (PG.chosen.length < PG.pieces.length) return;
+  PG.lock = true;
+  const seq = PG.seq;
+  setTimeout(() => { if (SCREEN === "puzzle" && seq === PG.seq) judgePuzzle(); }, 120);
+}
+function judgePuzzle() {
+  const e = PG.list[PG.i];
+  const ok = PG.chosen.every((idx, pos) => PG.pieces[idx].order === pos);
+  try { if (window.SFX) (ok ? SFX.good() : SFX.bad()); } catch (e2) { }
+  if (ok) {
+    PG.combo++; PG.best = Math.max(PG.best, PG.combo); PG.right++;
+    const gain = 12 + Math.min(10, PG.combo * 2); PG.score += gain; P.xp += 5;
+    $("pz-build").className = "puzzle-build good";
+    $("pz-fb").textContent = "✓ 完成! +" + gain + " · " + e.w + " = " + e.m;
+  } else {
+    PG.combo = 0;
+    $("pz-build").className = "puzzle-build bad";
+    $("pz-build").textContent = PG.mode === "chunks" ? e.w : e.x;
+    $("pz-fb").textContent = "正确答案已还原 · 再读一遍形成完整记忆";
+  }
+  speak(PG.mode === "chunks" ? e.w : e.x);
+  schedHit(e.w, ok);
+  const seq = PG.seq;
+  setTimeout(() => {
+    if (SCREEN !== "puzzle" || seq !== PG.seq) return;
+    PG.i++; if (PG.i >= PG.list.length) finishPuzzle(); else renderPuzzle();
+  }, ok ? 950 : 2200);
+}
+function finishPuzzle() {
+  const acc = Math.round(PG.right / PG.list.length * 100);
+  $("f-title").textContent = PG.right === PG.list.length ? "拼图全通!" : (PG.mode === "chunks" ? "词块训练完成" : "语序训练完成");
+  $("f-xp").textContent = "+" + (PG.right * 5) + " XP · 得分 " + PG.score;
+  $("f-stats").innerHTML = '<div class="stat"><div class="n" style="color:var(--good)">' + PG.right + '/' + PG.list.length + '</div><div class="l">完成</div></div>'
+    + '<div class="stat"><div class="n" style="color:var(--gold)">×' + PG.best + '</div><div class="l">最高连击</div></div>'
+    + '<div class="stat"><div class="n">' + acc + '%</div><div class="l">正确率</div></div>';
+  $("f-msg").textContent = PG.mode === "chunks" ? "从词块到完整单词,拼写记忆会更牢" : "从单词走进句子,才是真正会使用";
+  gameResult(PG.mode, PG.right, PG.list.length, PG.score); show("finish");
+}
+handlers.puzzle = {
+  key(k) {
+    if (k === "BACK") { PG.seq++; show(RETURN_SCREEN || "home"); return; }
+    if (k === "MENU" || k === "PLAY") { const e = PG.list[PG.i]; if (e) speak(PG.mode === "chunks" ? e.w : e.x); return; }
+    if (PG.lock) return;
+    if (k === "OK") puzzleChoose();
+    else if (["UP", "DOWN", "LEFT", "RIGHT"].includes(k)) puzzleMove(k);
+  }
+};
+
+/* ================= 词汇星舰(双向回忆生存战) ================= */
+const SS = { list: [], opts: [], i: 0, sel: 0, ansIdx: 0, dir: "en", hull: 3, score: 0, combo: 0, best: 0, right: 0, wrong: 0, lock: false, timer: null, run: 0 };
+const SS_N = 15, SS_TIME = 7500;
+function roundList(pool, n) {
+  const out = [];
+  while (out.length < n) out.push.apply(out, shuffle(pool.slice()));
+  return out.slice(0, n);
+}
+function startStarship() {
+  SS.run++;
+  const pool = seenWords().filter(e => e.m);
+  if (pool.length < 8) { toast("先学至少 8 个单词再驾驶词汇星舰"); return; }
+  SS.list = roundList(pool, SS_N); SS.i = 0; SS.hull = 3; SS.score = 0; SS.combo = 0; SS.best = 0; SS.right = 0; SS.wrong = 0;
+  show("starship");
+  $("ss-burst").innerHTML = "";
+  renderStarship();
+}
+function renderStarship() {
+  SS.lock = false; SS.sel = 0;
+  const e = SS.list[SS.i];
+  SS.dir = (SS.i + dailyIndex()) % 2 ? "zh" : "en";
+  const opts = [e], pool = shuffle(activeWords().filter(x => x.w !== e.w && x.m !== e.m));
+  for (const x of pool) { if (opts.length >= 4) break; opts.push(x); }
+  shuffle(opts); SS.opts = opts; SS.ansIdx = opts.indexOf(e);
+  $("ss-prog").textContent = "波次 " + (SS.i + 1) + " / " + SS.list.length;
+  $("ss-score").textContent = SS.score + " 分";
+  $("ss-combo").textContent = SS.combo > 1 ? "连击 ×" + SS.combo : "";
+  $("ss-shield").textContent = "护盾 " + "◆".repeat(SS.hull) + "◇".repeat(3 - SS.hull);
+  $("ss-prompt").textContent = SS.dir === "en" ? e.w : e.m;
+  $("ss-direction").textContent = SS.dir === "en" ? "EN → 中文 · 锁定译义" : "中文 → EN · 反向回忆";
+  $("ss-fb").textContent = SS.dir === "en" ? "选择正确译义,为星舰锁定目标" : "选择正确英文,启动反向识别系统";
+  const enemy = $("ss-enemy"), scene = $("ss-scene");
+  enemy.classList.remove("hit", "miss"); scene.classList.remove("damage");
+  enemy.classList.toggle("long", $("ss-prompt").textContent.length > 18);
+  const box = $("ss-opts"); box.innerHTML = "";
+  opts.forEach((o, i) => {
+    const d = document.createElement("div"); d.className = "opt" + (i === 0 ? " focus" : "");
+    const text = SS.dir === "en" ? o.m : o.w;
+    d.innerHTML = '<span class="idx">' + (i + 1) + '</span><span' + (SS.dir === "zh" ? ' class="serif" style="font-size:3.3vmin;font-weight:750"' : "") + '>' + esc(text) + '</span>';
+    box.appendChild(d);
+  });
+  if (SS.dir === "en") speak(e.w);
+  clearTimeout(SS.timer);
+  const run = SS.run;
+  SS.timer = timerBar("ss-timer", SS_TIME, () => { if (SCREEN === "starship" && SS.run === run) starshipAnswer(-1); });
+}
+function starshipMove(k) {
+  SS.sel = gridMoveIndex(SS.sel, k, 4, 2);
+  const opts = $("ss-opts").children;
+  for (let i = 0; i < opts.length; i++) opts[i].classList.toggle("focus", i === SS.sel);
+}
+function starBurst(ok) {
+  const box = $("ss-burst");
+  for (let i = 0; i < (ok ? 12 : 6); i++) {
+    const p = document.createElement("i"); p.className = "ss-particle";
+    p.style.left = (ok ? 72 + Math.random() * 9 : 16 + Math.random() * 5) + "%";
+    p.style.top = (36 + Math.random() * 28) + "%";
+    p.style.background = ok ? (i % 2 ? "#9DEBFF" : "#FFD66B") : "#FF6961";
+    box.appendChild(p);
+    const dx = (Math.random() * 2 - 1) * 18, dy = (Math.random() * 2 - 1) * 16;
+    try { p.animate([{ transform: "translate(0,0) scale(1)", opacity: 1 }, { transform: "translate(" + dx + "vmin," + dy + "vmin) scale(.1)", opacity: 0 }], { duration: 520 + Math.random() * 260, easing: "cubic-bezier(.2,.8,.3,1)" }); } catch (x) { }
+    setTimeout(() => { try { box.removeChild(p); } catch (x) { } }, 850);
+  }
+}
+function starshipAnswer(idx) {
+  if (SS.lock) return;
+  SS.lock = true; stopTimerBar(SS.timer, "ss-timer");
+  const e = SS.list[SS.i], ok = idx === SS.ansIdx;
+  const opts = $("ss-opts").children;
+  if (opts[SS.ansIdx]) opts[SS.ansIdx].classList.add("right");
+  if (!ok && idx >= 0 && opts[idx]) opts[idx].classList.add("wrong");
+  if (ok) {
+    SS.combo++; SS.best = Math.max(SS.best, SS.combo); SS.right++;
+    const gain = 14 + Math.min(12, SS.combo * 2); SS.score += gain; P.xp += 5;
+    if (SS.combo % 5 === 0 && SS.hull < 3) SS.hull++;
+    $("ss-fb").textContent = "命中! +" + gain + " · " + e.w + " = " + e.m;
+    const laser = $("ss-laser"), enemy = $("ss-enemy");
+    laser.classList.remove("fire"); enemy.classList.remove("hit"); void laser.offsetWidth; laser.classList.add("fire"); enemy.classList.add("hit");
+    starBurst(true);
+    try { if (window.SFX) (SFX.hit ? SFX.hit() : SFX.good()); } catch (x) { }
+  } else {
+    SS.combo = 0; SS.wrong++; SS.hull = Math.max(0, SS.hull - 1);
+    $("ss-fb").textContent = (idx < 0 ? "目标突破防线! " : "锁定错误! ") + e.w + " → " + e.m;
+    const scene = $("ss-scene"), enemy = $("ss-enemy");
+    scene.classList.remove("damage"); enemy.classList.remove("miss"); void scene.offsetWidth; scene.classList.add("damage"); enemy.classList.add("miss");
+    starBurst(false);
+    try { if (window.SFX) { SFX.bad(); SFX.danger(); } } catch (x) { }
+  }
+  $("ss-shield").textContent = "护盾 " + "◆".repeat(SS.hull) + "◇".repeat(3 - SS.hull);
+  speak(e.w); schedHit(e.w, ok);
+  const run = SS.run;
+  setTimeout(() => {
+    if (SCREEN !== "starship" || SS.run !== run) return;
+    if (SS.hull <= 0) { finishStarship(false); return; }
+    SS.i++; if (SS.i >= SS.list.length) finishStarship(true); else renderStarship();
+  }, ok ? 720 : 1500);
+}
+function finishStarship(survived) {
+  stopTimerBar(SS.timer, "ss-timer");
+  const total = SS.right + SS.wrong, acc = total ? Math.round(SS.right / total * 100) : 0;
+  $("f-title").textContent = survived ? "星域清扫完成!" : "护盾耗尽,返航整备";
+  $("f-xp").textContent = "+" + (SS.right * 5) + " XP · 得分 " + SS.score;
+  $("f-stats").innerHTML = '<div class="stat"><div class="n" style="color:var(--good)">' + SS.right + '/' + total + '</div><div class="l">命中</div></div>'
+    + '<div class="stat"><div class="n" style="color:var(--gold)">×' + SS.best + '</div><div class="l">最高连击</div></div>'
+    + '<div class="stat"><div class="n">' + acc + '%</div><div class="l">锁定率</div></div>';
+  $("f-msg").textContent = "英译中与中译英交替出现,让识别与回忆形成双向通路";
+  gameResult("starship", SS.right, total, SS.score); show("finish");
+}
+handlers.starship = {
+  key(k) {
+    if (k === "BACK") { SS.run++; stopTimerBar(SS.timer, "ss-timer"); $("ss-burst").innerHTML = ""; show(RETURN_SCREEN || "home"); return; }
+    if (k === "MENU" || k === "PLAY") { const e = SS.list[SS.i]; if (e) speak(e.w); return; }
+    if (SS.lock) return;
+    if (k === "OK") starshipAnswer(SS.sel);
+    else if (["UP", "DOWN", "LEFT", "RIGHT"].includes(k)) starshipMove(k);
+  }
+};
+
 /* ================= 词怪追逐(闯关逃生) =================
    小人在前跑,词怪在后追,间距越拉越近。答对词义→甩出道具击退词怪、向前闯关;
    答错/超时→词怪逼近。被追上=失败,闯到终点=逃生成功。 */
-const CH = { list: [], i: 0, sel: 0, ansIdx: 0, gap: 62, pos: 0, goal: 15, score: 0, combo: 0, best: 0, right: 0, wrong: 0, lock: false, over: false, timer: null, creep: null, t0: 0 };
-const CH_TIME = 8000, CH_KNOCK = 15, CH_PENALTY = 20, CH_CREEP = 0.14;
+const CH = { list: [], i: 0, sel: 0, ansIdx: 0, gap: 62, pos: 0, goal: 15, score: 0, combo: 0, best: 0, right: 0, wrong: 0, lock: false, over: false, timer: null, creep: null, t0: 0, run: 0 };
+const CH_TIME = 8000, CH_KNOCK = 15, CH_PENALTY = 20, CH_CREEP = 0.22;
 function startChase() {
+  CH.run++;
   const pool = activeWords().filter(e => e.m);
   if (pool.length < 8) { toast("当前词库太小,先开一个词库再来玩"); return; }
   CH.list = shuffle(pool.slice());
@@ -1620,19 +2015,14 @@ function renderChase() {
   drawChase();
   speak(e.w);
   // 计时条 + 词怪缓慢逼近(制造紧张)
-  clearInterval(CH.timer); clearInterval(CH.creep); CH.t0 = NOW();
-  $("ch-timer").style.width = "100%";
-  CH.timer = setInterval(() => {
-    const left = 1 - (NOW() - CH.t0) / CH_TIME;
-    $("ch-timer").style.width = Math.max(0, left * 100) + "%";
-    if (left <= 0) chaseAnswer(-1);
-  }, 80);
+  clearTimeout(CH.timer); clearInterval(CH.creep); CH.t0 = NOW();
+  CH.timer = timerBar("ch-timer", CH_TIME, () => chaseAnswer(-1));
   CH.creep = setInterval(() => {
     if (CH.lock) return;
     CH.gap = Math.max(0, CH.gap - CH_CREEP);
     drawChase();
     if (CH.gap <= 0) chaseAnswer(-1);
-  }, 100);
+  }, 160);
 }
 function drawChase() {
   const gap = clamp(CH.gap, 0, 100);
@@ -1675,7 +2065,7 @@ function chaseMove(k) {
 }
 function chaseAnswer(idx) {
   if (CH.lock) return;
-  CH.lock = true; clearInterval(CH.timer); clearInterval(CH.creep);
+  CH.lock = true; stopTimerBar(CH.timer, "ch-timer"); clearInterval(CH.creep);
   const e = CH.cur;
   const opts = document.querySelectorAll("#ch-opts .opt");
   const ok = idx === CH.ansIdx;
@@ -1702,19 +2092,20 @@ function chaseAnswer(idx) {
     try { if (window.SFX) { SFX.bad(); SFX.danger(); } } catch (x) { }
     $("chase").classList.remove("shake"); void $("chase").offsetWidth; $("chase").classList.add("shake");
     const m = $("ch-monster"); m.classList.remove("lunge"); void m.offsetWidth; m.classList.add("lunge");
-    const v = document.querySelector("#chase .ch-vignette"); if (v) { v.style.opacity = "1"; setTimeout(() => { if (CH.gap >= 28) v.style.opacity = ""; }, 260); }
+    const v = document.querySelector("#chase .ch-vignette"), run = CH.run; if (v) { v.style.opacity = "1"; setTimeout(() => { if (CH.run === run && CH.gap >= 28) v.style.opacity = ""; }, 260); }
     chaseParticles(Math.max(6, 54 - CH.gap * 0.5) + 6, "#FF3B30", 8);
   }
   drawChase();
   schedHit(e.w, ok);
-  if (CH.pos >= CH.goal) { CH.over = true; setTimeout(() => finishChase(true), 800); return; }
-  if (CH.gap <= 0) { CH.over = true; setTimeout(() => finishChase(false), 900); return; }
+  const run = CH.run;
+  if (CH.pos >= CH.goal) { CH.over = true; setTimeout(() => { if (SCREEN === "chase" && CH.run === run) finishChase(true); }, 800); return; }
+  if (CH.gap <= 0) { CH.over = true; setTimeout(() => { if (SCREEN === "chase" && CH.run === run) finishChase(false); }, 900); return; }
   CH.i++;
-  setTimeout(() => { if (SCREEN === "chase" && !CH.over) renderChase(); }, ok ? 750 : 1500);
+  setTimeout(() => { if (SCREEN === "chase" && CH.run === run && !CH.over) renderChase(); }, ok ? 750 : 1500);
 }
 handlers.chase = {
   key(k) {
-    if (k === "BACK") { clearInterval(CH.timer); clearInterval(CH.creep); CH.over = true; show("home"); return; }
+    if (k === "BACK") { CH.run++; stopTimerBar(CH.timer, "ch-timer"); clearInterval(CH.creep); CH.over = true; show(RETURN_SCREEN || "home"); return; }
     if (k === "MENU" || k === "PLAY") { if (CH.cur) speak(CH.cur.w); return; }
     if (CH.lock) return;
     if (k === "OK") chaseAnswer(CH.sel);
@@ -1722,7 +2113,7 @@ handlers.chase = {
   }
 };
 function finishChase(win) {
-  clearInterval(CH.timer); clearInterval(CH.creep);
+  stopTimerBar(CH.timer, "ch-timer"); clearInterval(CH.creep);
   const tot = CH.right + CH.wrong;
   const acc = tot ? Math.round(CH.right / tot * 100) : 0;
   $("f-title").textContent = win ? "🎉 成功逃生!" : "👾 被词怪追上了";
@@ -1732,7 +2123,7 @@ function finishChase(win) {
     + '<div class="stat"><div class="n">' + acc + '%</div><div class="l">正确率</div></div>';
   $("f-msg").textContent = win ? "词义配对越快越准,道具威力越大!" : "别灰心,答对就能击退它,再来一次!";
   try { if (window.SFX) (win ? SFX.win() : SFX.danger()); } catch (x) { }
-  saveP(); show("finish");
+  gameResult("chase", CH.right, tot, CH.score); show("finish");
 }
 
 /* ================= 启动 ================= */
