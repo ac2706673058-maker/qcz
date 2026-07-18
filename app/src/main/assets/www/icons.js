@@ -1,4 +1,4 @@
-/* ================= iOS 风格图标库 (v6.0) =================
+/* ================= iOS 风格图标库 (v6.2) =================
    线性白色图标 + 彩色渐变圆角方块(iOS 设置/主屏那种 tile),取代 emoji。
    全部内联 SVG,自绘,离线可用。 */
 "use strict";
@@ -25,6 +25,8 @@
     custom: '<rect x="4" y="5" width="16" height="16" rx="2.4"/><path d="M4 9.5h16M8.5 3v4M15.5 3v4"/>',
     ai: '<path d="M12 4 2.5 8.5 12 13l9.5-4.5L12 4z"/><path d="M6.5 11v4.5c0 1.3 2.7 3 5.5 3s5.5-1.7 5.5-3V11"/>',
     decks: '<path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="M3.5 12.5 12 17l8.5-4.5"/><path d="M3.5 16.5 12 21l8.5-4.5"/>',
+    cloud: '<path d="M6.5 18.5h11a4 4 0 0 0 .5-7.9A6.2 6.2 0 0 0 6.2 9a4.8 4.8 0 0 0 .3 9.5z"/><path d="M12 9.5v6M9.7 12l2.3-2.5 2.3 2.5"/>',
+    restore: '<path d="M4 7v5h5"/><path d="M5.5 10a7.5 7.5 0 1 1 .8 6.7"/><path d="M12 8v4.5l3 1.8"/>',
     stats: '<path d="M5 21V11M12 21V4M19 21v-6"/><path d="M3.5 21h17"/>',
     who: '<circle cx="9" cy="8" r="3.2"/><path d="M3.2 20a5.8 5.8 0 0 1 11.6 0"/><path d="M16 5.2a3.2 3.2 0 0 1 0 5.6"/><path d="M17.5 20a5.8 5.8 0 0 0-2.7-4.9"/>',
     settings: '<circle cx="12" cy="12" r="3.1"/><path d="M12 2.5v3M12 18.5v3M21.5 12h-3M5.5 12h-3M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1M18.7 18.7l-2.1-2.1M7.4 7.4 5.3 5.3"/>',
@@ -46,7 +48,7 @@
     match: ['#E18A31', '#BF5A1B'], tf: ['#3BA9A0', '#267A75'], battle: ['#76767E', '#4A4A50'],
     chase: ['#DF5A53', '#B83238'], sim: ['#4DA16B', '#307A4E'], screens: ['#51A0C4', '#2D72A1'],
     browse: ['#D78634', '#AF5C24'], custom: ['#D6607C', '#A84063'], ai: ['#7469D1', '#5047A4'],
-    decks: ['#4A91DE', '#286CB6'], stats: ['#51A66C', '#327C4C'], who: ['#50AEC2', '#2E7E9F'],
+    decks: ['#4A91DE', '#286CB6'], cloud: ['#58A9D8', '#336DB7'], restore: ['#55A66F', '#347C4F'], stats: ['#51A66C', '#327C4C'], who: ['#50AEC2', '#2E7E9F'],
     settings: ['#76767E', '#4A4A50'],
     newPerDay: ['#4A91DE', '#286CB6'], tts: ['#D78634', '#AF5C24'], auto: ['#4DA16B', '#307A4E'],
     eye: ['#A58A58', '#71603F'], rate: ['#A969C4', '#754693'], update: ['#4A91DE', '#286CB6'], reset: ['#DF5A53', '#B83238'],
@@ -74,8 +76,10 @@
   };
   // 头像:渐变圆 + 白色人形,按档案着色
   var AV = { fin: ['#0A84FF', '#0060E6'], teen: ['#FF9F0A', '#FF6A00'] };
+  var AV_MORE = [['#AF52DE','#7B2CBF'],['#34C759','#17853A'],['#FF375F','#C91E48'],['#5AC8FA','#287CB8'],['#FFCC00','#C98500'],['#5856D6','#3633A5']];
   window.avatar = function (prof, cls) {
-    var c = AV[prof] || AV.fin;
+    var c = AV[prof];
+    if (!c) { var h = 0, s = String(prof || "family"); for (var i = 0; i < s.length; i++) h = ((h * 31) + s.charCodeAt(i)) >>> 0; c = AV_MORE[h % AV_MORE.length]; }
     return '<span class="av ' + (cls || '') + '" style="background:linear-gradient(160deg,' + c[0] + ',' + c[1] + ')">' +
       '<svg viewBox="0 0 24 24" fill="#fff" class="mglyph">' + G.user + '</svg></span>';
   };

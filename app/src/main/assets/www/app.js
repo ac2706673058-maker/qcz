@@ -27,27 +27,86 @@ let DECKS = [];
 let P = null;
 const DEFAULTS = { xp: 0, streak: 0, lastDay: "", dayLog: {}, dayNew: {}, words: {}, decksOff: {}, tr: {}, drill: {}, game: {}, set: { newPerDay: 20, tts: 1, auto: 1, eye: 0, rate: 0.9 } };
 
-/* ================= 使用者档案(双模式) =================
-   fin  = 爸爸·金融投资(沿用老进度key,升级无损)
-   teen = 弟弟·中考冲刺(独立进度,隐藏金融功能,词库按 profile 过滤) */
-const PROFILES = {
+/* ================= 家庭空间 v2 =================
+   “人物”与“学习模板”分离。爸爸/弟弟保留原 id 和原存储 key，升级绝不搬迁旧进度；
+   新人物使用安全生成的 id 和独立 progress_user_* 文件，并默认拥有全部功能。 */
+const PROFILE_TEMPLATES = {
   fin: {
-    name: "爸爸 · 金融投资", short: "爸爸", icon: "💼", store: "progress",
-    menuHide: { chase: 1 }, deckOk: p => p !== "teen",
+    label: "金融英语", deckOk: p => p !== "teen",
     slogans: ["看懂<em>世界</em>的词汇", "读懂<em>硅谷</em>与华尔街", "今天也在<em>变强</em>", "新闻不再<em>陌生</em>", "词汇是<em>带宽</em>"]
   },
   teen: {
-    name: "弟弟 · 中考冲刺", short: "弟弟", icon: "🎒", store: "progress_teen",
-    menuHide: { sim: 1, screens: 1 }, deckOk: p => p !== "fin",
+    label: "考试冲刺", deckOk: p => p !== "fin",
     slogans: ["中考词汇<em>稳稳拿下</em>", "每天进步<em>一点点</em>", "单词是<em>分数</em>", "背过的词<em>不会背叛你</em>", "考场见<em>真章</em>"]
+  },
+  all: {
+    label: "全能空间", deckOk: () => true,
+    slogans: ["每个人都有<em>自己的节奏</em>", "把陌生变成<em>熟悉</em>", "今天学会<em>真正会用</em>", "一词一世界", "记忆会在练习中<em>生长</em>"]
   }
 };
+const BUILTIN_PROFILE_META = [
+  { id: "fin", name: "爸爸 · 金融投资", short: "爸爸", icon: "💼", template: "fin", store: "progress", builtin: true },
+  { id: "teen", name: "弟弟 · 中考冲刺", short: "弟弟", icon: "🎒", template: "teen", store: "progress_teen", builtin: true }
+];
+const PROFILES = {};
+let PROFILE_META = [];
+let APP_STATE = { schema: 2, profile: "fin", profiles: [] };
 let CUR = "fin";
-const PF = () => PROFILES[CUR];
-function loadApp() {
-  try { const s = NativeBridge.load("app"); if (s) { const a = JSON.parse(s); if (a && a.profile === "teen") CUR = "teen"; } } catch (e) { }
+const PF = () => PROFILES[CUR] || PROFILES.fin;
+function safeProfileMeta(raw) {
+  if (!raw || !/^u_[a-z0-9]{6,32}$/.test(String(raw.id || ""))) return null;
+  const template = PROFILE_TEMPLATES[raw.template] ? raw.template : "all";
+  const name = String(raw.name || "家庭成员").replace(/[<>]/g, "").trim().slice(0, 18) || "家庭成员";
+  return {
+    id: String(raw.id), name: name, short: String(raw.short || name).replace(/[<>]/g, "").trim().slice(0, 6) || "成员",
+    icon: String(raw.icon || "👤").slice(0, 4), template: template,
+    store: "progress_user_" + String(raw.id).slice(2), builtin: false, archived: !!raw.archived
+  };
 }
-function saveApp() { try { NativeBridge.save("app", JSON.stringify({ profile: CUR })); } catch (e) { } }
+function registerProfile(meta) {
+  const t = PROFILE_TEMPLATES[meta.template] || PROFILE_TEMPLATES.all;
+  PROFILES[meta.id] = {
+    name: meta.name, short: meta.short, icon: meta.icon, store: meta.store,
+    template: meta.template, builtin: !!meta.builtin, archived: !!meta.archived,
+    menuHide: meta.builtin ? (meta.id === "fin" ? { chase: 1 } : { sim: 1, screens: 1 }) : {},
+    deckOk: t.deckOk, slogans: t.slogans
+  };
+}
+function rebuildProfiles(custom) {
+  Object.keys(PROFILES).forEach(k => delete PROFILES[k]);
+  PROFILE_META = BUILTIN_PROFILE_META.map(x => Object.assign({}, x));
+  (custom || []).forEach(raw => {
+    const m = safeProfileMeta(raw);
+    if (m && !PROFILE_META.some(x => x.id === m.id)) PROFILE_META.push(m);
+  });
+  PROFILE_META.forEach(registerProfile);
+}
+function activeProfileMeta() { return PROFILE_META.filter(m => !m.archived); }
+function validAppState(a) {
+  return !!(a && typeof a === "object" && !Array.isArray(a)
+    && (typeof a.profile === "string" || typeof a.currentProfileId === "string" || Array.isArray(a.profiles)));
+}
+function loadApp() {
+  let a = null;
+  try { const s = NativeBridge.load("app"); if (s) a = JSON.parse(s); } catch (e) { }
+  if (!validAppState(a)) a = null;
+  if (!a) { try { const b = NativeBridge.load("app_backup"); if (b) { const x = JSON.parse(b); if (validAppState(x)) a = x; } } catch (e) { } }
+  const customs = a && Array.isArray(a.profiles) ? a.profiles : [];
+  rebuildProfiles(customs);
+  const wanted = a && String(a.profile || a.currentProfileId || "fin");
+  CUR = PROFILES[wanted] && !PROFILES[wanted].archived ? wanted : "fin";
+  APP_STATE = { schema: 2, profile: CUR, profiles: PROFILE_META.filter(m => !m.builtin) };
+}
+function saveApp() {
+  try {
+    APP_STATE = { schema: 2, profile: CUR, profiles: PROFILE_META.filter(m => !m.builtin).map(m => ({
+      id: m.id, name: m.name, short: m.short, icon: m.icon, template: m.template, archived: !!m.archived
+    })) };
+    const prev = NativeBridge.load("app");
+    if (prev) { try { if (validAppState(JSON.parse(prev))) NativeBridge.save("app_backup", prev); } catch (e) { } }
+    NativeBridge.save("app", JSON.stringify(APP_STATE));
+  } catch (e) { }
+}
 
 function loadP() {
   try { const s = NativeBridge.load(PF().store); P = s ? JSON.parse(s) : null; } catch (e) { P = null; }
@@ -144,9 +203,86 @@ function gameResult(id, right, total, score) {
   saveP();
 }
 
+/* ================= 官方在线词书仓库 =================
+   目录与词书都来自本仓库的审核区。包内容先写入版本化 key，回读成功后再切换 registry，
+   因而断网或安装中断不会破坏已经安装的旧版本。 */
+const CATALOG_URL = "https://raw.githubusercontent.com/ac2706673058-maker/qcz/main/catalog/catalog.json";
+const CLOUD_MAX_BYTES = 2 * 1024 * 1024;
+const CLOUD_MAX_WORDS = 5000;
+let CLOUD_REGISTRY = null;
+function safeCloudId(id) { id = String(id || ""); return /^[a-z0-9][a-z0-9_-]{0,63}$/.test(id) ? id : ""; }
+function loadCloudRegistry() {
+  if (CLOUD_REGISTRY) return CLOUD_REGISTRY;
+  let r = null;
+  try { const s = NativeBridge.load("deck_registry"); if (s) r = JSON.parse(s); } catch (e) { }
+  const valid = x => !!(x && x.schema === 1 && x.decks && typeof x.decks === "object" && !Array.isArray(x.decks));
+  if (!valid(r)) { try { const b = NativeBridge.load("deck_registry_backup"); if (b) { const x = JSON.parse(b); if (valid(x)) r = x; } } catch (e) { } }
+  if (!valid(r)) r = { schema: 1, decks: {} };
+  const clean = {};
+  Object.keys(r.decks).forEach(id => {
+    const d = r.decks[id];
+    if (!safeCloudId(id) || !d || !/^deckpkg_[a-z0-9_-]+_v\d+$/.test(String(d.storageKey || ""))) return;
+    clean[id] = d;
+  });
+  CLOUD_REGISTRY = { schema: 1, decks: clean };
+  return CLOUD_REGISTRY;
+}
+function saveCloudRegistry() {
+  try {
+    const data = JSON.stringify(loadCloudRegistry());
+    const prev = NativeBridge.load("deck_registry");
+    if (prev) { try { const p = JSON.parse(prev); if (p && p.schema === 1 && p.decks) NativeBridge.save("deck_registry_backup", prev); } catch (e) { } }
+    NativeBridge.save("deck_registry", data);
+    const check = JSON.parse(NativeBridge.load("deck_registry") || "null");
+    return !!(check && check.schema === 1 && check.decks && JSON.stringify(check) === data);
+  } catch (e) { return false; }
+}
+function parseDeckRows(raw, strict) {
+  let arr;
+  try { arr = JSON.parse(raw); } catch (e) { throw new Error("词书不是有效 JSON"); }
+  if (!Array.isArray(arr) || !arr.length) throw new Error("词书内容为空");
+  if (arr.length > CLOUD_MAX_WORDS) throw new Error("词书超过 " + CLOUD_MAX_WORDS + " 条上限");
+  const seen = {};
+  arr.forEach((row, i) => {
+    if (!Array.isArray(row) || row.length < 3) throw new Error("第 " + (i + 1) + " 条格式不正确");
+    const limits = [80, 120, 400, 600, 600];
+    for (let j = 0; j < Math.min(row.length, 5); j++) {
+      if (row[j] !== null && row[j] !== undefined && typeof row[j] !== "string") throw new Error("第 " + (i + 1) + " 条含非文本字段");
+      if (String(row[j] || "").length > limits[j]) throw new Error("第 " + (i + 1) + " 条文本过长");
+    }
+    const w = String(row[0] || "").trim();
+    if (!w || /[<>\u0000-\u001f]/.test(w)) throw new Error("第 " + (i + 1) + " 条单词无效");
+    if (strict && seen[w.toLowerCase()]) throw new Error("词书包含重复词: " + w);
+    seen[w.toLowerCase()] = 1;
+  });
+  return arr;
+}
+function appendCloudDecks() {
+  const reg = loadCloudRegistry();
+  Object.keys(reg.decks).sort().forEach(id => {
+    const d = reg.decks[id];
+    let raw = "", arr = [];
+    try {
+      raw = NativeBridge.load(d.storageKey); arr = parseDeckRows(raw, false);
+      if ((d.count && arr.length !== Number(d.count)) || (d.bytes && utf8Bytes(raw).length !== Number(d.bytes))) throw new Error("缓存不完整");
+      delete d.broken;
+    } catch (e) { d.broken = true; return; }
+    const deckId = "online_" + id;
+    let total = 0;
+    arr.forEach(e => {
+      const w = String(e[0]).trim();
+      if (WORDS[w]) return;
+      WORDS[w] = { w: w, p: e[1] || "", m: e[2] || "", x: e[3] || "", tr: e[4] || "", deck: deckId };
+      total++;
+    });
+    DECKS.push({ id: deckId, cloudId: id, name: d.name || id, icon: d.icon || "☁️", source: "online", total: total, version: Number(d.version || 1) });
+  });
+}
+
 function loadDecks() {
   let list = [];
   try { list = JSON.parse(NativeBridge.getDecks()); } catch (e) { list = []; }
+  WORDS = {};
   DECKS = [];
   // 按使用者过滤词库:manifest 里 profile 标 "fin"/"teen",不标=双方共用;U盘外部词库双方可见
   list = list.filter(d => d.source === "ext" || PF().deckOk(d.profile || ""));
@@ -165,6 +301,7 @@ function loadDecks() {
     }
     DECKS.push({ id: d.id, name: d.name, icon: d.icon || "📘", source: d.source, total: total });
   }
+  appendCloudDecks();
 }
 const deckOn = id => !P.decksOff[id];
 const deckName = id => { const d = DECKS.find(x => x.id === id); return d ? d.name : ""; };
@@ -318,73 +455,162 @@ function gridMoveIndex(index, key, n, cols) {
 let SCREEN = "home";
 let RETURN_SCREEN = "home";
 const handlers = {};
-let NAV_TRAIL = [];
 const NAV_DIR = { LEFT: [-1, 0], RIGHT: [1, 0], UP: [0, -1], DOWN: [0, 1] };
 
-/* Focus Physics:输入先完成,动效随后交给合成线程。
-   新焦点像石子贴水落下,离开的 3 个项目依距离产生衰减余波；动画从不锁键。 */
+/* Liquid Comet / 液态彗星焦点
+   全屏只允许一个共享焦点框、一条光轨和一次最终落点。普通卡片永远不传播余波；
+   同帧输入合并、旧动画立即取消、语义焦点永远先更新，视觉再追上。 */
+const FOCUS_FX = { layer: null, halo: null, haloAnim: null, pending: null, raf: 0, seq: 0, lastInput: 0, settle: 0, target: null, key: "", reduced: false };
 function navFocused() { return document.querySelector(".screen.active .focus"); }
-function navTransform(base, x, y, rot) {
-  return "translate3d(" + x.toFixed(2) + "px," + y.toFixed(2) + "px,0) rotate(" + rot.toFixed(3) + "deg) " + (base === "none" ? "" : base);
+function focusFxReduced() {
+  try { return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) { return false; }
 }
-function navMotion(el, frames, duration, delay) {
-  if (!el || !el.animate || (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches)) return;
-  try {
-    if (el.__navMotion) {
-      el.__navMotion.onfinish = null; el.__navMotion.oncancel = null;
-      el.__navMotion.cancel();
-    }
-    const base = getComputedStyle(el).transform || "none";
-    const keyframes = frames.map(f => ({ transform: navTransform(base, f[0], f[1], f[2]), offset: f[3] }));
-    el.style.willChange = "transform";
-    const motion = el.animate(keyframes, { duration: duration, delay: delay || 0, easing: "linear", fill: "none" });
-    el.__navMotion = motion;
-    motion.onfinish = () => { if (el.__navMotion === motion) { el.__navMotion = null; el.style.willChange = ""; } };
-    motion.oncancel = () => { if (el.__navMotion === motion) { el.__navMotion = null; el.style.willChange = ""; } };
-  } catch (e) { try { el.style.willChange = ""; } catch (x) { } }
+function focusRect(el) {
+  if (!el || !el.getBoundingClientRect) return null;
+  const r = el.getBoundingClientRect();
+  return r.width > 0 && r.height > 0 ? { left: r.left, top: r.top, width: r.width, height: r.height, cx: r.left + r.width / 2, cy: r.top + r.height / 2 } : null;
 }
-function navRipple(key, before) {
-  const vector = NAV_DIR[key]; if (!vector) return;
-  const current = navFocused();
-  if (!current || current === before) return;
-  const dx = vector[0], dy = vector[1];
-  navMotion(current, [
-    [-12 * dx, -9 * dy, -.42 * dx, 0],
-    [3.4 * dx, 2.7 * dy, .16 * dx, .36],
-    [-1.45 * dx, -1.15 * dy, -.07 * dx, .61],
-    [.55 * dx, .42 * dy, .025 * dx, .80],
-    [0, 0, 0, 1]
-  ], 168, 0);
-
-  const active = document.querySelector(".screen.active");
-  const wake = [before].concat(NAV_TRAIL).filter((el, i, arr) => el && arr.indexOf(el) === i && el !== current && active && active.contains(el)).slice(0, 3);
-  wake.forEach((el, i) => {
-    const amp = 1 / (i + 1);
-    navMotion(el, [
-      [0, 0, 0, 0],
-      [-3.8 * dx * amp, -2.1 * dy * amp, -.12 * dx * amp, .24],
-      [1.7 * dx * amp, .9 * dy * amp, .055 * dx * amp, .50],
-      [-.7 * dx * amp, -.36 * dy * amp, -.022 * dx * amp, .72],
-      [.22 * dx * amp, .12 * dy * amp, .007 * dx * amp, .88],
-      [0, 0, 0, 1]
-    ], 255 + i * 38, 12 + i * 22);
+function ensureFocusFx() {
+  if (FOCUS_FX.layer && document.body.contains(FOCUS_FX.layer)) return;
+  const layer = document.createElement("div"); layer.id = "focus-fx"; layer.setAttribute("aria-hidden", "true");
+  const halo = document.createElement("div"); halo.className = "focus-halo"; layer.appendChild(halo);
+  $("app").appendChild(layer); FOCUS_FX.layer = layer; FOCUS_FX.halo = halo;
+}
+function clearFocusBursts() {
+  ensureFocusFx();
+  while (FOCUS_FX.layer.children.length > 1) FOCUS_FX.layer.removeChild(FOCUS_FX.layer.lastChild);
+}
+function placeFocusHalo(r) {
+  ensureFocusFx();
+  if (!r) { FOCUS_FX.halo.style.opacity = "0"; return; }
+  const pad = 5;
+  Object.assign(FOCUS_FX.halo.style, { left: (r.left - pad) + "px", top: (r.top - pad) + "px", width: (r.width + pad * 2) + "px", height: (r.height + pad * 2) + "px", opacity: "1" });
+}
+function cancelFocusFx(snap) {
+  FOCUS_FX.seq++; FOCUS_FX.pending = null;
+  if (FOCUS_FX.raf) { cancelAnimationFrame(FOCUS_FX.raf); FOCUS_FX.raf = 0; }
+  clearTimeout(FOCUS_FX.settle); FOCUS_FX.settle = 0;
+  if (FOCUS_FX.haloAnim) { try { FOCUS_FX.haloAnim.cancel(); } catch (e) { } FOCUS_FX.haloAnim = null; }
+  clearFocusBursts();
+  if (snap) placeFocusHalo(focusRect(navFocused()));
+}
+function syncFocusFx() {
+  cancelFocusFx(false); placeFocusHalo(focusRect(navFocused()));
+}
+function requestFocusSync() {
+  const seq = FOCUS_FX.seq;
+  requestAnimationFrame(() => {
+    // 方向键光轨优先；普通重绘只在没有待播放导航动效时校准共享焦点框。
+    if (FOCUS_FX.pending || FOCUS_FX.raf || seq !== FOCUS_FX.seq) return;
+    syncFocusFx();
   });
-  NAV_TRAIL = [before].concat(NAV_TRAIL.filter(el => el !== before && el !== current)).slice(0, 3);
+}
+function focusBeam(from, to, duration, rapid) {
+  if (!from || !to || focusFxReduced()) return;
+  const dx = to.cx - from.cx, dy = to.cy - from.cy, dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist < 3) return;
+  const beam = document.createElement("div"); beam.className = "focus-beam";
+  Object.assign(beam.style, { left: from.cx + "px", top: from.cy + "px", width: dist + "px", transform: "rotate(" + Math.atan2(dy, dx) + "rad) scaleX(.05)", opacity: "0" });
+  FOCUS_FX.layer.appendChild(beam);
+  try { beam.animate([
+    { transform: "rotate(" + Math.atan2(dy, dx) + "rad) scaleX(.05)", opacity: 0, offset: 0 },
+    { transform: "rotate(" + Math.atan2(dy, dx) + "rad) scaleX(.72)", opacity: rapid ? .48 : .92, offset: .18 },
+    { transform: "rotate(" + Math.atan2(dy, dx) + "rad) scaleX(1)", opacity: rapid ? .28 : .64, offset: .56 },
+    { transform: "rotate(" + Math.atan2(dy, dx) + "rad) scaleX(1)", opacity: 0, offset: 1 }
+  ], { duration: duration, easing: "cubic-bezier(.16,.78,.22,1)" }); } catch (e) { }
+}
+function focusImpact(r, key, target, seq) {
+  if (!r || seq !== FOCUS_FX.seq || focusFxReduced()) return;
+  const vector = NAV_DIR[key] || [1, 0];
+  const wide = r.width > r.height * 3;
+  for (let i = 0; i < 2; i++) {
+    const ring = document.createElement("div"); ring.className = "focus-impact r" + i;
+    Object.assign(ring.style, { left: (r.left - 8) + "px", top: (r.top - 8) + "px", width: (r.width + 16) + "px", height: (r.height + 16) + "px" });
+    FOCUS_FX.layer.appendChild(ring);
+    const start = wide ? "scale(.992,.82)" : "scale(.82)";
+    const end = wide ? (i ? "scale(1.018,1.28)" : "scale(1.012,1.16)") : ("scale(" + (i ? 1.20 : 1.11) + ")");
+    try { ring.animate([
+      { transform: start, opacity: 0 }, { transform: "scale(1)", opacity: i ? .48 : .88, offset: .28 },
+      { transform: end, opacity: 0 }
+    ], { duration: 330 + i * 90, delay: i * 34, easing: "cubic-bezier(.18,.72,.18,1)" }); } catch (e) { }
+  }
+  // 火花按控件短边计算并设上限；超宽列表不会再把火花拉成横跨全屏的光柱。
+  const shortSide = Math.min(r.width, r.height);
+  const sparkStart = clamp(shortSide * .25, 16, 44);
+  const sparkEnd = clamp(shortSide * .72, 44, 108);
+  const count = 8;
+  for (let i = 0; i < count; i++) {
+    const a = (Math.PI * 2 * i / count) + (vector[0] ? 0 : Math.PI / 8);
+    const spark = document.createElement("div"); spark.className = "focus-spark";
+    Object.assign(spark.style, { left: r.cx + "px", top: r.cy + "px", transform: "rotate(" + a + "rad) translateX(" + sparkStart + "px) scaleX(.1)" });
+    FOCUS_FX.layer.appendChild(spark);
+    try { spark.animate([
+      { transform: "rotate(" + a + "rad) translateX(" + sparkStart + "px) scaleX(.1)", opacity: 0 },
+      { opacity: .9, offset: .18 },
+      { transform: "rotate(" + a + "rad) translateX(" + sparkEnd + "px) scaleX(1)", opacity: 0 }
+    ], { duration: 300 + (i % 3) * 35, easing: "cubic-bezier(.12,.7,.22,1)" }); } catch (e) { }
+  }
+  setTimeout(() => {
+    if (seq !== FOCUS_FX.seq) return;
+    clearFocusBursts();
+    // 卡片自身的 96ms 上浮缩放已完成，再以最终像素位置校准共享焦点框。
+    placeFocusHalo(focusRect(navFocused()));
+  }, 520);
+}
+function playFocusFx(key, from, to, target, rapid) {
+  ensureFocusFx(); clearFocusBursts();
+  const seq = ++FOCUS_FX.seq, dx = to.cx - from.cx, dy = to.cy - from.cy;
+  const dist = Math.sqrt(dx * dx + dy * dy), duration = rapid ? 92 : Math.round(clamp(138 + dist * .16, 145, 218));
+  placeFocusHalo(to);
+  if (FOCUS_FX.haloAnim) { try { FOCUS_FX.haloAnim.cancel(); } catch (e) { } FOCUS_FX.haloAnim = null; }
+  const sx = clamp(from.width / to.width, .55, 1.8), sy = clamp(from.height / to.height, .55, 1.8);
+  const ux = dist ? dx / dist : 0, uy = dist ? dy / dist : 0;
+  try { FOCUS_FX.haloAnim = FOCUS_FX.halo.animate([
+    { transform: "translate3d(" + (from.cx - to.cx) + "px," + (from.cy - to.cy) + "px,0) scale(" + sx + "," + sy + ")", opacity: .72, offset: 0 },
+    { transform: "translate3d(" + (-dx * .16) + "px," + (-dy * .16) + "px,0) scale(" + (Math.abs(dx) > Math.abs(dy) ? 1.08 : .96) + "," + (Math.abs(dx) > Math.abs(dy) ? .96 : 1.08) + ")", opacity: 1, offset: .54 },
+    { transform: "translate3d(" + (7 * ux) + "px," + (7 * uy) + "px,0) scale(1.025,.99)", opacity: 1, offset: .78 },
+    { transform: "translate3d(" + (-2 * ux) + "px," + (-2 * uy) + "px,0) scale(.994,1.006)", opacity: 1, offset: .91 },
+    { transform: "translate3d(0,0,0) scale(1)", opacity: 1, offset: 1 }
+  ], { duration: duration, easing: "linear" }); } catch (e) { FOCUS_FX.haloAnim = null; }
+  focusBeam(from, to, duration, rapid);
+  clearTimeout(FOCUS_FX.settle);
+  FOCUS_FX.target = target; FOCUS_FX.key = key;
+  FOCUS_FX.settle = setTimeout(() => {
+    const current = navFocused(), r = focusRect(current);
+    if (seq === FOCUS_FX.seq && current === FOCUS_FX.target) focusImpact(r, FOCUS_FX.key, current, seq);
+  }, rapid ? 105 : Math.min(96, duration * .44));
+}
+function scheduleFocusFx(key, before, beforeRect) {
+  const target = navFocused();
+  if (!NAV_DIR[key] || !before || !target || before === target) return;
+  // who/cloud 等列表会整块重建 DOM，必须在 handler 运行前保存出发位置。
+  const from = beforeRect || focusRect(before), to = focusRect(target); if (!from || !to) return;
+  const now = NOW(), rapid = now - FOCUS_FX.lastInput < 90; FOCUS_FX.lastInput = now;
+  FOCUS_FX.pending = { key: key, from: from, to: to, target: target, rapid: rapid };
+  if (FOCUS_FX.raf) return;
+  FOCUS_FX.raf = requestAnimationFrame(() => {
+    FOCUS_FX.raf = 0; const p = FOCUS_FX.pending; FOCUS_FX.pending = null;
+    if (!p) return;
+    if (focusFxReduced()) { placeFocusHalo(p.to); return; }
+    playFocusFx(p.key, p.from, p.to, p.target, p.rapid);
+  });
 }
 function show(name) {
-  NAV_TRAIL = [];
+  cancelFocusFx(false);
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
   $(name).classList.add("active");
   SCREEN = name;
   try { if (handlers[name] && handlers[name].enter) handlers[name].enter(); }
   catch (e) { toast("界面错误:" + (e && e.message)); }
+  requestAnimationFrame(() => placeFocusHalo(focusRect(navFocused())));
 }
 window.onTvKey = k => {
   try { $("toast").classList.remove("show"); } catch (e) { }
-  const before = NAV_DIR[k] ? navFocused() : null;
+  const before = navFocused();
+  const beforeRect = NAV_DIR[k] ? focusRect(before) : null;
   const h = handlers[SCREEN];
   try { if (h && h.key) h.key(k); } catch (e) { toast("按键错误:" + (e && e.message)); }
-  if (NAV_DIR[k]) navRipple(k, before);
+  if (NAV_DIR[k]) scheduleFocusFx(k, before, beforeRect);
   // 音效延后到焦点状态更新之后,永远不阻塞遥控输入。
   Promise.resolve().then(() => {
     try {
@@ -396,10 +622,13 @@ window.onTvKey = k => {
     } catch (e) { }
   });
 };
+window.addEventListener("resize", () => requestAnimationFrame(() => placeFocusHalo(focusRect(navFocused()))));
 document.addEventListener("keydown", e => {
   const map = { ArrowUp: "UP", ArrowDown: "DOWN", ArrowLeft: "LEFT", ArrowRight: "RIGHT", Enter: "OK", Escape: "BACK", Backspace: "BACK" };
   if (map[e.key]) { e.preventDefault(); window.onTvKey(map[e.key]); }
 });
+document.addEventListener("visibilitychange", () => { if (document.hidden && P) { flushP(); saveApp(); } });
+window.addEventListener("pagehide", () => { if (P) { flushP(); saveApp(); } });
 
 const MENU = [
   { id: "new", ic: "✒️", t: "学新词", d: "衬线大字卡 · 自动发音" },
@@ -412,8 +641,9 @@ const MENU = [
   { id: "custom", ic: "🗓️", t: "自选复习", d: "按日期挑单词随时复习" },
   { id: "ai", ic: "👨‍🏫", t: "AI 外教", d: "对话 · 跟读 · 情景课 · 教练" },
   { id: "decks", ic: "📚", t: "词库", d: "开关词书 · 外部扩展" },
+  { id: "cloud", ic: "☁️", t: "云端词书", d: "搜索 · 安装 · 离线使用" },
   { id: "stats", ic: "📊", t: "统计", d: "热力图 · 掌握度" },
-  { id: "who", ic: "👥", t: "切换使用者", d: "爸爸金融版 ⇄ 弟弟中考版" },
+  { id: "who", ic: "👥", t: "家庭空间", d: "独立进度 · 新增使用者" },
   { id: "settings", ic: "⚙️", t: "设置", d: "新词量 · 发音 · 语速" }
 ];
 const GAME_MENU = [
@@ -500,7 +730,8 @@ handlers.home = {
       if (it.id === "new" && newRemain) badge = '<div class="badge">' + newRemain + '</div>';
       if (it.id === "weak" && weakN >= 8) badge = '<div class="badge">推荐</div>';
       if (it.id === "arcade") badge = '<div class="badge">' + arcadeItems().length + '</div>';
-      el.innerHTML = badge + (window.iconTile ? iconTile(it.id) : '<div class="ic">' + it.ic + '</div>') + '<div><div class="t">' + it.t + '</div><div class="d">' + it.d + '</div></div>';
+      const desc = it.id === "who" ? (activeProfileMeta().length + " 个独立空间 · 新增/切换") : it.d;
+      el.innerHTML = badge + (window.iconTile ? iconTile(it.id) : '<div class="ic">' + it.ic + '</div>') + '<div><div class="t">' + it.t + '</div><div class="d">' + desc + '</div></div>';
       m.appendChild(el);
     });
   },
@@ -509,7 +740,7 @@ handlers.home = {
     const cols = homeCols(), n = items.length;
     if (["LEFT", "RIGHT", "UP", "DOWN"].includes(k)) homeIdx = gridMoveIndex(homeIdx, k, n, cols);
     else if (k === "OK") { RETURN_SCREEN = "home"; openMenu(items[homeIdx].id); return; }
-    else if (k === "BACK") { NativeBridge.exitApp(); return; }
+    else if (k === "BACK") { flushP(); saveApp(); NativeBridge.exitApp(); return; }
     homeFocus();   // 只切换焦点类,不重建DOM → 聚焦平滑滑动
   }
 };
@@ -536,7 +767,8 @@ function openMenu(id) {
   else if (id === "sentence") { startSentence(); }
   else if (id === "starship") { startStarship(); }
   else if (id === "chase") { startChase(); }
-  else if (id === "who") { WHO.idx = CUR === "fin" ? 0 : 1; show("who"); }
+  else if (id === "who") { WHO.phase = "list"; WHO.idx = Math.max(0, activeProfileMeta().findIndex(m => m.id === CUR)); show("who"); }
+  else if (id === "cloud") { CLOUD.phase = "list"; CLOUD.row = 0; show("cloud"); }
   else if (id === "screens") { SC.view = "list"; SC.gi = 0; show("screens"); }
   else if (id === "ai") show("ai");
   else show(id);
@@ -753,6 +985,7 @@ function renderQuiz() {
   } else {
     QZ.timer = timerBar("q-timer", QUIZ_MS, () => answer(-1));
   }
+  requestFocusSync();
 }
 function moveSel(k) {
   const n = QZ.optCount || 4;
@@ -805,6 +1038,26 @@ function finishQuiz() {
 /* 例句填空:显示整句中文翻译。优先用词库内置译文(第5字段),
    否则查本机缓存,再否则调用AI翻译一次并永久缓存。 */
 let _trSeq = 0;
+function resolveSentenceTr(e, done) {
+  if (e.tr) { done(e.tr, true); return; }
+  if (!P.tr) P.tr = {};
+  if (P.tr[e.w]) { done(P.tr[e.w], true); return; }
+  const ownerP = P, ownerCur = CUR, ownerWord = e.w;
+  aiCall([
+    { role: "system", content: "你是专业翻译。把用户给的英文句子翻译成通顺自然的简体中文,只输出译文本身,不要加引号、拼音、英文或任何解释。" },
+    { role: "user", content: e.x }
+  ], (content, err) => {
+    if (content) {
+      const t = String(content).replace(/^[\s\"'「」]+|[\s\"'「」]+$/g, "").trim();
+      if (t) {
+        // AI 回包可能晚于使用者切换；只允许写回发起请求时的家庭空间。
+        if (P === ownerP && CUR === ownerCur) { ownerP.tr[ownerWord] = t; saveP(); }
+        done(t, true); return;
+      }
+    }
+    done("（整句翻译需联网,可稍后再进此题）", false);
+  }, 240);
+}
 function setClozeTr(e) {
   const seq = ++_trSeq;
   const put = (txt, cls) => {
@@ -813,20 +1066,8 @@ function setClozeTr(e) {
     el.textContent = txt;
     el.style.color = cls === "dim" ? "var(--dim)" : "var(--gold)";
   };
-  if (e.tr) { put(e.tr); return; }
-  if (!P.tr) P.tr = {};
-  if (P.tr[e.w]) { put(P.tr[e.w]); return; }
-  put("　整句翻译加载中…", "dim");
-  aiCall([
-    { role: "system", content: "你是专业翻译。把用户给的英文句子翻译成通顺自然的简体中文,只输出译文本身,不要加引号、拼音、英文或任何解释。" },
-    { role: "user", content: e.x }
-  ], (content, err) => {
-    if (content) {
-      const t = String(content).replace(/^[\s"'「」]+|[\s"'「」]+$/g, "").trim();
-      if (t) { P.tr[e.w] = t; saveP(); put(t); return; }
-    }
-    put("（整句翻译需联网,可稍后再进此题）", "dim");
-  }, 240);
+  if (!e.tr && !(P.tr && P.tr[e.w])) put("　整句翻译加载中…", "dim");
+  resolveSentenceTr(e, (txt, ok) => put(txt, ok ? "" : "dim"));
 }
 
 handlers.quiz = {
@@ -976,6 +1217,7 @@ function drawMatch() {
       g.appendChild(d);
     });
   }
+  requestFocusSync();
 }
 function matchFocus() {
   const cells = $("m-grid").children;
@@ -1080,6 +1322,7 @@ function renderTF() {
   speak(e.w);
   clearTimeout(TF.timer); TF.t0 = NOW();
   TF.timer = timerBar("t-timer", TF_MS, () => tfAnswer(null));
+  requestFocusSync();
 }
 function tfAnswer(saysMatch) {
   if (TF.lock) return;
@@ -1239,6 +1482,7 @@ function renderAiTopics() {
     box.appendChild(el);
   });
   try { const fc = box.querySelector(".focus"); if (fc && fc.scrollIntoView) fc.scrollIntoView({ block: "nearest" }); } catch (e) { }
+  requestFocusSync();
 }
 function startAiChat(i) {
   const t = AI_TOPICS[i];
@@ -1297,6 +1541,7 @@ function drawAiReplies() {
     box.appendChild(d);
   });
   try { const fc = box.querySelector(".focus"); if (fc && fc.scrollIntoView) fc.scrollIntoView({ block: "nearest" }); } catch (e) { }
+  requestFocusSync();
 }
 function aiTopicFocus() {
   const rows = $("ai-topics").children;
@@ -1383,7 +1628,7 @@ handlers.decks = {
       const el = document.createElement("div");
       el.className = "rowitem" + (i === deckIdx ? " focus" : "");
       el.innerHTML = (window.iconTile ? iconTile('decks') : '<div class="ic">' + d.icon + '</div>')
-        + '<div class="info"><div class="name">' + esc(d.name) + (d.source === "ext" ? ' <span style="color:var(--gold);font-size:2vmin">外部</span>' : "") + '</div>'
+        + '<div class="info"><div class="name">' + esc(d.name) + (d.source === "ext" ? ' <span style="color:var(--gold);font-size:2vmin">外部</span>' : (d.source === "online" ? ' <span style="color:var(--gold);font-size:2vmin">云端 v' + d.version + '</span>' : "")) + '</div>'
         + '<div class="desc">已学 ' + learned + ' / ' + d.total + ' 词 · ' + pct + '%</div>'
         + '<div class="deckbar"><i style="width:' + pct + '%"></i></div></div>'
         + '<div class="val"><span class="ios-sw' + (deckOn(d.id) ? " on" : "") + '"></span></div>';
@@ -1401,6 +1646,214 @@ handlers.decks = {
       saveP();
     }
     handlers.decks.enter();
+  }
+};
+
+/* ================= 云端词书:搜索 / 校验 / 事务安装 / 离线缓存 ================= */
+const CLOUD_CATS = [
+  { id: "all", name: "全部" }, { id: "spoken", name: "口语" }, { id: "travel", name: "旅行" },
+  { id: "exam", name: "考试" }, { id: "finance", name: "金融" }, { id: "academic", name: "学术" }, { id: "installed", name: "已安装" }
+];
+const CLOUD_KEYS = "abcdefghijklmnopqrstuvwxyz0123456789".split("").concat(["SPACE", "DEL", "CLEAR", "DONE"]);
+const CLOUD = { phase: "list", row: 0, keyIdx: 0, cat: 0, query: "", catalog: [], busy: "", uninstallArm: "", message: "", fetchSeq: 0, refreshed: false };
+function catalogEntry(raw) {
+  if (!raw) return null;
+  const id = safeCloudId(raw.id), version = Number(raw.version || 0), count = Number(raw.count || 0);
+  if (!id || !Number.isInteger(version) || version < 1 || !Number.isInteger(count) || count < 1 || count > CLOUD_MAX_WORDS) return null;
+  let u;
+  try { u = new URL(String(raw.url || "")); } catch (e) { return null; }
+  if (u.protocol !== "https:" || u.hostname !== "raw.githubusercontent.com" || !u.pathname.startsWith("/ac2706673058-maker/qcz/")) return null;
+  const sha = String(raw.sha256 || "").toLowerCase(); if (!/^[a-f0-9]{64}$/.test(sha)) return null;
+  return {
+    id: id, name: String(raw.name || id).slice(0, 40), icon: String(raw.icon || "☁️").slice(0, 4),
+    tags: Array.isArray(raw.tags) ? raw.tags.map(x => String(x).slice(0, 20)).slice(0, 8) : [],
+    search: String(raw.search || "").slice(0, 160), level: String(raw.level || "通用").slice(0, 30),
+    count: count, version: version, url: u.href, bytes: Math.max(0, Number(raw.bytes || 0)), sha256: sha,
+    license: String(raw.license || "LexTV 审核内容").slice(0, 80), source: String(raw.source || "LexTV 官方").slice(0, 80),
+    minAppVersion: Math.max(0, Number(raw.minAppVersion || 0))
+  };
+}
+function parseCatalog(raw) {
+  let doc; try { doc = JSON.parse(raw); } catch (e) { throw new Error("在线目录格式错误"); }
+  if (!doc || doc.schema !== 1 || !Array.isArray(doc.decks) || doc.decks.length > 200) throw new Error("在线目录版本不受支持");
+  const out = [], ids = {};
+  doc.decks.forEach(x => { const d = catalogEntry(x); if (d && !ids[d.id]) { ids[d.id] = 1; out.push(d); } });
+  if (!out.length) throw new Error("在线目录暂时为空");
+  return out;
+}
+function utf8Bytes(text) {
+  if (window.TextEncoder) return Array.from(new TextEncoder().encode(text));
+  const bin = unescape(encodeURIComponent(text)), out = []; for (let i = 0; i < bin.length; i++) out.push(bin.charCodeAt(i)); return out;
+}
+function sha256Fallback(bytes) {
+  const K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  const H = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19], rotr = (x,n) => (x >>> n) | (x << (32 - n));
+  const a = bytes.slice(), bitLo = (a.length * 8) >>> 0, bitHi = Math.floor(a.length / 0x20000000) >>> 0;
+  a.push(0x80); while (a.length % 64 !== 56) a.push(0); for (let s = 24; s >= 0; s -= 8) a.push((bitHi >>> s) & 255); for (let s = 24; s >= 0; s -= 8) a.push((bitLo >>> s) & 255);
+  for (let off = 0; off < a.length; off += 64) {
+    const w = new Array(64);
+    for (let i = 0; i < 16; i++) w[i] = ((a[off+i*4]<<24)|(a[off+i*4+1]<<16)|(a[off+i*4+2]<<8)|a[off+i*4+3]) >>> 0;
+    for (let i = 16; i < 64; i++) { const x = w[i-15], y = w[i-2], s0 = rotr(x,7)^rotr(x,18)^(x>>>3), s1 = rotr(y,17)^rotr(y,19)^(y>>>10); w[i] = (w[i-16]+s0+w[i-7]+s1)>>>0; }
+    let [aa,b,c,d,e,f,g,h] = H;
+    for (let i = 0; i < 64; i++) { const S1=rotr(e,6)^rotr(e,11)^rotr(e,25), ch=(e&f)^((~e)&g), t1=(h+S1+ch+K[i]+w[i])>>>0, S0=rotr(aa,2)^rotr(aa,13)^rotr(aa,22), maj=(aa&b)^(aa&c)^(b&c), t2=(S0+maj)>>>0; h=g;g=f;f=e;e=(d+t1)>>>0;d=c;c=b;b=aa;aa=(t1+t2)>>>0; }
+    H[0]=(H[0]+aa)>>>0;H[1]=(H[1]+b)>>>0;H[2]=(H[2]+c)>>>0;H[3]=(H[3]+d)>>>0;H[4]=(H[4]+e)>>>0;H[5]=(H[5]+f)>>>0;H[6]=(H[6]+g)>>>0;H[7]=(H[7]+h)>>>0;
+  }
+  return H.map(x => x.toString(16).padStart(8,"0")).join("");
+}
+function sha256Hex(text) {
+  const bytes = utf8Bytes(text);
+  if (window.crypto && crypto.subtle && window.Uint8Array) {
+    return crypto.subtle.digest("SHA-256", new Uint8Array(bytes)).then(buf => Array.from(new Uint8Array(buf)).map(x => x.toString(16).padStart(2,"0")).join("")).catch(() => sha256Fallback(bytes));
+  }
+  return Promise.resolve(sha256Fallback(bytes));
+}
+function currentAppCode() { const n = Number(curVC() || 0); return n > 0 ? n : 32; }
+function cloudAllEntries() {
+  const out = CLOUD.catalog.slice(), ids = {}; out.forEach(d => ids[d.id] = 1);
+  const reg = loadCloudRegistry(); Object.keys(reg.decks).forEach(id => { if (!ids[id]) out.push(Object.assign({ id: id, retired: true, tags: [], search: "", level: "已下架", count: 0, version: reg.decks[id].version }, reg.decks[id])); });
+  return out;
+}
+function cloudFiltered() {
+  const cat = CLOUD_CATS[CLOUD.cat].id, q = CLOUD.query.trim().toLowerCase(), reg = loadCloudRegistry();
+  return cloudAllEntries().filter(d => {
+    if (cat === "installed" && !reg.decks[d.id]) return false;
+    if (!["all", "installed"].includes(cat) && !d.tags.map(x => x.toLowerCase()).includes(cat)) return false;
+    if (q && (d.name + " " + d.level + " " + d.tags.join(" ") + " " + d.search).toLowerCase().indexOf(q) < 0) return false;
+    return true;
+  });
+}
+function loadCachedCatalog() {
+  if (CLOUD.catalog.length) return;
+  try { const s = NativeBridge.load("catalog_cache"); if (s) CLOUD.catalog = parseCatalog(s); } catch (e) { }
+}
+function refreshCloudCatalog(force) {
+  const seq = ++CLOUD.fetchSeq; CLOUD.message = "正在连接官方词书仓库…"; renderCloud();
+  let ctrl = null, timer = 0;
+  try { ctrl = window.AbortController ? new AbortController() : null; if (ctrl) timer = setTimeout(() => ctrl.abort(), 15000); } catch (e) { }
+  fetch(CATALOG_URL, { cache: "no-store", signal: ctrl ? ctrl.signal : undefined }).then(r => { if (!r.ok) throw new Error("目录请求失败 " + r.status); return r.text(); }).then(raw => {
+    if (raw.length > 300000) throw new Error("目录文件过大");
+    const list = parseCatalog(raw); if (seq !== CLOUD.fetchSeq) return;
+    CLOUD.catalog = list; CLOUD.message = "已连接 · " + list.length + " 本审核词书"; CLOUD.refreshed = true;
+    try { NativeBridge.save("catalog_cache", raw); } catch (e) { }
+    if (SCREEN === "cloud") renderCloud();
+  }).catch(e => {
+    if (seq !== CLOUD.fetchSeq) return;
+    CLOUD.message = CLOUD.catalog.length ? "当前离线 · 使用上次缓存目录" : "连接失败 · 按播放键重试";
+    if (SCREEN === "cloud") renderCloud();
+  }).then(() => clearTimeout(timer));
+}
+function cloudStatus(d) {
+  const installed = loadCloudRegistry().decks[d.id];
+  if (CLOUD.busy === d.id) return "正在校验…";
+  if (d.minAppVersion > currentAppCode()) return "需新版 App";
+  if (!installed) return "OK 安装";
+  if (installed.broken) return "OK 修复缓存";
+  if (Number(d.version || 0) > Number(installed.version || 0)) return "OK 更新 v" + d.version;
+  return deckOn("online_" + d.id) ? "已安装 · 已启用" : "已安装 · 已关闭";
+}
+function renderCloud() {
+  if (CLOUD.phase === "keyboard") { renderCloudKeyboard(); return; }
+  $("cloud-status").textContent = CLOUD.message || (CLOUD.catalog.length ? "官方审核目录" : "尚未连接");
+  $("cloud-query").style.display = "none"; $("cloud-keyboard").style.display = "none"; $("cloud-list").style.display = "flex";
+  const list = cloudFiltered(), total = list.length + 1; if (CLOUD.row >= total) CLOUD.row = Math.max(0, total - 1);
+  const search = $("cloud-search"); search.className = "rowitem cloud-search" + (CLOUD.row === 0 ? " focus" : "");
+  search.innerHTML = (window.iconTile ? iconTile("cloud") : '<div class="ic">⌕</div>')
+    + '<div class="info"><div class="name">搜索: ' + esc(CLOUD.query || "全部词书") + '</div><div class="desc">OK 打开键盘 · 左右切换分类 · 播放键刷新目录</div></div>'
+    + '<div class="val val-blue">' + CLOUD_CATS[CLOUD.cat].name + " · " + list.length + '</div>';
+  const box = $("cloud-list"); box.innerHTML = "";
+  if (!list.length) { box.innerHTML = '<div class="empty"><div class="e1">☁️</div><div class="e2">没有匹配的词书</div><div class="e3">换一个分类或搜索词试试</div></div>'; requestFocusSync(); return; }
+  const selected = Math.max(0, CLOUD.row - 1), win = 6, start = Math.max(0, Math.min(selected - 2, Math.max(0, list.length - win)));
+  list.slice(start, start + win).forEach((d, at) => {
+    const i = start + at, installed = loadCloudRegistry().decks[d.id], armed = CLOUD.uninstallArm === d.id;
+    const el = document.createElement("div"); el.className = "rowitem cloud-row" + (CLOUD.row === i + 1 ? " focus" : ""); el.dataset.cloud = d.id;
+    el.innerHTML = (window.iconTile ? iconTile("cloud") : '<div class="ic">' + esc(d.icon) + '</div>')
+      + '<div class="info"><div class="name">' + esc(d.name) + (installed ? (' <span class="online-tag">' + (installed.broken ? '需修复' : '已安装') + '</span>') : '') + '</div>'
+      + '<div class="desc">' + esc(d.level) + " · " + d.count + " 词 · " + esc(d.tags.join(" / ")) + " · " + esc(d.license) + '</div></div>'
+      + '<div class="val' + (armed ? ' val-red' : ' val-blue') + '">' + esc(armed ? "OK 确认卸载" : cloudStatus(d)) + '</div>';
+    box.appendChild(el);
+  });
+  try { const fc = document.querySelector("#cloud .focus"); if (fc && fc.scrollIntoView) fc.scrollIntoView({ block: "nearest" }); } catch (e) { }
+  requestFocusSync();
+}
+function renderCloudKeyboard() {
+  $("cloud-list").style.display = "none"; $("cloud-query").style.display = "block"; $("cloud-keyboard").style.display = "grid";
+  $("cloud-query").textContent = CLOUD.query || "输入英文关键词，例如 travel / exam";
+  const box = $("cloud-keyboard"); box.innerHTML = "";
+  CLOUD_KEYS.forEach((k, i) => {
+    const el = document.createElement("div"); el.className = "sp-key" + (i === CLOUD.keyIdx ? " focus" : "") + (k.length > 1 ? " fn" : "");
+    el.textContent = k === "SPACE" ? "空格" : (k === "DEL" ? "删除" : (k === "CLEAR" ? "清空" : (k === "DONE" ? "完成" : k)));
+    box.appendChild(el);
+  });
+  requestFocusSync();
+}
+function cloudKeyboardFocus() {
+  const keys = $("cloud-keyboard").children;
+  for (let i = 0; i < keys.length; i++) keys[i].classList.toggle("focus", i === CLOUD.keyIdx);
+}
+function installCloudDeck(d) {
+  if (CLOUD.busy || !d || d.minAppVersion > currentAppCode()) return;
+  CLOUD.busy = d.id; CLOUD.uninstallArm = ""; renderCloud();
+  let ctrl = null, timer = 0;
+  try { ctrl = window.AbortController ? new AbortController() : null; if (ctrl) timer = setTimeout(() => ctrl.abort(), 20000); } catch (e) { }
+  fetch(d.url, { cache: "no-store", signal: ctrl ? ctrl.signal : undefined }).then(r => { if (!r.ok) throw new Error("下载失败 " + r.status); return r.text(); }).then(raw => {
+    const bytes = utf8Bytes(raw).length; if (bytes > CLOUD_MAX_BYTES || (d.bytes && bytes !== d.bytes)) throw new Error("词书大小校验失败");
+    const rows = parseDeckRows(raw, true); if (rows.length !== d.count) throw new Error("词条数量与目录不一致");
+    return sha256Hex(raw).then(hash => { if (hash !== d.sha256) throw new Error("安全校验失败,未安装"); return { raw: raw, hash: hash }; });
+  }).then(pkg => {
+    const key = "deckpkg_" + d.id + "_v" + d.version;
+    NativeBridge.save(key, pkg.raw);
+    const check = NativeBridge.load(key); parseDeckRows(check, true);
+    return sha256Hex(check).then(hash => { if (hash !== d.sha256) throw new Error("本机写入复验失败"); return key; });
+  }).then(key => {
+    const reg = loadCloudRegistry(), previous = reg.decks[d.id];
+    reg.decks[d.id] = Object.assign({}, d, { storageKey: key, installedAt: NOW() });
+    if (!saveCloudRegistry()) { if (previous) reg.decks[d.id] = previous; else delete reg.decks[d.id]; throw new Error("本机词书索引写入失败"); }
+    delete P.decksOff["online_" + d.id]; saveP(); loadDecks();
+    CLOUD.busy = ""; CLOUD.message = "安装完成 · 已离线缓存"; renderCloud(); toast(d.name + " 已安装并为当前用户启用");
+  }).catch(e => { CLOUD.busy = ""; CLOUD.message = "安装未完成 · 原有词书未受影响"; renderCloud(); toast("安装失败: " + (e && e.message ? e.message : e)); }).then(() => clearTimeout(timer));
+}
+function uninstallCloudDeck(id) {
+  const reg = loadCloudRegistry(); const d = reg.decks[id]; if (!d) return;
+  delete reg.decks[id];
+  if (!saveCloudRegistry()) { reg.decks[id] = d; toast("卸载未完成,原词书仍保留"); return; }
+  CLOUD.uninstallArm = ""; loadDecks(); renderCloud(); toast((d.name || id) + " 已卸载,学习进度仍保留");
+}
+function cloudSelected() { const list = cloudFiltered(); return CLOUD.row > 0 ? list[CLOUD.row - 1] : null; }
+handlers.cloud = {
+  enter() { loadCachedCatalog(); renderCloud(); if (!CLOUD.refreshed) refreshCloudCatalog(false); },
+  key(k) {
+    if (CLOUD.busy) { if (k === "BACK") toast("正在安全写入词书,请稍等"); return; }
+    if (CLOUD.phase === "keyboard") {
+      if (k === "BACK") { CLOUD.phase = "list"; CLOUD.row = 0; renderCloud(); return; }
+      if (["UP", "DOWN", "LEFT", "RIGHT"].includes(k)) { CLOUD.keyIdx = gridMoveIndex(CLOUD.keyIdx, k, CLOUD_KEYS.length, 7); cloudKeyboardFocus(); return; }
+      if (k === "OK") {
+        const key = CLOUD_KEYS[CLOUD.keyIdx];
+        if (key === "DONE") { CLOUD.phase = "list"; CLOUD.row = 0; renderCloud(); return; }
+        if (key === "DEL") CLOUD.query = CLOUD.query.slice(0, -1);
+        else if (key === "CLEAR") CLOUD.query = "";
+        else if (key === "SPACE") { if (CLOUD.query.length < 24 && CLOUD.query && !CLOUD.query.endsWith(" ")) CLOUD.query += " "; }
+        else if (CLOUD.query.length < 24) CLOUD.query += key;
+        renderCloudKeyboard();
+      }
+      return;
+    }
+    const list = cloudFiltered(), total = list.length + 1;
+    if (k === "BACK") { CLOUD.uninstallArm = ""; show("home"); return; }
+    if (k === "PLAY") { CLOUD.refreshed = false; refreshCloudCatalog(true); return; }
+    if (k === "UP") { CLOUD.row = (CLOUD.row + total - 1) % total; CLOUD.uninstallArm = ""; renderCloud(); return; }
+    if (k === "DOWN") { CLOUD.row = (CLOUD.row + 1) % total; CLOUD.uninstallArm = ""; renderCloud(); return; }
+    if ((k === "LEFT" || k === "RIGHT") && CLOUD.row === 0) { CLOUD.cat = (CLOUD.cat + (k === "RIGHT" ? 1 : CLOUD_CATS.length - 1)) % CLOUD_CATS.length; CLOUD.row = 0; CLOUD.uninstallArm = ""; renderCloud(); return; }
+    const d = cloudSelected();
+    if (k === "MENU" && d && loadCloudRegistry().decks[d.id]) { CLOUD.uninstallArm = CLOUD.uninstallArm === d.id ? "" : d.id; renderCloud(); return; }
+    if (k === "OK") {
+      if (CLOUD.row === 0) { CLOUD.phase = "keyboard"; CLOUD.keyIdx = 0; renderCloudKeyboard(); return; }
+      if (!d) return;
+      if (CLOUD.uninstallArm === d.id) { uninstallCloudDeck(d.id); return; }
+      const installed = loadCloudRegistry().decks[d.id];
+      if (d.minAppVersion > currentAppCode()) { toast("请先升级 App 再安装这本词书"); return; }
+      if (!installed || installed.broken || Number(d.version) > Number(installed.version || 0)) { installCloudDeck(d); return; }
+      const deckId = "online_" + d.id; if (deckOn(deckId)) P.decksOff[deckId] = 1; else delete P.decksOff[deckId]; saveP(); renderCloud();
+    }
   }
 };
 
@@ -1561,6 +2014,7 @@ function renderScList() {
     box.appendChild(el);
   });
   try { const fc = box.querySelector(".focus"); if (fc && fc.scrollIntoView) fc.scrollIntoView({ block: "nearest" }); } catch (e) { }
+  requestFocusSync();
 }
 function renderScWords() {
   const g = SCREENS[SC.gi];
@@ -1583,6 +2037,7 @@ function renderScWords() {
     const gi = SC.gi, wi = SC.wi, word = items[SC.wi][0];
     setTimeout(() => { if (SCREEN === "screens" && SC.view === "words" && SC.gi === gi && SC.wi === wi) speak(word); }, 200);
   }
+  requestFocusSync();
 }
 
 /* ================= 检查更新 ================= */
@@ -1647,47 +2102,171 @@ handlers.settings.key = function (k) {
   _setKeyOrig(k);
 };
 
-/* ================= 切换使用者 ================= */
-const WHO = { idx: 0 };
+/* ================= 家庭空间:新增 / 切换 / 安全归档 ================= */
+const WHO_TEMPLATES = [
+  { id: "all", name: "全能空间", desc: "全部词书与全部功能 · 适合通用学习", icon: "✨" },
+  { id: "teen", name: "考试冲刺", desc: "中考/高考词库优先 · 全部训练功能", icon: "🎒" },
+  { id: "fin", name: "金融英语", desc: "新闻/科技/银行词库优先 · 全部训练功能", icon: "💼" }
+];
+const WHO = { idx: 0, phase: "list", templateIdx: 0, archivedIdx: 0, archiveArm: "", learned: {} };
+function refreshWhoLearned() {
+  const counts = {};
+  activeProfileMeta().forEach(m => {
+    if (m.id === CUR && P && P.words) { counts[m.id] = Object.values(P.words).filter(r => r && r.st > 0).length; return; }
+    try { const s = NativeBridge.load(m.store), p = s ? JSON.parse(s) : null; counts[m.id] = p ? Object.values(p.words || {}).filter(r => r && r.st > 0).length : 0; }
+    catch (e) { counts[m.id] = 0; }
+  });
+  WHO.learned = counts;
+}
+function whoProfileDesc(m) {
+  const t = PROFILE_TEMPLATES[m.template] || PROFILE_TEMPLATES.all;
+  const learned = Object.prototype.hasOwnProperty.call(WHO.learned, m.id) ? WHO.learned[m.id] : 0;
+  return t.label + " · 已学 " + learned + " 词 · 进度完全独立";
+}
+function whoSetFocus(index) {
+  const rows = $("who-list").children;
+  for (let i = 0; i < rows.length; i++) rows[i].classList.toggle("focus", i === index);
+  try { if (rows[index] && rows[index].scrollIntoView) rows[index].scrollIntoView({ block: "nearest" }); } catch (e) { }
+}
+function whoListItems() {
+  const items = activeProfileMeta().map(m => ({ type: "profile", meta: m }));
+  items.push({ type: "add" });
+  const archived = PROFILE_META.filter(m => !m.builtin && m.archived);
+  if (archived.length) items.push({ type: "archived", count: archived.length });
+  return items;
+}
+function newProfileId() {
+  let id;
+  do { id = "u_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); } while (PROFILES[id]);
+  return id;
+}
+function createFamilyProfile(template) {
+  const n = PROFILE_META.filter(m => !m.builtin).length + 1;
+  const id = newProfileId(), t = PROFILE_TEMPLATES[template] ? template : "all";
+  const icon = t === "teen" ? "🎒" : (t === "fin" ? "💼" : "👤");
+  const meta = safeProfileMeta({ id: id, name: "家人 " + n, short: "家人" + n, icon: icon, template: t });
+  PROFILE_META.push(meta); registerProfile(meta); saveApp();
+  WHO.phase = "list"; WHO.archiveArm = "";
+  switchProfile(id);
+}
+function archiveFamilyProfile(id) {
+  const m = PROFILE_META.find(x => x.id === id && !x.builtin); if (!m) return;
+  flushP(); m.archived = true; rebuildProfiles(PROFILE_META.filter(x => !x.builtin));
+  if (CUR === id) { CUR = "fin"; WORDS = {}; DECKS = []; loadP(); loadDecks(); }
+  saveApp(); WHO.idx = 0; WHO.archiveArm = ""; toast("已归档 " + m.name + ",进度仍完整保留");
+}
+function restoreFamilyProfile(id) {
+  const customs = PROFILE_META.filter(x => !x.builtin).map(x => Object.assign({}, x, x.id === id ? { archived: false } : {}));
+  rebuildProfiles(customs); saveApp(); WHO.phase = "list"; WHO.idx = Math.max(0, activeProfileMeta().findIndex(m => m.id === id));
+  toast("空间已恢复"); handlers.who.enter();
+}
+function renderWhoList() {
+  const items = whoListItems(); if (WHO.idx >= items.length) WHO.idx = Math.max(0, items.length - 1);
+  $("who-title").textContent = "家庭空间";
+  $("who-hint").textContent = "方向键选择 · OK 切换/新增 · 菜单键归档";
+  const box = $("who-list"); box.innerHTML = "";
+  items.forEach((it, i) => {
+    const el = document.createElement("div"); el.className = "rowitem family-row" + (i === WHO.idx ? " focus" : "");
+    if (it.type === "profile") {
+      const m = it.meta, p = PROFILES[m.id], armed = WHO.archiveArm === m.id;
+      el.innerHTML = (window.avatar ? window.avatar(m.id) : '<div class="ic">' + p.icon + '</div>')
+        + '<div class="info"><div class="name">' + esc(m.name) + (m.id === CUR ? ' <span class="current-dot">● 当前</span>' : '') + '</div>'
+        + '<div class="desc">' + esc(armed ? "再按 OK 归档；学习记录不会删除" : whoProfileDesc(m)) + '</div></div>'
+        + '<div class="val' + (armed ? ' val-red' : '') + '">' + (armed ? "OK 确认归档" : (m.id === CUR ? "使用中" : "OK 切换")) + '</div>';
+    } else if (it.type === "add") {
+      el.innerHTML = (window.iconTile ? iconTile("who") : '<div class="ic">＋</div>')
+        + '<div class="info"><div class="name">＋ 新增使用者</div><div class="desc">建立全新的词书开关、FSRS 记录、游戏成绩与设置</div></div><div class="val val-blue">OK 新建</div>';
+    } else {
+      el.innerHTML = (window.iconTile ? iconTile("restore") : '<div class="ic">↻</div>')
+        + '<div class="info"><div class="name">已归档空间</div><div class="desc">恢复以前的使用者与全部学习记录</div></div><div class="val">' + it.count + " 个" + '</div>';
+    }
+    box.appendChild(el);
+  });
+  try { const fc = box.querySelector(".focus"); if (fc && fc.scrollIntoView) fc.scrollIntoView({ block: "nearest" }); } catch (e) { }
+  requestFocusSync();
+}
+function renderWhoTemplates() {
+  $("who-title").textContent = "选择学习模板"; $("who-hint").textContent = "模板只决定默认词书范围；新空间拥有全部功能";
+  const box = $("who-list"); box.innerHTML = "";
+  WHO_TEMPLATES.forEach((t, i) => {
+    const el = document.createElement("div"); el.className = "rowitem family-row" + (i === WHO.templateIdx ? " focus" : "");
+    el.innerHTML = (window.iconTile ? iconTile(t.id === "all" ? "who" : (t.id === "teen" ? "spell" : "stats")) : '<div class="ic">' + t.icon + '</div>')
+      + '<div class="info"><div class="name">' + t.name + '</div><div class="desc">' + t.desc + '</div></div><div class="val val-blue">OK 创建</div>';
+    box.appendChild(el);
+  });
+  requestFocusSync();
+}
+function renderWhoArchived() {
+  const list = PROFILE_META.filter(m => !m.builtin && m.archived); if (WHO.archivedIdx >= list.length) WHO.archivedIdx = 0;
+  $("who-title").textContent = "恢复归档空间"; $("who-hint").textContent = "OK 恢复 · 返回上一级";
+  const box = $("who-list"); box.innerHTML = "";
+  list.forEach((m, i) => {
+    const el = document.createElement("div"); el.className = "rowitem family-row" + (i === WHO.archivedIdx ? " focus" : "");
+    el.innerHTML = (window.avatar ? window.avatar(m.id) : '<div class="ic">' + m.icon + '</div>')
+      + '<div class="info"><div class="name">' + esc(m.name) + '</div><div class="desc">' + esc((PROFILE_TEMPLATES[m.template] || PROFILE_TEMPLATES.all).label) + ' · 进度保留</div></div><div class="val val-blue">OK 恢复</div>';
+    box.appendChild(el);
+  });
+  requestFocusSync();
+}
 handlers.who = {
   enter() {
-    const box = $("who-list"); box.innerHTML = "";
-    [["fin", "汇丰/盈透实景模拟 · 金融词库 · 界面对照"], ["teen", "中考核心词汇 · 拼写挑战 · 无金融内容"]].forEach((it, i) => {
-      const p = PROFILES[it[0]];
-      const el = document.createElement("div");
-      el.className = "rowitem" + (i === WHO.idx ? " focus" : "");
-      el.innerHTML = (window.avatar ? window.avatar(it[0]) : '<div class="ic" style="font-size:6vmin">' + p.icon + '</div>')
-        + '<div class="info"><div class="name" style="font-size:4vmin">' + p.name + (it[0] === CUR ? ' <span style="color:var(--good);font-size:2.2vmin">● 当前</span>' : '') + '</div>'
-        + '<div class="desc" style="font-size:2.4vmin;margin-top:1vmin">' + it[1] + '</div></div>'
-        + '<div class="val">' + (it[0] === CUR ? "使用中" : "OK 切换") + '</div>';
-      el.style.padding = "4vmin 4vmin";
-      box.appendChild(el);
-    });
+    if (WHO.phase === "template") renderWhoTemplates();
+    else if (WHO.phase === "archived") renderWhoArchived();
+    else { refreshWhoLearned(); renderWhoList(); }
   },
   key(k) {
-    if (k === "BACK") { show("home"); return; }
-    if (k === "UP" || k === "DOWN" || k === "LEFT" || k === "RIGHT") WHO.idx = 1 - WHO.idx;
-    else if (k === "OK") { switchProfile(WHO.idx === 0 ? "fin" : "teen"); return; }
-    handlers.who.enter();
+    if (WHO.phase === "template") {
+      if (k === "BACK") { WHO.phase = "list"; handlers.who.enter(); return; }
+      if (["UP", "LEFT"].includes(k)) { WHO.templateIdx = (WHO.templateIdx + WHO_TEMPLATES.length - 1) % WHO_TEMPLATES.length; whoSetFocus(WHO.templateIdx); return; }
+      else if (["DOWN", "RIGHT"].includes(k)) { WHO.templateIdx = (WHO.templateIdx + 1) % WHO_TEMPLATES.length; whoSetFocus(WHO.templateIdx); return; }
+      else if (k === "OK") { createFamilyProfile(WHO_TEMPLATES[WHO.templateIdx].id); return; }
+      return;
+    }
+    if (WHO.phase === "archived") {
+      const list = PROFILE_META.filter(m => !m.builtin && m.archived);
+      if (k === "BACK") { WHO.phase = "list"; handlers.who.enter(); return; }
+      if (!list.length) { WHO.phase = "list"; handlers.who.enter(); return; }
+      if (["UP", "LEFT"].includes(k)) { WHO.archivedIdx = (WHO.archivedIdx + list.length - 1) % list.length; whoSetFocus(WHO.archivedIdx); return; }
+      else if (["DOWN", "RIGHT"].includes(k)) { WHO.archivedIdx = (WHO.archivedIdx + 1) % list.length; whoSetFocus(WHO.archivedIdx); return; }
+      else if (k === "OK") { restoreFamilyProfile(list[WHO.archivedIdx].id); return; }
+      return;
+    }
+    const items = whoListItems();
+    if (k === "BACK") { WHO.archiveArm = ""; show("home"); return; }
+    if (["UP", "LEFT"].includes(k)) { const armed = !!WHO.archiveArm; WHO.idx = (WHO.idx + items.length - 1) % items.length; WHO.archiveArm = ""; if (armed) renderWhoList(); else whoSetFocus(WHO.idx); return; }
+    else if (["DOWN", "RIGHT"].includes(k)) { const armed = !!WHO.archiveArm; WHO.idx = (WHO.idx + 1) % items.length; WHO.archiveArm = ""; if (armed) renderWhoList(); else whoSetFocus(WHO.idx); return; }
+    else if (k === "MENU") {
+      const it = items[WHO.idx];
+      if (it && it.type === "profile" && !it.meta.builtin) WHO.archiveArm = WHO.archiveArm === it.meta.id ? "" : it.meta.id;
+      else toast("内置的爸爸/弟弟空间会永久保留");
+    } else if (k === "OK") {
+      const it = items[WHO.idx]; if (!it) return;
+      if (it.type === "add") { WHO.phase = "template"; WHO.templateIdx = 0; handlers.who.enter(); return; }
+      if (it.type === "archived") { WHO.phase = "archived"; WHO.archivedIdx = 0; handlers.who.enter(); return; }
+      if (WHO.archiveArm === it.meta.id) { archiveFamilyProfile(it.meta.id); handlers.who.enter(); return; }
+      switchProfile(it.meta.id); return;
+    }
+    renderWhoList();
   }
 };
 
 /* ================= 拼写挑战(听音看义,遥控器拼单词) ================= */
-const SPL = { list: [], i: 0, ans: "", input: [], ki: 0, score: 0, combo: 0, best: 0, right: 0, lock: false, hints: 0, run: 0 };
+const SPL = { list: [], i: 0, ans: "", input: [], ki: 0, score: 0, xpEarned: 0, combo: 0, best: 0, right: 0, lock: false, hints: 0, errors: 0, phase: "build", nextAfter: 0, carryOkUntil: 0, wrongAfter: 0, wrongKey: "", flashSeq: 0, run: 0 };
 const SPL_KEYS = "abcdefghijklmnopqrstuvwxyz".split("").concat(["DEL", "HINT"]);
 function startSpell() {
   SPL.run++;
   const pool = seenWords().filter(e => /^[a-zA-Z]{3,12}$/.test(e.w));
   if (pool.length < 8) { toast("先学至少 8 个可拼写的单词(纯字母)再来挑战"); return; }
   SPL.list = shuffle(pool.slice()).slice(0, 10);
-  SPL.i = 0; SPL.score = 0; SPL.combo = 0; SPL.best = 0; SPL.right = 0;
+  SPL.i = 0; SPL.score = 0; SPL.xpEarned = 0; SPL.combo = 0; SPL.best = 0; SPL.right = 0;
+  SPL.carryOkUntil = NOW() + 240;
   show("spell"); renderSpell();
 }
 function renderSpell() {
   const e = SPL.list[SPL.i];
   SPL.ans = e.w.toLowerCase();
   SPL.input = [SPL.ans[0]];      // 首字母默认给出,降低遥控器输入负担
-  SPL.ki = 0; SPL.lock = false; SPL.hints = 0;
+  SPL.ki = 0; SPL.lock = false; SPL.hints = 0; SPL.errors = 0; SPL.phase = "build"; SPL.nextAfter = 0; SPL.wrongAfter = 0; SPL.wrongKey = ""; SPL.flashSeq++;
   $("sp-prog").textContent = (SPL.i + 1) + " / " + SPL.list.length;
   $("sp-score").textContent = SPL.score + " 分";
   $("sp-combo").textContent = SPL.combo > 1 ? "⚡连击 ×" + SPL.combo : "";
@@ -1696,6 +2275,7 @@ function renderSpell() {
   $("sp-fb").textContent = "";
   drawSpell();
   speak(e.w);
+  requestFocusSync();
 }
 function drawSpell() {
   drawSpellInput();
@@ -1720,11 +2300,25 @@ function spellFocus() {
   const keys = $("sp-kb").children;
   for (let i = 0; i < keys.length; i++) keys[i].classList.toggle("focus", i === SPL.ki);
 }
+function spellWrong(letter) {
+  const now = NOW();
+  if (letter === SPL.wrongKey && now < SPL.wrongAfter) { SPL.wrongAfter = now + 190; return; }
+  SPL.wrongKey = letter; SPL.wrongAfter = now + 220;
+  SPL.errors++; SPL.combo = 0;
+  const seq = ++SPL.flashSeq, pos = SPL.input.length;
+  drawSpellInput();
+  const cells = $("sp-boxes").children;
+  if (cells[pos]) { cells[pos].textContent = letter; cells[pos].classList.remove("cur"); cells[pos].classList.add("bad", "wrong-pick"); }
+  $("sp-fb").textContent = "✗ 这个字母不对,换一个再试";
+  try { if (window.SFX) SFX.bad(); } catch (e) { }
+  setTimeout(() => { if (SCREEN === "spell" && SPL.phase === "build" && seq === SPL.flashSeq) { drawSpellInput(); $("sp-fb").textContent = "继续拼写 · 错误会立即提示"; } }, 360);
+}
 function spellJudge() {
   SPL.lock = true;
   const e = SPL.list[SPL.i];
   const got = SPL.input.join("");
-  const ok = got === SPL.ans;
+  const complete = got === SPL.ans;
+  const perfect = complete && SPL.errors === 0 && SPL.hints === 0;
   const box = $("sp-boxes"); box.innerHTML = "";
   for (let i = 0; i < SPL.ans.length; i++) {
     const d = document.createElement("div");
@@ -1732,37 +2326,58 @@ function spellJudge() {
     d.textContent = SPL.ans[i];
     box.appendChild(d);
   }
-  try { if (window.SFX) (ok ? SFX.good() : SFX.bad()); } catch (e2) { }
-  if (ok) {
+  $("sp-kb").innerHTML = '<div class="sp-key fn spell-next focus">下一题　→</div>';
+  try { if (window.SFX) SFX.good(); } catch (e2) { }
+  if (perfect) {
     SPL.combo++; SPL.best = Math.max(SPL.best, SPL.combo); SPL.right++;
     const gain = Math.max(4, 12 + Math.min(8, SPL.combo * 2) - SPL.hints * 2);
-    SPL.score += gain; P.xp += 5;
-    $("sp-fb").textContent = "✓ 拼对了! +" + gain + (SPL.hints ? " 分(用了" + SPL.hints + "次提示)" : " 分");
+    SPL.score += gain; SPL.xpEarned += 5; P.xp += 5;
+    $("sp-fb").textContent = "✓ 一次拼对 · +" + gain + " 分 · 按 OK 下一题";
   } else {
     SPL.combo = 0;
-    $("sp-fb").textContent = "✗ 正确拼写是 " + e.w + " · 你拼的是 " + got;
+    const gain = Math.max(2, 7 - SPL.errors - SPL.hints); SPL.score += gain; SPL.xpEarned += 2; P.xp += 2;
+    $("sp-fb").textContent = "✓ 已完成 · 本题修正 " + (SPL.errors + SPL.hints) + " 次 · 按 OK 下一题";
   }
-  speak(e.w);
-  schedHit(e.w, ok);
-  const run = SPL.run;
-  setTimeout(() => { if (SCREEN !== "spell" || SPL.run !== run) return; SPL.i++; if (SPL.i >= SPL.list.length) finishSpell(); else renderSpell(); }, ok ? 1100 : 2600);
+  $("sp-mean").textContent = e.w + " · " + e.m;
+  $("sp-phon").textContent = e.p ? "/" + e.p + "/ · 完整拼写回顾" : "完整拼写回顾";
+  SPL.phase = "review"; SPL.nextAfter = NOW() + 580;
+  requestAnimationFrame(syncFocusFx);
+  schedHit(e.w, perfect);
+  const run = SPL.run, idx = SPL.i;
+  setTimeout(() => { if (SCREEN === "spell" && SPL.run === run && SPL.i === idx && SPL.phase === "review") speak(e.w); }, 260);
+}
+function nextSpell() {
+  SPL.i++;
+  if (SPL.i >= SPL.list.length) finishSpell(); else renderSpell();
 }
 handlers.spell = {
   key(k) {
     if (k === "BACK") { SPL.run++; show(RETURN_SCREEN || "home"); return; }
     if (k === "MENU" || k === "PLAY") { speak(SPL.list[SPL.i].w); return; }
+    if (SPL.phase === "review") {
+      if (k === "OK") {
+        if (NOW() < SPL.nextAfter) { SPL.nextAfter = NOW() + 300; return; }
+        SPL.carryOkUntil = NOW() + 240;
+        nextSpell();
+      }
+      return;
+    }
     if (SPL.lock) return;
     const n = SPL_KEYS.length;                     // 28 键,7列×4行
-    if (k === "UP") { SPL.ki = (SPL.ki - 7 + n) % n; spellFocus(); return; }
-    else if (k === "DOWN") { SPL.ki = (SPL.ki + 7) % n; spellFocus(); return; }
-    else if (k === "LEFT") { SPL.ki = (SPL.ki + n - 1) % n; spellFocus(); return; }
-    else if (k === "RIGHT") { SPL.ki = (SPL.ki + 1) % n; spellFocus(); return; }
+    if (k === "UP") { SPL.carryOkUntil = 0; SPL.wrongKey = ""; SPL.ki = (SPL.ki - 7 + n) % n; spellFocus(); return; }
+    else if (k === "DOWN") { SPL.carryOkUntil = 0; SPL.wrongKey = ""; SPL.ki = (SPL.ki + 7) % n; spellFocus(); return; }
+    else if (k === "LEFT") { SPL.carryOkUntil = 0; SPL.wrongKey = ""; SPL.ki = (SPL.ki + n - 1) % n; spellFocus(); return; }
+    else if (k === "RIGHT") { SPL.carryOkUntil = 0; SPL.wrongKey = ""; SPL.ki = (SPL.ki + 1) % n; spellFocus(); return; }
     else if (k === "OK") {
+      const now = NOW(); if (now < SPL.carryOkUntil) { SPL.carryOkUntil = now + 200; return; }
       const key = SPL_KEYS[SPL.ki];
       if (key === "DEL") { if (SPL.input.length > 1) SPL.input.pop(); }
       else if (key === "HINT") {
         if (SPL.input.length < SPL.ans.length) { SPL.input.push(SPL.ans[SPL.input.length]); SPL.hints++; }
-      } else if (SPL.input.length < SPL.ans.length) SPL.input.push(key);
+      } else if (SPL.input.length < SPL.ans.length) {
+        if (key !== SPL.ans[SPL.input.length]) { spellWrong(key); return; }
+        SPL.input.push(key); SPL.wrongKey = "";
+      }
       if (SPL.input.length >= SPL.ans.length) { drawSpellInput(); spellJudge(); return; }
     }
     drawSpellInput();
@@ -1771,8 +2386,8 @@ handlers.spell = {
 function finishSpell() {
   const acc = SPL.list.length ? Math.round(SPL.right / SPL.list.length * 100) : 100;
   $("f-title").textContent = SPL.right === SPL.list.length ? "全部拼对!" : "拼写完成";
-  $("f-xp").textContent = "+" + (SPL.right * 5) + " XP · 得分 " + SPL.score;
-  $("f-stats").innerHTML = '<div class="stat"><div class="n" style="color:var(--good)">' + SPL.right + '/' + SPL.list.length + '</div><div class="l">拼对</div></div>'
+  $("f-xp").textContent = "+" + SPL.xpEarned + " XP · 得分 " + SPL.score;
+  $("f-stats").innerHTML = '<div class="stat"><div class="n" style="color:var(--good)">' + SPL.right + '/' + SPL.list.length + '</div><div class="l">无错拼对</div></div>'
     + '<div class="stat"><div class="n" style="color:var(--gold)">×' + SPL.best + '</div><div class="l">最高连击</div></div>'
     + '<div class="stat"><div class="n">' + SPL.score + '</div><div class="l">总分</div></div>';
   $("f-msg").textContent = "拼错的词已安排加密复习 · 考试拼写题就这么练出来";
@@ -1782,7 +2397,7 @@ function finishSpell() {
 /* ================= 词块拼装 / 句子拼图 =================
    两种玩法共用一套轻量拼图引擎:前者重建单词字形,后者重建真实例句语序。
    每块都带稳定序号,即使句子里有重复词也不会误判。 */
-const PG = { mode: "chunks", list: [], i: 0, pieces: [], chosen: [], idx: 0, score: 0, combo: 0, best: 0, right: 0, lock: false, seq: 0 };
+const PG = { mode: "chunks", list: [], i: 0, pieces: [], chosen: [], answerTokens: [], idx: 0, score: 0, xpEarned: 0, combo: 0, best: 0, right: 0, lock: false, errors: 0, phase: "build", nextAfter: 0, carryOkUntil: 0, wrongAfter: 0, wrongKey: -1, trText: "", trPending: false, trOk: false, trDeadline: 0, seq: 0, flashSeq: 0 };
 function chunkTokens(w) {
   const s = String(w).toLowerCase();
   const count = s.length <= 6 ? 3 : (s.length <= 10 ? 4 : 5);
@@ -1796,41 +2411,66 @@ function chunkTokens(w) {
   return out;
 }
 function sentenceTokens(s) {
-  return String(s).trim().replace(/\s+/g, " ").split(" ").filter(Boolean);
+  // 每个原始空格词块独立清洗:全小写,移除所有标点/符号,不给首尾位置任何视觉暗示。
+  return String(s).trim().split(/\s+/).map(t => t.toLowerCase().replace(/[^a-z0-9]/g, "")).filter(Boolean);
+}
+function puzzleSentenceMeaning(e) {
+  if (PG.trOk && PG.trText) return "整句中文: " + PG.trText;
+  if (e.tr) return "整句中文: " + e.tr;
+  if (P.tr && P.tr[e.w]) return "整句中文: " + P.tr[e.w];
+  return "中文意思: 核心词 " + e.w + " = " + e.m + " · 完整句译离线暂不可用";
 }
 function startChunks() { startPuzzle("chunks"); }
 function startSentence() { startPuzzle("sentence"); }
 function startPuzzle(mode) {
   let pool;
   if (mode === "chunks") pool = seenWords().filter(e => /^[a-zA-Z]{5,15}$/.test(e.w));
-  else pool = seenWords().filter(e => e.x && sentenceTokens(e.x).length >= 4 && sentenceTokens(e.x).length <= 10);
+  else {
+    const eligible = seenWords().filter(e => e.x && sentenceTokens(e.x).length >= 4 && sentenceTokens(e.x).length <= 10);
+    const translated = shuffle(eligible.filter(e => e.tr || (P.tr && P.tr[e.w])));
+    // 优先使用自带/已缓存整句中文的题；数量不足时才让 AI 在解题期间补译。
+    pool = translated.length >= 6 ? translated : translated.concat(shuffle(eligible.filter(e => !e.tr && !(P.tr && P.tr[e.w]))));
+  }
   const minimum = mode === "chunks" ? 8 : 6;
   if (pool.length < minimum) {
     toast(mode === "chunks" ? "先学至少 8 个五字母以上的单词再来拼装" : "先学习一些带例句的单词再来挑战句子拼图");
     return;
   }
-  PG.mode = mode; PG.list = shuffle(pool.slice()).slice(0, 10); PG.i = 0;
-  PG.score = 0; PG.combo = 0; PG.best = 0; PG.right = 0; PG.seq++;
+  PG.mode = mode; PG.list = (mode === "sentence" ? pool.slice() : shuffle(pool.slice())).slice(0, 10); PG.i = 0;
+  PG.score = 0; PG.xpEarned = 0; PG.combo = 0; PG.best = 0; PG.right = 0; PG.seq++;
+  PG.carryOkUntil = NOW() + 240;
   show("puzzle"); renderPuzzle();
 }
 function renderPuzzle() {
   const e = PG.list[PG.i], tokens = PG.mode === "chunks" ? chunkTokens(e.w) : sentenceTokens(e.x);
+  PG.answerTokens = tokens.slice();
   PG.pieces = shuffle(tokens.map((txt, order) => ({ txt: txt, order: order, used: false })));
-  PG.chosen = []; PG.idx = 0; PG.lock = false; PG.seq++;
+  PG.chosen = []; PG.idx = 0; PG.lock = false; PG.errors = 0; PG.phase = "build"; PG.nextAfter = 0; PG.wrongAfter = 0; PG.wrongKey = -1;
+  PG.trText = PG.mode === "sentence" ? (e.tr || (P.tr && P.tr[e.w]) || "") : "";
+  PG.trOk = !!PG.trText; PG.trPending = PG.mode === "sentence" && !PG.trText; PG.trDeadline = 0; PG.seq++; PG.flashSeq++;
   $("pz-title").textContent = PG.mode === "chunks" ? "词块拼装" : "句子拼图";
   $("pz-prog").textContent = (PG.i + 1) + " / " + PG.list.length;
   $("pz-score").textContent = PG.score + " 分";
   $("pz-combo").textContent = PG.combo > 1 ? "⚡连击 ×" + PG.combo : "";
-  $("pz-clue").textContent = PG.mode === "chunks" ? e.m : (e.tr || (P.tr && P.tr[e.w]) || ("用 “" + e.w + "” 还原这条例句"));
+  $("pz-clue").textContent = PG.mode === "chunks" ? e.m : (e.tr || (P.tr && P.tr[e.w]) || "整句中文释义加载中…");
   $("pz-target").textContent = PG.mode === "chunks"
     ? ((e.p ? "/" + e.p + "/ · " : "") + e.w.length + " 个字母 · " + tokens.length + " 个词块")
     : ("核心词: " + e.w + " · " + e.m);
-  $("pz-fb").textContent = PG.mode === "chunks" ? "按正确顺序选择全部词块 · 最后一格可撤销" : "按正确语序选择全部片段 · 最后一格可撤销";
+  $("pz-fb").textContent = PG.mode === "chunks" ? "按正确顺序选择全部词块 · 选错会立即提示" : "按正确语序选择全部片段 · 已隐藏大小写和标点线索";
   drawPuzzle();
   if (PG.mode === "chunks") speak(e.w);
+  else {
+    const seq = PG.seq, idx = PG.i;
+    resolveSentenceTr(e, (txt, ok) => {
+      if (SCREEN !== "puzzle" || PG.seq !== seq || PG.i !== idx) return;
+      PG.trText = txt; PG.trOk = !!ok; PG.trPending = false;
+      $("pz-clue").textContent = PG.phase === "review" ? puzzleSentenceMeaning(e) : txt;
+    });
+  }
+  requestFocusSync();
 }
 function puzzleText(tokens) {
-  return tokens.join(PG.mode === "chunks" ? "" : " ").replace(/\s+([,.!?;:])/g, "$1");
+  return tokens.join(PG.mode === "chunks" ? "" : " ");
 }
 function drawPuzzle() {
   const selected = PG.chosen.map(i => PG.pieces[i].txt);
@@ -1853,18 +2493,37 @@ function puzzleFocus() {
 }
 function puzzleMove(k) {
   const n = PG.pieces.length + 1, cols = 4;
+  PG.carryOkUntil = 0; PG.wrongKey = -1;
   PG.idx = gridMoveIndex(PG.idx, k, n, cols);
   puzzleFocus();
+}
+function puzzleWrong(i) {
+  const now = NOW();
+  if (i === PG.wrongKey && now < PG.wrongAfter) { PG.wrongAfter = now + 190; return; }
+  PG.wrongKey = i; PG.wrongAfter = now + 220;
+  PG.errors++; PG.combo = 0;
+  const seq = ++PG.flashSeq, cell = $("pz-grid").children[i], p = PG.pieces[i];
+  if (cell) { cell.classList.remove("wrong-pick"); void cell.offsetWidth; cell.classList.add("wrong-pick"); }
+  $("pz-build").classList.add("bad");
+  $("pz-fb").textContent = "✗ “" + (p ? p.txt : "这个片段") + "” 不能放在这里,换一个再试";
+  try { if (window.SFX) SFX.bad(); } catch (e) { }
+  setTimeout(() => {
+    if (SCREEN !== "puzzle" || PG.phase !== "build" || seq !== PG.flashSeq) return;
+    $("pz-build").classList.remove("bad"); if (cell) cell.classList.remove("wrong-pick");
+    $("pz-fb").textContent = "继续尝试 · 错误不会被写入答案";
+  }, 390);
 }
 function puzzleChoose() {
   if (PG.idx === PG.pieces.length) {
     const last = PG.chosen.pop();
     if (last !== undefined) PG.pieces[last].used = false;
-    drawPuzzle(); return;
+    PG.flashSeq++; drawPuzzle(); return;
   }
   const p = PG.pieces[PG.idx];
   if (!p || p.used) return;
-  p.used = true; PG.chosen.push(PG.idx); drawPuzzle();
+  const expected = PG.answerTokens[PG.chosen.length];
+  if (p.txt !== expected) { puzzleWrong(PG.idx); return; }
+  PG.flashSeq++; PG.wrongKey = -1; p.used = true; PG.chosen.push(PG.idx); drawPuzzle();
   if (PG.chosen.length < PG.pieces.length) return;
   PG.lock = true;
   const seq = PG.seq;
@@ -1872,32 +2531,38 @@ function puzzleChoose() {
 }
 function judgePuzzle() {
   const e = PG.list[PG.i];
-  const ok = PG.chosen.every((idx, pos) => PG.pieces[idx].order === pos);
-  try { if (window.SFX) (ok ? SFX.good() : SFX.bad()); } catch (e2) { }
-  if (ok) {
+  const perfect = PG.errors === 0;
+  try { if (window.SFX) SFX.good(); } catch (e2) { }
+  if (perfect) {
     PG.combo++; PG.best = Math.max(PG.best, PG.combo); PG.right++;
-    const gain = 12 + Math.min(10, PG.combo * 2); PG.score += gain; P.xp += 5;
-    $("pz-build").className = "puzzle-build good";
-    $("pz-fb").textContent = "✓ 完成! +" + gain + " · " + e.w + " = " + e.m;
+    const gain = 12 + Math.min(10, PG.combo * 2); PG.score += gain; PG.xpEarned += 5; P.xp += 5;
+    $("pz-fb").textContent = "✓ 一次完成! +" + gain + " · 按 OK 下一题";
   } else {
     PG.combo = 0;
-    $("pz-build").className = "puzzle-build bad";
-    $("pz-build").textContent = PG.mode === "chunks" ? e.w : e.x;
-    $("pz-fb").textContent = "正确答案已还原 · 再读一遍形成完整记忆";
+    const gain = Math.max(3, 8 - PG.errors); PG.score += gain; PG.xpEarned += 2; P.xp += 2;
+    $("pz-fb").textContent = "✓ 已完成 · 本题修正 " + PG.errors + " 次 · 按 OK 下一题";
   }
-  speak(PG.mode === "chunks" ? e.w : e.x);
-  schedHit(e.w, ok);
-  const seq = PG.seq;
-  setTimeout(() => {
-    if (SCREEN !== "puzzle" || seq !== PG.seq) return;
-    PG.i++; if (PG.i >= PG.list.length) finishPuzzle(); else renderPuzzle();
-  }, ok ? 950 : 2200);
+  PG.phase = "review"; PG.lock = true; PG.nextAfter = NOW() + 620;
+  if (PG.mode === "sentence" && PG.trPending) PG.trDeadline = NOW() + 900;
+  $("pz-build").className = "puzzle-build good review";
+  $("pz-build").textContent = PG.mode === "chunks" ? e.w : e.x;
+  $("pz-clue").textContent = PG.mode === "chunks" ? e.m : (PG.trPending ? ("正在补齐整句中文… · 核心词: " + e.m) : puzzleSentenceMeaning(e));
+  $("pz-target").textContent = PG.mode === "chunks" ? ((e.p ? "/" + e.p + "/ · " : "") + "完整单词回顾") : ("核心词: " + e.w + " · " + e.m + " · 完整句子回顾");
+  const grid = $("pz-grid"); grid.innerHTML = '<div class="piece puzzle-next focus">下一题　→</div>';
+  requestAnimationFrame(syncFocusFx);
+  schedHit(e.w, perfect);
+  const seq = PG.seq, idx = PG.i;
+  setTimeout(() => { if (SCREEN === "puzzle" && PG.seq === seq && PG.i === idx && PG.phase === "review") speak(PG.mode === "chunks" ? e.w : e.x); }, 280);
+}
+function nextPuzzle() {
+  PG.seq++; PG.i++;
+  if (PG.i >= PG.list.length) finishPuzzle(); else renderPuzzle();
 }
 function finishPuzzle() {
   const acc = Math.round(PG.right / PG.list.length * 100);
   $("f-title").textContent = PG.right === PG.list.length ? "拼图全通!" : (PG.mode === "chunks" ? "词块训练完成" : "语序训练完成");
-  $("f-xp").textContent = "+" + (PG.right * 5) + " XP · 得分 " + PG.score;
-  $("f-stats").innerHTML = '<div class="stat"><div class="n" style="color:var(--good)">' + PG.right + '/' + PG.list.length + '</div><div class="l">完成</div></div>'
+  $("f-xp").textContent = "+" + PG.xpEarned + " XP · 得分 " + PG.score;
+  $("f-stats").innerHTML = '<div class="stat"><div class="n" style="color:var(--good)">' + PG.right + '/' + PG.list.length + '</div><div class="l">无错完成</div></div>'
     + '<div class="stat"><div class="n" style="color:var(--gold)">×' + PG.best + '</div><div class="l">最高连击</div></div>'
     + '<div class="stat"><div class="n">' + acc + '%</div><div class="l">正确率</div></div>';
   $("f-msg").textContent = PG.mode === "chunks" ? "从词块到完整单词,拼写记忆会更牢" : "从单词走进句子,才是真正会使用";
@@ -1907,8 +2572,20 @@ handlers.puzzle = {
   key(k) {
     if (k === "BACK") { PG.seq++; show(RETURN_SCREEN || "home"); return; }
     if (k === "MENU" || k === "PLAY") { const e = PG.list[PG.i]; if (e) speak(PG.mode === "chunks" ? e.w : e.x); return; }
+    if (PG.phase === "review") {
+      if (k === "OK") {
+        if (NOW() < PG.nextAfter) { PG.nextAfter = NOW() + 320; return; }
+        if (PG.mode === "sentence" && PG.trPending && NOW() < PG.trDeadline) {
+          $("pz-fb").textContent = "正在补齐整句中文,最多再等一瞬 · 稍后按 OK 继续";
+          return;
+        }
+        PG.carryOkUntil = NOW() + 240;
+        nextPuzzle();
+      }
+      return;
+    }
     if (PG.lock) return;
-    if (k === "OK") puzzleChoose();
+    if (k === "OK") { const now = NOW(); if (now < PG.carryOkUntil) { PG.carryOkUntil = now + 200; return; } puzzleChoose(); }
     else if (["UP", "DOWN", "LEFT", "RIGHT"].includes(k)) puzzleMove(k);
   }
 };
@@ -1958,6 +2635,7 @@ function renderStarship() {
   clearTimeout(SS.timer);
   const run = SS.run;
   SS.timer = timerBar("ss-timer", SS_TIME, () => { if (SCREEN === "starship" && SS.run === run) starshipAnswer(-1); });
+  requestFocusSync();
 }
 function starshipMove(k) {
   SS.sel = gridMoveIndex(SS.sel, k, 4, 2);
@@ -1965,6 +2643,7 @@ function starshipMove(k) {
   for (let i = 0; i < opts.length; i++) opts[i].classList.toggle("focus", i === SS.sel);
 }
 function starBurst(ok) {
+  if (focusFxReduced()) return;
   const box = $("ss-burst");
   for (let i = 0; i < (ok ? 12 : 6); i++) {
     const p = document.createElement("i"); p.className = "ss-particle";
@@ -2081,6 +2760,7 @@ function renderChase() {
     drawChase();
     if (CH.gap <= 0) chaseAnswer(-1);
   }, 160);
+  requestFocusSync();
 }
 function drawChase() {
   const gap = clamp(CH.gap, 0, 100);
@@ -2100,6 +2780,7 @@ function drawChase() {
   $("chase").style.setProperty("--spd", spd);
 }
 function chaseParticles(xPct, color, n) {
+  if (focusFxReduced()) return;
   const box = $("ch-particles"); if (!box || !box.appendChild) return;
   for (let i = 0; i < n; i++) {
     const p = document.createElement("div"); p.className = "ch-pt";

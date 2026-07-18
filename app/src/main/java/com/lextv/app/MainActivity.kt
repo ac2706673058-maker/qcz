@@ -6,6 +6,8 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import android.speech.tts.TextToSpeech
 import android.view.KeyEvent
@@ -38,6 +40,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     private var recordLang = "en"
     private var baiduToken = ""
     private var baiduTokenTime = 0L
+    @Volatile private var destroyed = false
     // 百度语音识别凭证(免费)
     private val BAIDU_API_KEY = "kXU19M5e5DM5uLfuE1e5woqy"
     private val BAIDU_SECRET_KEY = "GnejlUaOkaj6vOztuec6DMR9cTD1WtdN"
@@ -59,8 +62,8 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         setContentView(web)
         hideSystemUi()
         tts = TextToSpeech(this, this)
-        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 1)
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), 1)
         }
         web.loadUrl("file:///android_asset/www/index.html")
     }
@@ -80,6 +83,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     }
 
     override fun onInit(status: Int) {
+        if (destroyed) return
         if (status == TextToSpeech.SUCCESS) {
             fun bad(r: Int?) = r == TextToSpeech.LANG_MISSING_DATA || r == TextToSpeech.LANG_NOT_SUPPORTED || r == null
             var r = tts?.setLanguage(Locale.US)
@@ -88,11 +92,11 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             if (bad(r)) { try { r = tts?.setLanguage(Locale.SIMPLIFIED_CHINESE) } catch (_: Exception) {} }
             ttsReady = !bad(r)
         }
-        runOnUiThread { web.evaluateJavascript("window.onTtsReady && window.onTtsReady($ttsReady)", null) }
+        js("window.onTtsReady && window.onTtsReady($ttsReady)")
     }
 
     private fun sendKey(name: String): Boolean {
-        runOnUiThread { web.evaluateJavascript("window.onTvKey && window.onTvKey('$name')", null) }
+        js("window.onTvKey && window.onTvKey('$name')")
         return true
     }
 
@@ -112,15 +116,31 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     }
 
     override fun onDestroy() {
+        destroyed = true
         tts?.shutdown()
         try { recording = false; recorder?.release() } catch (_: Exception) {}
         try { speakSeq++; mplayer?.release() } catch (_: Exception) {}
+        try { ttsPool.shutdownNow() } catch (_: Exception) {}
+        try {
+            web.stopLoading()
+            web.removeJavascriptInterface("Bridge")
+            (web.parent as? android.view.ViewGroup)?.removeView(web)
+            web.removeAllViews()
+            web.destroy()
+        } catch (_: Exception) {}
         super.onDestroy()
     }
 
-    private fun js(code: String) { runOnUiThread { web.evaluateJavascript(code, null) } }
+    private fun js(code: String) {
+        if (destroyed) return
+        runOnUiThread {
+            if (destroyed || !::web.isInitialized) return@runOnUiThread
+            try { web.evaluateJavascript(code, null) } catch (_: Exception) {}
+        }
+    }
 
     private fun doDownloadInstall(url: String) {
+        if (destroyed) return
         js("window.onUpdateProgress && window.onUpdateProgress(0)")
         Thread {
             try {
@@ -162,7 +182,9 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     }
 
     private fun installApk(file: File) {
+        if (destroyed) return
         runOnUiThread {
+            if (destroyed) return@runOnUiThread
             try {
                 val intent = Intent(Intent.ACTION_VIEW)
                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
@@ -184,11 +206,11 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
 
     // 开始录音(16kHz 单声道 PCM)
     private fun startRecording() {
-        if (recording) return
-        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+        if (destroyed || recording) return
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             pendingStart = true
             js("window.onVoicePart && window.onVoicePart('\u6b63\u5728\u7533\u8bf7\u9ea6\u514b\u98ce\u6743\u9650...')")
-            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 1)
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), 1)
             return
         }
         val sampleRate = 16000
@@ -303,8 +325,9 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     }
 
     private fun playTtsFile(f: File, rate: Float, seq: Int) {
+        if (destroyed) return
         runOnUiThread {
-            if (seq != speakSeq) return@runOnUiThread
+            if (destroyed || seq != speakSeq) return@runOnUiThread
             try {
                 try { mplayer?.release() } catch (_: Exception) {}
                 val p = MediaPlayer()
@@ -325,10 +348,11 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     }
 
     private fun doSpeakText(text: String, rate: Float) {
+        if (destroyed) return
         val seq = ++speakSeq
-        runOnUiThread { try { mplayer?.stop() } catch (_: Exception) {} }
-        ttsPool.execute {
-            if (seq != speakSeq) return@execute
+        runOnUiThread { if (!destroyed) try { mplayer?.stop() } catch (_: Exception) {} }
+        try { ttsPool.execute {
+            if (destroyed || seq != speakSeq) return@execute
             val t = text.replace(Regex("\\s+"), " ").trim().take(400)
             if (t.isEmpty()) return@execute
             val zh = t.any { it.code > 0x2E7F }
@@ -350,7 +374,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                         bytes = fetchAudio("https://tsn.baidu.com/text2audio",
                             "tex=" + enc + "&tok=" + tok + "&cuid=lextv-tts&ctp=1&lan=zh&spd=5&pit=5&vol=9&per=0&aue=3")
                 }
-                if (bytes == null) { if (seq == speakSeq) js("window.onSpeakErr && window.onSpeakErr()"); return@execute }
+                if (bytes == null) { if (!destroyed && seq == speakSeq) js("window.onSpeakErr && window.onSpeakErr()"); return@execute }
                 try { cache.writeBytes(bytes) } catch (_: Exception) {}
                 // 缓存瘦身:超过400条删最旧的一半
                 try {
@@ -359,13 +383,14 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                         fs.sortedBy { it.lastModified() }.take(fs.size / 2).forEach { it.delete() }
                 } catch (_: Exception) {}
             }
-            if (seq != speakSeq) return@execute
+            if (destroyed || seq != speakSeq) return@execute
             playTtsFile(cache, rate, seq)
-        }
+        } } catch (_: java.util.concurrent.RejectedExecutionException) {}
     }
 
     // 百度语音识别:先取access_token,再上传音频
     private fun transcribe(wav: ByteArray) {
+        if (destroyed) return
         Thread {
             try {
                 if (BAIDU_SECRET_KEY == "PUT_YOUR_SECRET_KEY_HERE") {
@@ -409,6 +434,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (destroyed) return
         if (requestCode == 1) {
             val granted = grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
             val wantStart = pendingStart
@@ -422,13 +448,14 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
 
         @JavascriptInterface
         fun speak(text: String, rate: Float) {
-            if (!ttsReady) return
+            if (destroyed || !ttsReady) return
             tts?.setSpeechRate(rate)
             tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "lex")
         }
 
         @JavascriptInterface
         fun stopSpeak() {
+            if (destroyed) return
             tts?.stop()
             speakSeq++
             runOnUiThread { try { mplayer?.stop() } catch (_: Exception) {} }
@@ -501,16 +528,21 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
 
         @JavascriptInterface
         fun startListen(lang: String) {
-            runOnUiThread { recordLang = if (lang == "cn") "cn" else "en"; startRecording() }
+            runOnUiThread {
+                if (destroyed) return@runOnUiThread
+                recordLang = if (lang == "cn") "cn" else "en"
+                startRecording()
+            }
         }
 
         @JavascriptInterface
         fun stopListen() {
-            runOnUiThread { stopRecording() }
+            runOnUiThread { if (!destroyed) stopRecording() }
         }
 
         @JavascriptInterface
         fun aiChat(payload: String, cbId: String) {
+            if (destroyed) return
             Thread {
                 var out = "{}"
                 try {
@@ -525,7 +557,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                 } catch (e: Exception) {
                     out = "{\"error\":{\"message\":\"" + (e.message ?: "network error") + "\"}}"
                 }
-                runOnUiThread { web.evaluateJavascript("window.onAiReply('" + cbId + "'," + JSONObject.quote(out) + ")", null) }
+                js("window.onAiReply('" + cbId + "'," + JSONObject.quote(out) + ")")
             }.start()
         }
 
@@ -541,10 +573,23 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
 
         @JavascriptInterface
         fun downloadAndInstall(url: String) {
-            runOnUiThread { doDownloadInstall(url) }
+            runOnUiThread { if (!destroyed) doDownloadInstall(url) }
         }
 
         @JavascriptInterface
-        fun exitApp() { runOnUiThread { finish() } }
+        fun exitApp() {
+            runOnUiThread {
+                try {
+                    web.stopLoading()
+                    web.loadUrl("about:blank")
+                    web.clearHistory()
+                } catch (_: Exception) {}
+                // 用户主动从首页退出时移除整个任务；随后结束本进程，下一次一定是干净冷启动。
+                try { finishAndRemoveTask() } catch (_: Exception) { finishAffinity() }
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    android.os.Process.killProcess(android.os.Process.myPid())
+                }, 180)
+            }
+        }
     }
 }

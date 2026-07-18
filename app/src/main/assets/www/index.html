@@ -768,6 +768,7 @@ html.eye{
   --paper:#2B2720;--dim:rgba(60,52,36,.64);--faint:rgba(60,52,36,.36);
   --gold:#2C6A4A;--gold2:#1F4E36;--focus:#2C6A4A;
   --focus-surface:#F8F4E8;--focus-text:#2B2720;
+  --lift-shadow:0 0 0 .3vmin var(--focus),0 1.35vmin 3vmin rgba(44,106,74,.14),0 .65vmin 1.6vmin rgba(60,48,24,.11);
 }
 body{background:
   radial-gradient(88vmax 58vmax at 88% -22%,#FFFDF5,transparent 62%),
@@ -829,7 +830,7 @@ html.eye #home .brand::before{background:linear-gradient(145deg,#2C6A4A,#1F4E36)
 #home .today .l{font-size:1.78vmin}
 
 /* ======================================================================
-   v6.1 —— Focus Physics 水面余波 + 极限遥控响应
+   v6.2 —— Liquid Comet 焦点动效 + 极限遥控响应
    卡片只在焦点变化时动,计时条由合成线程完成,避免低端电视重复重绘。
    ====================================================================== */
 #home .menu{gap:1.45vmin}
@@ -867,7 +868,7 @@ html.eye .puzzle-build{background:rgba(248,244,232,.8)}.puzzle-build.empty{color
 .puzzle-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.25vmin;width:min(150vmin,100%);margin:0 auto;padding:.5vmin .6vmin;overflow:visible}
 .piece{min-height:7.8vmin;display:flex;align-items:center;justify-content:center;padding:.8vmin 1.2vmin;border-radius:1.55vmin;background:rgba(251,247,238,.94);
   color:var(--paper);font-size:2.45vmin;font-weight:720;box-shadow:0 .1vmin .3vmin rgba(0,0,0,.05),0 .65vmin 1.5vmin rgba(40,32,20,.055);
-  transition:transform .09s var(--ease-spring),box-shadow .09s,opacity .09s,background .09s;color .09s;will-change:transform}
+  transition:transform .09s var(--ease-spring),box-shadow .09s,opacity .09s,background .09s;color .09s}
 html.eye .piece{background:rgba(243,238,224,.95)}
 .piece.focus{transform:translateY(-.35vmin) scale(1.035);box-shadow:var(--lift-shadow);z-index:4;background:var(--focus-surface);color:var(--gold)}
 .piece.used{opacity:.24;box-shadow:none}.piece.used.focus{opacity:.42}.piece.undo{color:var(--dim);font-weight:650}.piece.undo.focus{color:var(--gold)}
@@ -899,14 +900,64 @@ html.eye .piece{background:rgba(243,238,224,.95)}
 .ss-burst{position:absolute;inset:0;z-index:7;pointer-events:none}.ss-particle{position:absolute;width:1.1vmin;height:1.1vmin;border-radius:50%;background:#9DEBFF;box-shadow:0 0 .8vmin currentColor;will-change:transform,opacity}
 .ss-timer{width:60vmin;align-self:center;margin:.1vmin auto .7vmin}#starship .opts{margin:.5vmin auto .7vmin;gap:1.25vmin}#starship .opt{min-height:7.7vmin;padding:1.45vmin 2.2vmin}#starship .feedback{min-height:3vmin}
 
-@media (prefers-reduced-motion:reduce){.screen.active,.mcard,.rowitem,.opt,.brow,.sp-key,.piece,.card,.ss-stars{animation-duration:.01ms!important;transition-duration:.01ms!important}}
-
-/* v6.1 Focus Physics:选择状态 46ms 内完成,水面余波由 Web Animations 独立合成。
-   这里仅压缩状态过渡；余波不参与布局、不拦截输入,连续按键可随时打断。 */
-:root{--focus-snap:46ms}
+/* ======================================================================
+   v6.2 —— Liquid Comet 液态彗星焦点
+   只有共享焦点框、单一光轨和最终落点运动；旧卡片绝不抖动。
+   ====================================================================== */
+:root{--focus-snap:44ms}
 .mcard,.menu.dense .mcard,.opt,.rowitem,.brow,.piece{
-  transition:transform var(--focus-snap) var(--ease-spring),background-color 42ms ease,color 42ms ease,box-shadow var(--focus-snap) ease!important}
-.sp-key,.jbtn{transition:transform 42ms var(--ease-spring),background 40ms ease,color 40ms ease,box-shadow 42ms ease!important}
+  transition:transform 96ms var(--ease-spring),background-color 42ms ease,color 42ms ease,box-shadow 0s linear!important}
+.sp-key,.jbtn{transition:transform 82ms var(--ease-spring),background 40ms ease,color 40ms ease,box-shadow 0s linear!important}
+#focus-fx{position:fixed;inset:0;z-index:40;pointer-events:none;overflow:hidden;contain:layout style paint}
+.focus-halo{position:absolute;opacity:0;border:.18vmin solid var(--focus);border-radius:2.05vmin;
+  background:linear-gradient(118deg,rgba(255,255,255,.2),transparent 34%,rgba(10,108,240,.07) 72%,rgba(255,255,255,.3));
+  box-shadow:0 0 0 .16vmin rgba(255,255,255,.86),0 0 0 .42vmin rgba(10,108,240,.22),0 1.2vmin 3vmin rgba(10,108,240,.16);
+  will-change:transform,opacity;transform-origin:center}
+html.eye .focus-halo{background:linear-gradient(118deg,rgba(255,252,238,.25),transparent 38%,rgba(44,106,74,.08));box-shadow:0 0 0 .16vmin rgba(255,252,238,.75),0 0 0 .42vmin rgba(44,106,74,.2),0 1.2vmin 3vmin rgba(44,106,74,.14)}
+.focus-beam{position:absolute;height:.55vmin;margin-top:-.275vmin;border-radius:10vmin;transform-origin:0 50%;opacity:0;
+  background:linear-gradient(90deg,transparent 0,var(--focus) 20%,#fff 70%,var(--focus) 88%,transparent 100%);
+  box-shadow:0 0 .8vmin rgba(10,108,240,.65);will-change:transform,opacity}
+.focus-impact{position:absolute;border:.24vmin solid var(--focus);border-radius:2.5vmin;opacity:0;will-change:transform,opacity}
+.focus-impact.r1{border-width:.12vmin;border-color:rgba(255,255,255,.92)}
+.focus-spark{position:absolute;width:5.2vmin;height:.28vmin;margin-top:-.14vmin;border-radius:2vmin;opacity:0;transform-origin:0 50%;
+  background:linear-gradient(90deg,#fff,var(--focus),transparent);will-change:transform,opacity}
+html.eye .focus-beam{background:linear-gradient(90deg,transparent 0,var(--focus) 22%,#FFF6DD 70%,var(--focus) 88%,transparent 100%);box-shadow:0 0 .65vmin rgba(44,106,74,.42)}
+html.eye .focus-impact.r1{border-color:rgba(255,246,221,.84)}
+html.eye .focus-spark{background:linear-gradient(90deg,#FFF6DD,var(--focus),transparent)}
+html.eye .itile,html.eye .av,html.eye .mcard.focus .itile,html.eye .rowitem.focus .itile{filter:saturate(.72) brightness(.98)!important}
+
+/* 家庭空间 */
+#who-list{max-width:150vmin;width:100%;align-self:center;gap:1vmin;padding:.5vmin .7vmin;overflow:hidden}
+.family-row{min-height:9vmin;padding:1.15vmin 2vmin}.family-row .av{width:5.8vmin;height:5.8vmin}.family-row .name{font-size:2.75vmin}
+.family-row .desc{font-size:1.75vmin}.current-dot{color:var(--good);font-size:1.7vmin;margin-left:.7vmin}.family-row .val{font-size:1.9vmin}
+
+/* 云端词书 */
+#cloud{padding-left:6vmin;padding-right:6vmin}.cloud-search{flex:0 0 auto;min-height:8.8vmin;margin-bottom:1vmin;padding:1.1vmin 1.8vmin}
+#cloud-list{gap:.8vmin;padding:.35vmin .65vmin}.cloud-row{min-height:8vmin;padding:.8vmin 1.5vmin}.cloud-row .name{font-size:2.3vmin}
+.cloud-row .info{min-width:0}.cloud-row .name,.cloud-row .desc{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cloud-row .desc{font-size:1.48vmin}.cloud-row .val{font-size:1.72vmin;min-width:20vmin}.online-tag{display:inline-block;margin-left:.8vmin;padding:.18vmin .65vmin;
+  border-radius:10vmin;background:rgba(47,166,79,.12);color:var(--good);font-size:1.35vmin;vertical-align:.2vmin}
+.cloud-query{display:none;min-height:7vmin;margin:.5vmin auto 1.1vmin;width:min(132vmin,100%);padding:1.6vmin 2.2vmin;text-align:center;
+  font-size:2.65vmin;color:var(--paper);border-radius:1.6vmin;background:rgba(251,247,238,.9);box-shadow:inset 0 0 0 .16vmin var(--hair)}
+.cloud-keyboard{display:none;grid-template-columns:repeat(7,1fr);gap:.75vmin;width:min(132vmin,100%);align-self:center;align-content:center;flex:1}
+.cloud-keyboard .sp-key{padding:.8vmin 0;font-size:2.55vmin;min-height:5vmin}.cloud-keyboard .sp-key.fn{font-size:1.75vmin}
+.cloud-tip{font-size:1.5vmin;line-height:1.45;margin-top:.55vmin}
+
+/* 拼写/拼图即时判错与完整回顾 */
+.sp-box.wrong-pick,.piece.wrong-pick{animation:reject-once .32s cubic-bezier(.2,.75,.25,1);background:#F8E5E4!important;color:#B43C3C!important;
+  box-shadow:0 0 0 .24vmin var(--bad),0 .7vmin 1.8vmin rgba(180,60,60,.12)!important}
+@keyframes reject-once{0%{transform:scale(1)}35%{transform:scale(.91)}70%{transform:scale(1.035)}100%{transform:scale(1)}}
+.puzzle-build.review{min-height:11vmin;padding:1.5vmin 3vmin;font-size:3.05vmin;line-height:1.42;letter-spacing:0}
+.puzzle-next{grid-column:1/-1;width:58vmin;justify-self:center;color:var(--gold);font-size:2.65vmin;background:var(--focus-surface)}
+.puzzle-next.focus{transform:translateY(-.35vmin) scale(1.035);box-shadow:var(--lift-shadow)}
+.spell-next{grid-column:1/-1;width:58vmin;justify-self:center;color:var(--gold)!important;font-size:2.65vmin!important;background:var(--focus-surface)!important}
+
+@media (prefers-reduced-motion:reduce){
+  .screen.active,.mcard,.rowitem,.opt,.brow,.sp-key,.piece,.card,.ss-stars,.wrong-pick{animation-duration:.01ms!important;transition-duration:.01ms!important}
+  .ss-stars,.ss-scene.damage,.ss-enemy.hit,.ss-enemy.miss,.ss-laser.fire,
+  .ch-far,.ch-mid,.ch-ground:after,.ch-runner.dash,.ch-monster.recoil,.ch-monster.lunge,.ch-speed.on,.ch-vignette{animation:none!important;transition:none!important}
+  .focus-beam,.focus-impact,.focus-spark{display:none!important}.focus-halo{box-shadow:0 0 0 .28vmin var(--focus)!important;background:transparent!important}
+}
 </style>
 </head>
 <body>
@@ -914,7 +965,7 @@ html.eye .piece{background:rgba(243,238,224,.95)}
 
   <div class="screen" id="home">
     <div class="top">
-      <div class="brand serif">千词斩<small>QIANCIZHAN · v6.1</small></div>
+      <div class="brand serif">千词斩<small>QIANCIZHAN · v6.2</small></div>
       <div class="meta">
         <span class="chip chip-user pf-fin" id="h-user-chip"><b id="h-user">爸爸</b></span>
         <span class="chip"><i class="g g-flame" id="h-flame"></i><b id="h-streak">0</b><small>连续天</small></span>
@@ -1015,9 +1066,9 @@ html.eye .piece{background:rgba(243,238,224,.95)}
   </div>
 
   <div class="screen" id="who">
-    <div class="top"><div class="brand serif">谁在使用?</div>
-      <div class="meta"><span>▲▼选择 · OK 切换 · 两人的学习进度完全独立、互不影响</span></div></div>
-    <div class="listwrap" id="who-list" style="justify-content:center;gap:4vmin;max-width:150vmin;width:100%;align-self:center"></div>
+    <div class="top"><div class="brand serif" id="who-title">家庭空间</div>
+      <div class="meta"><span id="who-hint">方向键选择 · OK 切换/新增 · 每个人的进度完全独立</span></div></div>
+    <div class="listwrap" id="who-list"></div>
   </div>
 
   <div class="screen" id="spell">
@@ -1116,6 +1167,16 @@ html.eye .piece{background:rgba(243,238,224,.95)}
     <div class="listwrap" id="deck-list"></div>
     <div class="tip">扩展口子:把新词书 .json 文件放入 U盘 → 电视文件管理器复制到<br>
     /sdcard/Android/data/com.lextv.app/files/decks/ 目录,重启应用即自动加载。格式:[["单词","音标","词性 释义","例句"], ...]</div>
+  </div>
+
+  <div class="screen" id="cloud">
+    <div class="top"><div class="brand serif">云端词书</div>
+      <div class="meta"><span id="cloud-status">官方审核目录</span></div></div>
+    <div class="rowitem cloud-search focus" id="cloud-search"></div>
+    <div class="cloud-query serif" id="cloud-query">输入英文关键词</div>
+    <div class="listwrap" id="cloud-list"></div>
+    <div class="cloud-keyboard" id="cloud-keyboard"></div>
+    <div class="tip cloud-tip">OK 安装/启用 · 菜单键卸载已安装词书 · 播放键刷新 · 安装后离线可用<br>词书文件全家共用一份，但每个家庭空间的开关和学习进度互不影响。</div>
   </div>
 
   <div class="screen" id="stats">

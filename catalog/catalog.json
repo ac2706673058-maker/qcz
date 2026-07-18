@@ -1,0 +1,54 @@
+{
+  "schema": 1,
+  "updated": "2026-07-18",
+  "decks": [
+    {
+      "id": "travel-essentials",
+      "name": "旅行生存英语",
+      "icon": "✈️",
+      "tags": ["spoken", "travel", "口语", "旅行"],
+      "search": "travel trip airport hotel train survival 旅行 机场 酒店",
+      "level": "A1–B1 · 高频短语",
+      "count": 24,
+      "version": 1,
+      "url": "https://raw.githubusercontent.com/ac2706673058-maker/qcz/main/catalog/decks/travel-essentials-v1.json",
+      "bytes": 3659,
+      "sha256": "972738463daf345fcc5e190ca2d091ee243ffe9cf54f03a72cc9511904ccc184",
+      "license": "LexTV 原创内容",
+      "source": "LexTV 官方审核",
+      "minAppVersion": 32
+    },
+    {
+      "id": "daily-home",
+      "name": "家庭生活口语",
+      "icon": "🏠",
+      "tags": ["spoken", "口语", "生活"],
+      "search": "daily home family spoken life household 家庭 生活 口语",
+      "level": "A1–B1 · 生活短语",
+      "count": 24,
+      "version": 1,
+      "url": "https://raw.githubusercontent.com/ac2706673058-maker/qcz/main/catalog/decks/daily-home-v1.json",
+      "bytes": 3344,
+      "sha256": "27cdd527f0454b5b9862b1b80a4262cf8ab3ed870ec1848f58ffd3dfb4942890",
+      "license": "LexTV 原创内容",
+      "source": "LexTV 官方审核",
+      "minAppVersion": 32
+    },
+    {
+      "id": "academic-core",
+      "name": "学术写作核心搭配",
+      "icon": "🎓",
+      "tags": ["exam", "academic", "考试", "学术"],
+      "search": "academic exam writing essay research collocation 学术 写作 考试",
+      "level": "B1–B2 · 阅读写作",
+      "count": 24,
+      "version": 1,
+      "url": "https://raw.githubusercontent.com/ac2706673058-maker/qcz/main/catalog/decks/academic-core-v1.json",
+      "bytes": 3979,
+      "sha256": "b8771683ac02071e54ce75eadd38a7b9906764d90a48e51cdcf67ee8ef958d53",
+      "license": "LexTV 原创内容",
+      "source": "LexTV 官方审核",
+      "minAppVersion": 32
+    }
+  ]
+}
