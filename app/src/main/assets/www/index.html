@@ -829,7 +829,7 @@ html.eye #home .brand::before{background:linear-gradient(145deg,#2C6A4A,#1F4E36)
 #home .today .l{font-size:1.78vmin}
 
 /* ======================================================================
-   v6.0 —— 信息架构减法 + 训练馆 + 三款高收益新玩法
+   v6.1 —— Focus Physics 水面余波 + 极限遥控响应
    卡片只在焦点变化时动,计时条由合成线程完成,避免低端电视重复重绘。
    ====================================================================== */
 #home .menu{gap:1.45vmin}
@@ -900,6 +900,13 @@ html.eye .piece{background:rgba(243,238,224,.95)}
 .ss-timer{width:60vmin;align-self:center;margin:.1vmin auto .7vmin}#starship .opts{margin:.5vmin auto .7vmin;gap:1.25vmin}#starship .opt{min-height:7.7vmin;padding:1.45vmin 2.2vmin}#starship .feedback{min-height:3vmin}
 
 @media (prefers-reduced-motion:reduce){.screen.active,.mcard,.rowitem,.opt,.brow,.sp-key,.piece,.card,.ss-stars{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* v6.1 Focus Physics:选择状态 46ms 内完成,水面余波由 Web Animations 独立合成。
+   这里仅压缩状态过渡；余波不参与布局、不拦截输入,连续按键可随时打断。 */
+:root{--focus-snap:46ms}
+.mcard,.menu.dense .mcard,.opt,.rowitem,.brow,.piece{
+  transition:transform var(--focus-snap) var(--ease-spring),background-color 42ms ease,color 42ms ease,box-shadow var(--focus-snap) ease!important}
+.sp-key,.jbtn{transition:transform 42ms var(--ease-spring),background 40ms ease,color 40ms ease,box-shadow 42ms ease!important}
 </style>
 </head>
 <body>
@@ -907,7 +914,7 @@ html.eye .piece{background:rgba(243,238,224,.95)}
 
   <div class="screen" id="home">
     <div class="top">
-      <div class="brand serif">千词斩<small>QIANCIZHAN · v6.0</small></div>
+      <div class="brand serif">千词斩<small>QIANCIZHAN · v6.1</small></div>
       <div class="meta">
         <span class="chip chip-user pf-fin" id="h-user-chip"><b id="h-user">爸爸</b></span>
         <span class="chip"><i class="g g-flame" id="h-flame"></i><b id="h-streak">0</b><small>连续天</small></span>

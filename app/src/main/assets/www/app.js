@@ -318,7 +318,61 @@ function gridMoveIndex(index, key, n, cols) {
 let SCREEN = "home";
 let RETURN_SCREEN = "home";
 const handlers = {};
+let NAV_TRAIL = [];
+const NAV_DIR = { LEFT: [-1, 0], RIGHT: [1, 0], UP: [0, -1], DOWN: [0, 1] };
+
+/* Focus Physics:输入先完成,动效随后交给合成线程。
+   新焦点像石子贴水落下,离开的 3 个项目依距离产生衰减余波；动画从不锁键。 */
+function navFocused() { return document.querySelector(".screen.active .focus"); }
+function navTransform(base, x, y, rot) {
+  return "translate3d(" + x.toFixed(2) + "px," + y.toFixed(2) + "px,0) rotate(" + rot.toFixed(3) + "deg) " + (base === "none" ? "" : base);
+}
+function navMotion(el, frames, duration, delay) {
+  if (!el || !el.animate || (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches)) return;
+  try {
+    if (el.__navMotion) {
+      el.__navMotion.onfinish = null; el.__navMotion.oncancel = null;
+      el.__navMotion.cancel();
+    }
+    const base = getComputedStyle(el).transform || "none";
+    const keyframes = frames.map(f => ({ transform: navTransform(base, f[0], f[1], f[2]), offset: f[3] }));
+    el.style.willChange = "transform";
+    const motion = el.animate(keyframes, { duration: duration, delay: delay || 0, easing: "linear", fill: "none" });
+    el.__navMotion = motion;
+    motion.onfinish = () => { if (el.__navMotion === motion) { el.__navMotion = null; el.style.willChange = ""; } };
+    motion.oncancel = () => { if (el.__navMotion === motion) { el.__navMotion = null; el.style.willChange = ""; } };
+  } catch (e) { try { el.style.willChange = ""; } catch (x) { } }
+}
+function navRipple(key, before) {
+  const vector = NAV_DIR[key]; if (!vector) return;
+  const current = navFocused();
+  if (!current || current === before) return;
+  const dx = vector[0], dy = vector[1];
+  navMotion(current, [
+    [-12 * dx, -9 * dy, -.42 * dx, 0],
+    [3.4 * dx, 2.7 * dy, .16 * dx, .36],
+    [-1.45 * dx, -1.15 * dy, -.07 * dx, .61],
+    [.55 * dx, .42 * dy, .025 * dx, .80],
+    [0, 0, 0, 1]
+  ], 168, 0);
+
+  const active = document.querySelector(".screen.active");
+  const wake = [before].concat(NAV_TRAIL).filter((el, i, arr) => el && arr.indexOf(el) === i && el !== current && active && active.contains(el)).slice(0, 3);
+  wake.forEach((el, i) => {
+    const amp = 1 / (i + 1);
+    navMotion(el, [
+      [0, 0, 0, 0],
+      [-3.8 * dx * amp, -2.1 * dy * amp, -.12 * dx * amp, .24],
+      [1.7 * dx * amp, .9 * dy * amp, .055 * dx * amp, .50],
+      [-.7 * dx * amp, -.36 * dy * amp, -.022 * dx * amp, .72],
+      [.22 * dx * amp, .12 * dy * amp, .007 * dx * amp, .88],
+      [0, 0, 0, 1]
+    ], 255 + i * 38, 12 + i * 22);
+  });
+  NAV_TRAIL = [before].concat(NAV_TRAIL.filter(el => el !== before && el !== current)).slice(0, 3);
+}
 function show(name) {
+  NAV_TRAIL = [];
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
   $(name).classList.add("active");
   SCREEN = name;
@@ -327,16 +381,20 @@ function show(name) {
 }
 window.onTvKey = k => {
   try { $("toast").classList.remove("show"); } catch (e) { }
-  // 全局导航音效:切换选项柔和轻点,OK 圆润确认,返回下行
-  try {
-    if (window.SFX) {
-      if (k === "UP" || k === "DOWN" || k === "LEFT" || k === "RIGHT") SFX.nav();
-      else if (k === "OK") SFX.ok();
-      else if (k === "BACK") SFX.back();
-    }
-  } catch (e) { }
+  const before = NAV_DIR[k] ? navFocused() : null;
   const h = handlers[SCREEN];
   try { if (h && h.key) h.key(k); } catch (e) { toast("按键错误:" + (e && e.message)); }
+  if (NAV_DIR[k]) navRipple(k, before);
+  // 音效延后到焦点状态更新之后,永远不阻塞遥控输入。
+  Promise.resolve().then(() => {
+    try {
+      if (window.SFX) {
+        if (NAV_DIR[k]) SFX.nav();
+        else if (k === "OK") SFX.ok();
+        else if (k === "BACK") SFX.back();
+      }
+    } catch (e) { }
+  });
 };
 document.addEventListener("keydown", e => {
   const map = { ArrowUp: "UP", ArrowDown: "DOWN", ArrowLeft: "LEFT", ArrowRight: "RIGHT", Enter: "OK", Escape: "BACK", Backspace: "BACK" };
