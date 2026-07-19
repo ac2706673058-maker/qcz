@@ -483,11 +483,11 @@ function clearFocusBursts() {
   ensureFocusFx();
   while (FOCUS_FX.layer.children.length > 1) FOCUS_FX.layer.removeChild(FOCUS_FX.layer.lastChild);
 }
+/* v6.4:液态彗星焦点整体停用 —— 低端电视上"飞行框+撞击粒子"每次按键要建
+   十几个动画元素,表现为按键后先停顿、透明框迟到且与卡片对不上位。
+   焦点反馈完全交给卡片自身的即时 CSS(96ms 弹性 + 0 延迟描边),按下即亮。 */
 function placeFocusHalo(r) {
-  ensureFocusFx();
-  if (!r) { FOCUS_FX.halo.style.opacity = "0"; return; }
-  const pad = 5;
-  Object.assign(FOCUS_FX.halo.style, { left: (r.left - pad) + "px", top: (r.top - pad) + "px", width: (r.width + pad * 2) + "px", height: (r.height + pad * 2) + "px", opacity: "1" });
+  if (FOCUS_FX.halo) FOCUS_FX.halo.style.opacity = "0";
 }
 function cancelFocusFx(snap) {
   FOCUS_FX.seq++; FOCUS_FX.pending = null;
@@ -584,6 +584,7 @@ function playFocusFx(key, from, to, target, rapid) {
   }, rapid ? 105 : Math.min(96, duration * .44));
 }
 function scheduleFocusFx(key, before, beforeRect) {
+  return; // v6.4:停用飞行动效,见 placeFocusHalo 注释
   const target = navFocused();
   if (!NAV_DIR[key] || !before || !target || before === target) return;
   // who/cloud 等列表会整块重建 DOM，必须在 handler 运行前保存出发位置。
@@ -633,11 +634,8 @@ window.onTvKey = k => {
   }
   if (signalAt >= TV_CARRY_GUARD.until) TV_CARRY_GUARD.key = "";
   try { $("toast").classList.remove("show"); } catch (e) { }
-  const before = navFocused();
-  const beforeRect = NAV_DIR[k] ? focusRect(before) : null;
   const h = handlers[SCREEN];
   try { if (h && h.key) h.key(k); } catch (e) { toast("按键错误:" + (e && e.message)); }
-  if (NAV_DIR[k]) scheduleFocusFx(k, before, beforeRect);
   // 音效延后到焦点状态更新之后,永远不阻塞遥控输入。
   Promise.resolve().then(() => {
     try {

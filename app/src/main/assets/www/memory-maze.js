@@ -135,7 +135,7 @@
       + '<div class="mm-top"><div class="mm-brand"><span class="mm-brand-mark">⌘</span><b>星火遗迹</b><small>STARFIRE RUINS</small></div>'
       + '<div class="mm-stats"><div class="mm-stat"><small>遗迹</small><b id="mm-round">1 / 8</b></div><div class="mm-stat"><small>星辉</small><b id="mm-score">0</b></div><div class="mm-stat"><small>连击</small><b id="mm-combo">0</b></div><div class="mm-stat shield"><small>护符</small><b id="mm-shield">◆◆◆</b></div></div></div>'
       + '<div class="mm-target"><small>TARGET ECHO</small><b id="mm-word">LEXORIA</b><span id="mm-phon">沿着回声寻找真正含义</span></div>'
-      + '<div class="mm-callout" id="mm-callout">先记住符文与释义 · 收齐回声后会短暂重放全部映射</div>'
+      + '<div class="mm-callout" id="mm-callout">门牌释义全程可见 · 收集回声,再走进与单词相符的传送门</div>'
       + '<div class="mm-portals" id="mm-portals"></div><div class="mm-controls"><b>方向键</b> 移动 <b>OK</b> 回放目标 <b>返回</b> 撤离</div>'
       + '<div class="mm-intro"><div class="mm-intro-copy"><small>A LEXTV LIVING RUIN</small><h2>星 火 遗 迹</h2><p>每一次遗忘，都会重写道路</p></div></div>'
       + '<div class="mm-finish" id="mm-finish" hidden><div class="mm-finish-copy"><div class="mm-finish-kicker">RUINS RESONANCE COMPLETE</div><h2 id="mm-finish-title">遗迹重新发光</h2><div class="mm-finish-stats" id="mm-finish-stats"></div><p id="mm-finish-msg"></p><button id="mm-return" type="button">返回词汇世界</button></div></div>';
@@ -299,9 +299,9 @@
     M.mistakes = 0; M.shield = M.maxShield; M.flash = 0; M.reveal = 0;
     // 先给电视端一个很短、静止的符文映射窗口；隐藏后才开放移动，
     // 避免把玩法退化成边看释义边走向答案。
-    M.phase = "preview"; M.phaseUntil = M.simTime + (reducedMotion() ? 0.82 : 1.8); blockCarriedKeys();
-    setText("mm-word", target.w); setText("mm-phon", target.p ? phonetic(target.p) + " · 记住三组符文与释义" : "记住三组符文与释义");
-    setCallout("映射正在刻入遗迹 · 随后符文会隐藏释义", "good");
+    M.phase = "preview"; M.phaseUntil = M.simTime + (reducedMotion() ? 0.5 : 0.9); blockCarriedKeys();
+    setText("mm-word", target.w); setText("mm-phon", target.p ? phonetic(target.p) : "");
+    setCallout("收集全部回声,然后走进与单词相符的传送门", "good");
     renderPortals(); updateHud();
     try { if (typeof speak === "function") speak(target.w); } catch (e) { }
   }
@@ -323,11 +323,10 @@
       card.className = "mm-portal-card" + (near ? " near" : "") + (portal && portal.sealed ? " sealed" : "");
       card.style.setProperty("--portal", PORTAL_COLORS[i]);
       var dot = document.createElement("i"), copy = document.createElement("div"), title = document.createElement("b"), small = document.createElement("small");
-      // 释义不常驻在门牌上：否则玩家可以沿地图直接寻找答案。
-      // 走错的门会留下释义，形成即时复盘；本轮结束后再完整复原。
-      var revealMeaning = M.phase === "preview" || M.phase === "recall" || M.phase === "feedback" || M.phase === "finish" || (portal && portal.sealed);
+      // v6.4:门牌释义常驻显示 —— "背符文"设计让玩家云里雾里,现在看着走即可。
+      var revealMeaning = true;
       title.textContent = revealMeaning ? M.options[i].m : (GATE_GLYPHS[i] + " · 未知回声");
-      small.textContent = String.fromCharCode(65 + i) + " · " + (portal && portal.sealed ? "SEALED · 已记录" : (M.phase === "preview" || M.phase === "recall" ? GATE_GLYPHS[i] + " · MEMORIZE" : (near ? "NEAR · 踏入判定" : "MEMORY GATE")));
+      small.textContent = String.fromCharCode(65 + i) + " · " + (portal && portal.sealed ? "SEALED · 已记录" : (near ? "NEAR · 踏入判定" : GATE_GLYPHS[i] + " · 释义"));
       copy.appendChild(title); copy.appendChild(small); card.appendChild(dot); card.appendChild(copy); host.appendChild(card);
     }
   }

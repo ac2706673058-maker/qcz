@@ -306,14 +306,15 @@
   function beginGateScan(duration, label) {
     E.scanVisible = true; E.scanUntil = nowMs() + Math.max(700, duration || 2600);
     renderGateScan(label || "符文扫描 · 记住三组映射");
-    phaseText("观察符文映射 · OK 可提前潜入");
+    phaseText("右侧是符文→释义对照 · OK 立即潜入");
   }
+  /* v6.4:符文→释义对照表常驻显示(原版 2.6 秒后隐藏、逼玩家背映射,
+     导致"云里雾里";现在只解除移动锁,提示牌一直留在屏上)。 */
   function endGateScan() {
     if (!E.scanVisible) return;
     E.scanVisible = false; E.scanUntil = 0;
-    text("eh-meaning-kicker", "信号已消散");
-    text("eh-meaning-text", "收集全部回声后，凭刚才的记忆选择真正回应目标词的符文门。");
-    phaseText("方向键潜入 · 收集回声 · 走到门前按 OK");
+    renderGateScan("符文对照 · 常驻显示");
+    phaseText("方向键潜入 · 收集回声 · 走到与目标词相符的符文门前按 OK");
   }
   function gateScanActive() { return E.scanVisible && nowMs() < E.scanUntil; }
   function addParticle(x, y, color, count, power) {
@@ -335,7 +336,7 @@
         status("回声已夺回 · 还差 " + (E.shards.length - E.shardCount) + " 枚才能唤醒符文门", "good");
         updateHud();
         if (E.shardCount >= E.shards.length) {
-          beginGateScan(reducedMotion() ? 2400 : 1700, "回声重放 · 最后确认映射");
+          beginGateScan(reducedMotion() ? 1200 : 900, "回声重放 · 对照表在右侧");
           status("全部回声共鸣 · 符文映射只重放一次", "good");
         }
       }
@@ -492,7 +493,7 @@
     if (!makeGateOptions()) { stop(); if (typeof toast === "function") toast("当前词书需要至少 3 种不同释义"); return; }
     makeRoom(); updateHud();
     text("eh-room", E.boss ? "最终房 · 裂隙守门者已经醒来，三道符文只留一道真实出口。" : (E.routeMode === 1 ? "危险宝库 · 多一名猎手，回声奖励更高。" : "静默回廊 · 先观察巡逻，再把回声一枚枚带走。"));
-    beginGateScan(reducedMotion() ? 4200 : 3200, "符文扫描 · 记住三组映射");
+    beginGateScan(reducedMotion() ? 1600 : 1200, "符文对照 · 全程可见,放心探索");
     addParticle(E.map.x + E.map.w * .5, E.map.y + E.map.h * .5, "#8ee2d0", E.boss ? 28 : 14, E.map.cell * .018);
   }
   function startRun() {

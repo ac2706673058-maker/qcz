@@ -427,13 +427,15 @@
     for (var i = 0; i < gates.length; i++) gates[i].classList.remove("right", "wrong", "passed");
   }
 
+  /* v6.4 重构:释义全程常驻显示在三扇星门上 —— 玩家"看着选道",
+     不再要求 1.6 秒记住符文映射(原设计导致看不懂、必错、体验极差)。 */
   function setGateMapping(reveal, label) {
     var gates = document.querySelectorAll("#sr-gates .sr-gate");
-    var labels = ["LEFT RUNE", "CENTER RUNE", "RIGHT RUNE"];
+    var labels = ["LEFT LANE", "CENTER LANE", "RIGHT LANE"];
     for (var i = 0; i < gates.length; i++) {
       var b = gates[i].querySelector("b"), small = gates[i].querySelector("small");
-      if (b) b.textContent = reveal && R.options[i] ? (GATE_GLYPHS[i] + " · " + R.options[i].m) : (GATE_GLYPHS[i] + " · 未知回声");
-      if (small) small.textContent = labels[i] + " · " + (reveal ? (label || "MEMORIZE") : "MEMORY CHECK");
+      if (b) b.textContent = R.options[i] ? R.options[i].m : GATE_GLYPHS[i];
+      if (small) small.textContent = labels[i] + " · 释义";
       gates[i].setAttribute("aria-selected", i === R.lane ? "true" : "false");
     }
   }
@@ -442,14 +444,14 @@
     setText("sr-word", target.w);
     var phon = String(target.p || "").trim().replace(/^\/+|\/+$/g, "");
     setText("sr-phon", phon ? "/" + phon + "/" : "");
-    setGateMapping(!!reveal, "MEMORIZE");
+    setGateMapping(true, "STEER");
   }
 
   function beginQuestionRun() {
     if (!ownerValid() || R.phase !== "preview") return;
-    R.phase = "run"; R.mappingUntil = 0; setGateMapping(false); updateLaneVisual();
-    setText("sr-callout", "躲开路障，再凭记忆穿过正确词义星门");
-    var host = byId("sr-gates"); if (host) { host.style.opacity = ".45"; host.style.transform = "translate3d(-50%,-8vmin,0) scale(.68)"; }
+    R.phase = "run"; R.mappingUntil = 0; setGateMapping(true, "STEER"); updateLaneVisual();
+    setText("sr-callout", "看准释义换道 · ↑ 跳过路障");
+    var host = byId("sr-gates"); if (host) { host.style.opacity = ".9"; host.style.transform = "translate3d(-50%,-6vmin,0) scale(.8)"; }
   }
 
   function startQuestion() {
@@ -465,16 +467,19 @@
     R.obstacleCommitted = R.failed; R.pickupCommitted = R.failed;
     R.speed = 15 + Math.min(5, R.combo * 0.72);
     R.gateZ = PLAYER_Z - R.speed * 3.45; R.prevGateZ = R.gateZ;
-    R.obstacleZ = PLAYER_Z - R.speed * 1.42; R.prevObstacleZ = R.obstacleZ;
-    R.obstacleLane = R.round === 0 ? 2 : Math.floor(Math.random() * 3);
+    // v6.4:路障提前到 2.1 秒外给足反应;前两关无路障,先学会"看释义换道"
+    R.obstacleZ = PLAYER_Z - R.speed * 2.1; R.prevObstacleZ = R.obstacleZ;
+    R.obstacleLane = Math.floor(Math.random() * 3);
+    var noObstacle = R.round < 2;
     R.pickupZ = R.obstacleZ + 2.1; R.prevPickupZ = R.pickupZ;
     R.pickupLane = (R.obstacleLane + 1 + Math.floor(Math.random() * 2)) % 3;
-    R.phase = "preview"; R.phaseUntil = R.simTime + (reducedMotion() ? 0.78 : 1.65); R.mappingUntil = 0; R.pendingFinish = false;
+    R.phase = "preview"; R.phaseUntil = R.simTime + (reducedMotion() ? 0.5 : 0.9); R.mappingUntil = 0; R.pendingFinish = false;
     clearResultClasses(); showQuestionCopy(target, made, true); updateLaneVisual(); updateHud();
     if (R.gateRoot) { R.gateRoot.visible = true; R.gateRoot.position.z = R.gateZ; }
-    if (R.obstacle) { R.obstacle.visible = !R.failed; R.obstacle.position.set(LANE_X[R.obstacleLane], 0, R.obstacleZ); }
+    if (noObstacle) R.obstacleCommitted = true;
+    if (R.obstacle) { R.obstacle.visible = !R.failed && !noObstacle; R.obstacle.position.set(LANE_X[R.obstacleLane], 0, R.obstacleZ); }
     if (R.pickup) { R.pickup.visible = !R.failed; R.pickup.position.set(LANE_X[R.pickupLane], 1.3, R.pickupZ); }
-    setText("sr-callout", "记住三枚符文对应的释义 · 随后隐藏并开始疾驰");
+    setText("sr-callout", "冲向与单词相符的释义星门 · ← → 换道");
     var host = byId("sr-gates"); if (host) { host.style.opacity = "1"; host.style.transform = "translate3d(-50%,-1vmin,0) scale(.92)"; }
     try { if (!document.hidden && typeof speak === "function") speak(target.w); } catch (e) { }
   }
@@ -509,9 +514,8 @@
     R.pickupCommitted = true;
     if (R.pickup) R.pickup.visible = false;
     if (R.lane !== R.pickupLane) return;
-    R.score += 45; R.gap = Math.min(100, R.gap + 3);
-    R.mappingUntil = R.simTime + (reducedMotion() ? 0.62 : 1.05); setGateMapping(true, "RECALL");
-    setText("sr-callout", "捕获最后回声 · 全部符文映射短暂重放（不会提示正确门）");
+    R.score += 45; R.gap = Math.min(100, R.gap + 6);
+    setText("sr-callout", "捕获回声 · +45 星辉,词怪被拉开距离");
     try { if (typeof speak === "function" && R.list[R.round]) speak(R.list[R.round].w); } catch (e) { }
     try { if (window.SFX && SFX.good) SFX.good(); } catch (e2) { }
     updateHud();
@@ -527,9 +531,6 @@
       gates[i].classList.add("passed");
       if (i === R.answerLane) gates[i].classList.add("right");
       if (!ok && i === R.lane) gates[i].classList.add("wrong");
-      var gateWord = gates[i].querySelector("b");
-      // 结果只揭示玩家所选门和正确门；其他错误门保持未知，减少答案卡感。
-      if (gateWord && R.options[i] && (i === R.lane || i === R.answerLane)) gateWord.textContent = GATE_GLYPHS[i] + " · " + R.options[i].m;
     }
     if (ok) {
       R.right++; R.combo++; R.bestCombo = Math.max(R.bestCombo, R.combo); R.score += 130 + Math.min(170, R.combo * 18); R.gap = Math.min(100, R.gap + 11);
@@ -641,9 +642,9 @@
       var progress = clamp((R.gateZ - (PLAYER_Z - R.speed * 3.45)) / Math.max(1, R.speed * 3.45), 0, 1);
       var gateHost = byId("sr-gates");
       if (gateHost) {
-        var scaleHud = 0.68 + progress * 0.34, y = -8 + progress * 8;
+        var scaleHud = 0.8 + progress * 0.22, y = -6 + progress * 6;
         gateHost.style.transform = "translate3d(-50%," + y.toFixed(2) + "vmin,0) scale(" + scaleHud.toFixed(3) + ")";
-        gateHost.style.opacity = String(0.45 + progress * 0.55);
+        gateHost.style.opacity = String(0.9 + progress * 0.1);
       }
       if (R.prevGateZ < PLAYER_Z && R.gateZ >= PLAYER_Z) commitGate();
     } else if (R.simTime >= R.phaseUntil) {
