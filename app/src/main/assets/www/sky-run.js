@@ -808,10 +808,14 @@
     }
     if (k === "BACK") { abortToReturn("已撤离本次航道，未完成的题目不会结算", "BACK"); return; }
     if (R.suspended || document.hidden || R.phase !== "run") return;
-    if (guarded && previous && signal - previous < 380) return;
-    if (k === "LEFT") R.lane = 0;
+    // v6.7:换道改为相对移动(一按一格)。原版 LEFT/RIGHT 是"跳到最左/最右道",
+    // 在边道按一下会横跨两格、且到中道只能按"下",完全反直觉。
+    // 方向键节流降到 120ms(原 380ms 会吞连按),跳跃保留 380ms 防误触双跳。
+    var dirKey = k === "LEFT" || k === "RIGHT" || k === "DOWN";
+    if (guarded && previous && signal - previous < (dirKey ? 120 : 380)) return;
+    if (k === "LEFT") R.lane = Math.max(0, R.lane - 1);
+    else if (k === "RIGHT") R.lane = Math.min(2, R.lane + 1);
     else if (k === "DOWN") R.lane = 1;
-    else if (k === "RIGHT") R.lane = 2;
     else if (k === "UP" || k === "OK") jump();
     else if (k === "PLAY" || k === "MENU") { try { speak(R.list[R.round].w); } catch (e) { } return; }
     else return;
