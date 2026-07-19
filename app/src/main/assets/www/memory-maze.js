@@ -202,6 +202,16 @@
       grid[here.y + step[1] / 2][here.x + step[0] / 2] = 0; grid[ny][nx] = 0;
       stack.push({ x: nx, y: ny });
     }
+    // v7.0:回溯迷宫是树(任意两点仅一条路),配 BFS 追踪=必被抓。
+    // 敲掉 ~18% 的隔墙制造环路,玩家可以绕圈甩开词怪。
+    for (y = 1; y < ROWS - 1; y++) {
+      for (x = 1; x < COLS - 1; x++) {
+        if (grid[y][x] !== 1) continue;
+        var lr = grid[y][x - 1] === 0 && grid[y][x + 1] === 0;
+        var ud = grid[y - 1][x] === 0 && grid[y + 1][x] === 0;
+        if ((lr || ud) && !(lr && ud) && rng() < 0.18) grid[y][x] = 0;
+      }
+    }
     return grid;
   }
 
@@ -497,12 +507,17 @@
     var far = farthestFree(M.grid, M.player, excluded); M.monster.x = M.monster.px = far.x; M.monster.y = M.monster.py = far.y; M.monster.nextAt = M.simTime + 1.8;
   }
   function monsterHit() {
-    loseShield("巡逻词怪截断了回声");
-    if (M.phase === "run") { M.player.x = M.player.px = M.start.x; M.player.y = M.player.py = M.start.y; resetMonsterFar(); }
+    loseShield("词怪撞上 · 它被震退了,你原地继续");
+    if (M.phase === "run") resetMonsterFar();
   }
   function updateMonster() {
     if (M.phase !== "run" || M.simTime < M.monster.nextAt) return;
-    var step = nextMonsterStep(); if (step) { M.monster.x = step.x; M.monster.y = step.y; }
+    var dist = Math.abs(M.monster.x - M.player.x) + Math.abs(M.monster.y - M.player.y);
+    var chase = dist <= 4 ? 0.95 : 0.75;
+    var step;
+    if (Math.random() < chase) step = nextMonsterStep();
+    else { var ns = neighbors(M.grid, M.monster); step = ns.length ? ns[Math.floor(Math.random() * ns.length)] : null; }
+    if (step) { M.monster.x = step.x; M.monster.y = step.y; }
     var pace = Math.max(0.62, 1.05 - M.round * 0.035 - M.shardCount * 0.06); M.monster.nextAt = M.simTime + pace;
     if (M.monster.x === M.player.x && M.monster.y === M.player.y) monsterHit();
   }
