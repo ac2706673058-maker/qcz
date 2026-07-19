@@ -112,8 +112,8 @@
       ".eh-stat{min-width:8.8vmin;padding:.5vmin .9vmin;border-radius:1.1vmin;text-align:center;background:rgba(226,235,255,.07)}.eh-stat small{display:block;font-size:1.35vmin;letter-spacing:.1em;color:rgba(218,228,255,.62)}.eh-stat b{display:block;margin-top:.24vmin;font:780 2.05vmin/1 Inter,'PingFang SC',sans-serif;color:#fff}.eh-stat.shield b{color:#f2d991;letter-spacing:.08em}",
       ".eh-side{position:absolute;z-index:4;right:4.2vw;top:16.5vh;width:min(31vw,48vmin);pointer-events:none}",
       ".eh-kicker{font:750 1.35vmin/1 Inter,sans-serif;letter-spacing:.3em;color:#9adbd2}.eh-target{margin-top:.8vmin;padding:1.45vmin 1.55vmin 1.55vmin;border:.1vmin solid rgba(205,218,255,.25);border-radius:1.9vmin;background:rgba(15,23,50,.84);box-shadow:0 .9vmin 2.4vmin rgba(0,0,0,.2)}",
-      ".eh-target small{display:block;font-size:1.55vmin;color:rgba(218,228,255,.62);letter-spacing:.18em}.eh-target b{display:block;margin-top:.6vmin;font:850 5.8vmin/.95 Inter,'PingFang SC',sans-serif;letter-spacing:-.04em;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.eh-target span{display:block;margin-top:.7vmin;color:#c0cae8;font:650 2vmin/1.2 Inter,sans-serif}",
-      ".eh-meaning{margin-top:1.1vmin;padding:1.25vmin 1.45vmin 1.4vmin;border-left:.38vmin solid #f2d991;color:#eef1ff;background:rgba(13,19,42,.82);font-size:2.15vmin;line-height:1.35;min-height:20vmin}.eh-meaning> b{display:block;color:#f2d991;font-size:1.55vmin;letter-spacing:.13em;margin-bottom:.65vmin}.eh-rune-guide{display:block;margin-bottom:.8vmin;color:#dbe3ff;font:650 1.65vmin/1.35 'PingFang SC','Noto Sans SC',sans-serif}.eh-rune-list{display:grid;gap:.62vmin}.eh-rune-row{display:grid;grid-template-columns:6.1vmin minmax(0,1fr);align-items:center;gap:1vmin;min-height:5.9vmin}.eh-rune-ring{--rune:#8ee2d0;position:relative;width:5.4vmin;height:5.4vmin;display:grid;place-items:center;border:.28vmin solid transparent;border-top-color:var(--rune);border-right-color:var(--rune);border-bottom-color:var(--rune);border-radius:50%;color:var(--rune);filter:drop-shadow(0 0 .5vmin var(--rune))}.eh-rune-ring:before{content:'';position:absolute;inset:.66vmin;border:.22vmin solid var(--rune);border-radius:50%;opacity:.92}.eh-rune-glyph{position:relative;z-index:1;font:850 2.5vmin/1 Inter,sans-serif;color:var(--rune)}.eh-rune-copy{font:760 2.35vmin/1.15 Inter,'PingFang SC','Noto Sans SC',sans-serif;color:#fff;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}.eh-room{margin-top:.9vmin;color:rgba(226,233,255,.78);font-size:1.7vmin;line-height:1.4}.eh-log{margin-top:.8vmin;min-height:4.5vmin;color:#aebfe5;font-size:1.7vmin;line-height:1.4}",
+      ".eh-target small{display:block;font-size:1.55vmin;color:rgba(218,228,255,.62);letter-spacing:.18em}.eh-target b{display:block;margin-top:.6vmin;font:850 6.6vmin/.95 Inter,'PingFang SC',sans-serif;letter-spacing:-.04em;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.eh-target span{display:block;margin-top:.7vmin;color:#c0cae8;font:650 2vmin/1.2 Inter,sans-serif}",
+      ".eh-meaning{margin-top:1.1vmin;padding:1.25vmin 1.45vmin 1.4vmin;border-left:.38vmin solid #f2d991;color:#eef1ff;background:rgba(13,19,42,.82);font-size:2.15vmin;line-height:1.35;min-height:20vmin}.eh-meaning> b{display:block;color:#f2d991;font-size:1.55vmin;letter-spacing:.13em;margin-bottom:.65vmin}.eh-rune-guide{display:block;margin-bottom:.8vmin;color:#dbe3ff;font:650 1.65vmin/1.35 'PingFang SC','Noto Sans SC',sans-serif}.eh-rune-list{display:grid;gap:.62vmin}.eh-rune-row{display:grid;grid-template-columns:6.1vmin minmax(0,1fr);align-items:center;gap:1vmin;min-height:5.9vmin}.eh-rune-ring{--rune:#8ee2d0;position:relative;width:5.4vmin;height:5.4vmin;display:grid;place-items:center;border:.28vmin solid transparent;border-top-color:var(--rune);border-right-color:var(--rune);border-bottom-color:var(--rune);border-radius:50%;color:var(--rune);filter:drop-shadow(0 0 .5vmin var(--rune))}.eh-rune-ring:before{content:'';position:absolute;inset:.66vmin;border:.22vmin solid var(--rune);border-radius:50%;opacity:.92}.eh-rune-glyph{position:relative;z-index:1;font:850 2.5vmin/1 Inter,sans-serif;color:var(--rune)}.eh-rune-copy{font:760 2.6vmin/1.18 Inter,'PingFang SC','Noto Sans SC',sans-serif;color:#fff;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}.eh-room{margin-top:.9vmin;color:rgba(226,233,255,.78);font-size:1.7vmin;line-height:1.4}.eh-log{margin-top:.8vmin;min-height:4.5vmin;color:#aebfe5;font-size:1.7vmin;line-height:1.4}",
       ".eh-bottom{position:absolute;z-index:4;left:4.3vw;right:4.3vw;bottom:3.6vh;display:flex;justify-content:space-between;align-items:center;color:rgba(220,229,255,.72);font-size:1.55vmin;letter-spacing:.04em;pointer-events:none}.eh-bottom b{display:inline-block;margin:0 .35vmin;padding:.18vmin .62vmin;border:.1vmin solid rgba(220,229,255,.32);border-radius:.55vmin;color:#f5f6ff}",
       ".eh-overlay{position:absolute;z-index:8;inset:0;display:grid;place-items:center;text-align:center;background:radial-gradient(circle at 50% 43%,rgba(83,119,223,.16),rgba(6,10,27,.78) 58%,rgba(4,7,18,.94));opacity:1}.eh-overlay[hidden]{display:none!important}",
       ".eh-intro-copy{position:relative;width:min(88vmin,72vw);padding:4vmin}.eh-intro-copy:before,.eh-intro-copy:after{content:'';position:absolute;left:50%;top:50%;border:.12vmin solid rgba(145,221,215,.32);border-radius:50%;pointer-events:none}.eh-intro-copy:before{width:58vmin;height:58vmin;margin:-29vmin;animation:eh-orbit 11s linear infinite}.eh-intro-copy:after{width:40vmin;height:40vmin;margin:-20vmin;border-color:rgba(242,217,145,.25);animation:eh-orbit 7s linear infinite reverse}@keyframes eh-orbit{to{transform:rotate(360deg)}}",
@@ -268,7 +268,9 @@
     // Spawn only on cells that have at least one legal way out. This prevents
     // a rare maze dead-end from pinning a spirit behind a protected rune tile.
     var enemies = shuffle(cells, random).filter(function (p) {
-      return !used[cellKey(p.x, p.y)] && distance(p, { x: 1, y: 1 }) > 7 && hasHunterExit(p);
+      if (used[cellKey(p.x, p.y)] || distance(p, { x: 1, y: 1 }) <= 7 || !hasHunterExit(p)) return false;
+      for (var gd = 0; gd < gates.length; gd++) if (distance(gates[gd], p) <= 2) return false;
+      return true;
     });
     enemies.sort(function (a, b) { return distance(b, { x: 1, y: 1 }) - distance(a, { x: 1, y: 1 }); });
     var enemy = enemies[0] || cells.filter(function (p) { return !protectedSpawn(p.x, p.y) && hasHunterExit(p); })[0] || { x: 15, y: 7 };
@@ -276,8 +278,8 @@
       || enemies[1] || enemy;
     E.grid = grid; E.gates = gates; E.sealed = [false, false, false]; E.shards = shards; E.shardCount = 0;
     E.player = { x: 1, y: 1, drawX: 1, drawY: 1 };
-    E.enemy = { x: enemy.x, y: enemy.y, homeX: enemy.x, homeY: enemy.y, drawX: enemy.x, drawY: enemy.y, nextAt: E.simTime + 2.2, speed: E.routeMode === 1 ? .62 : .8 };
-    E.hunter = (E.boss || E.routeMode === 1) ? { x: hunterHome.x, y: hunterHome.y, homeX: hunterHome.x, homeY: hunterHome.y, drawX: hunterHome.x, drawY: hunterHome.y, nextAt: E.simTime + 3, speed: E.boss ? .88 : 1.05 } : null;
+    E.enemy = { x: enemy.x, y: enemy.y, homeX: enemy.x, homeY: enemy.y, drawX: enemy.x, drawY: enemy.y, nextAt: E.simTime + 1.4, speed: E.routeMode === 1 ? .52 : .66 };
+    E.hunter = (E.boss || E.routeMode === 1) ? { x: hunterHome.x, y: hunterHome.y, homeX: hunterHome.x, homeY: hunterHome.y, drawX: hunterHome.x, drawY: hunterHome.y, nextAt: E.simTime + 2, speed: E.boss ? .75 : .88 } : null;
     E.trail = []; E.roundMistake = false; E.resolvedRound = false;
   }
 
@@ -430,7 +432,7 @@
     // v6.6:不再全程 BFS 完美追踪 —— 距离≤3 才穷追(85%),远处大概率游荡,
     // 玩家凭环路和安全区(入口/门的精确格)可以真正甩开它。
     var step, d = distance(hunter, E.player), roll = (E.rng || Math.random)();
-    var chase = d <= 3 ? 0.85 : 0.5;
+    var chase = d <= 4 ? 0.95 : 0.75;
     if (roll < chase) step = nextStep(hunter, E.player);
     else {
       var ns = neighbors(hunter.x, hunter.y);
@@ -715,7 +717,10 @@
 
   if (!installUi()) return;
   if (typeof handlers === "object") handlers["echo-heist"] = { enter: function () { resize(); }, key: key };
-  window.EchoHeist = { open: open, stop: stop, suspend: suspend, resume: resume, benchmark: benchmark };
+  window.EchoHeist = {
+    open: open, stop: stop, suspend: suspend, resume: resume, benchmark: benchmark,
+    debug: function () { return { phase: E.phase, enemy: { x: E.enemy.x, y: E.enemy.y }, hunter: E.hunter ? { x: E.hunter.x, y: E.hunter.y } : null, player: { x: E.player.x, y: E.player.y }, shield: E.shield }; }
+  };
   window.addEventListener("resize", resize);
   document.addEventListener("visibilitychange", function () { if (document.hidden) suspend(); else resume(); });
   window.addEventListener("blur", suspend); window.addEventListener("focus", resume);
