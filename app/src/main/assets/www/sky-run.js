@@ -450,7 +450,8 @@
   function beginQuestionRun() {
     if (!ownerValid() || R.phase !== "preview") return;
     R.phase = "run"; R.mappingUntil = 0; setGateMapping(true, "STEER"); updateLaneVisual();
-    setText("sr-callout", "看准释义换道 · ↑ 跳过路障");
+    var PATTERN_NAMES = { tutorial: "热身航段 · 无路障,看释义换道", double: "双重路障 · 连续躲两次", echo: "回声链 · 连吃 3 枚回声", sweep: "游走路障 · 它会变道,看准再躲", rush: "疾速冲刺 · 分数 ×1.5" };
+    setText("sr-callout", (PATTERN_NAMES[R.pattern] || "看准释义换道") + " · ↑ 跳跃");
     var host = byId("sr-gates"); if (host) { host.style.opacity = ".9"; host.style.transform = "translate3d(-50%,-6vmin,0) scale(.8)"; }
   }
 
@@ -465,12 +466,18 @@
     R.lane = 1;
     R.jumpY = 0; R.jumpV = 0;
     R.obstacleCommitted = R.failed; R.pickupCommitted = R.failed;
-    R.speed = 15 + Math.min(5, R.combo * 0.72);
+    // v6.6:滚动天空式航段系统 —— 每关一种花样,零新增3D物件(复用现有网格)
+    var PATTERNS = ["double", "echo", "sweep", "rush"];
+    R.pattern = R.round < 2 ? "tutorial" : PATTERNS[(R.round - 2) % PATTERNS.length];
+    R.obstacleRearm = R.pattern === "double" ? 1 : 0;
+    R.pickupRearm = R.pattern === "echo" ? 2 : 0;
+    R.sweep = R.pattern === "sweep"; R.sweepLocked = false;
+    R.speed = 15 + R.round * 0.3 + Math.min(5, R.combo * 0.72);
+    if (R.pattern === "rush") R.speed *= 1.3;
     R.gateZ = PLAYER_Z - R.speed * 3.45; R.prevGateZ = R.gateZ;
-    // v6.4:路障提前到 2.1 秒外给足反应;前两关无路障,先学会"看释义换道"
     R.obstacleZ = PLAYER_Z - R.speed * 2.1; R.prevObstacleZ = R.obstacleZ;
     R.obstacleLane = Math.floor(Math.random() * 3);
-    var noObstacle = R.round < 2;
+    var noObstacle = R.pattern === "tutorial";
     R.pickupZ = R.obstacleZ + 2.1; R.prevPickupZ = R.pickupZ;
     R.pickupLane = (R.obstacleLane + 1 + Math.floor(Math.random() * 2)) % 3;
     R.phase = "preview"; R.phaseUntil = R.simTime + (reducedMotion() ? 0.5 : 0.9); R.mappingUntil = 0; R.pendingFinish = false;
@@ -503,19 +510,37 @@
       setText("sr-callout", "路障命中 · 护盾受损"); pulseClass("sr-hit", 420);
       try { if (window.SFX && SFX.bad) SFX.bad(); } catch (e) { }
     } else {
-      R.score += 20; setText("sr-callout", R.jumpY >= 0.82 ? "凌空越障 · +20 星辉" : "漂亮闪避 · +20 星辉");
+      var dodgeGain = R.pattern === "rush" ? 30 : 20;
+      R.score += dodgeGain; setText("sr-callout", (R.jumpY >= 0.82 ? "凌空越障" : "漂亮闪避") + " · +" + dodgeGain + " 星辉");
       try { if (window.SFX && SFX.nav) SFX.nav(); } catch (e2) { }
+    }
+    // 双重路障:第一座过线后,在 1.1 秒外再装填一座(不同车道,方向可预判)
+    if (R.obstacleRearm > 0 && !R.failed && R.gateZ < PLAYER_Z - R.speed * 1.35) {
+      R.obstacleRearm--;
+      R.obstacleLane = (R.obstacleLane + 1 + Math.floor(Math.random() * 2)) % 3;
+      R.obstacleZ = PLAYER_Z - R.speed * 1.1; R.prevObstacleZ = R.obstacleZ;
+      R.obstacleCommitted = false;
+      if (R.obstacle) { R.obstacle.visible = true; R.obstacle.position.set(LANE_X[R.obstacleLane], 0, R.obstacleZ); }
     }
     updateHud();
   }
 
+  function rearmPickup() {
+    if (R.pickupRearm <= 0 || R.failed || R.gateZ >= PLAYER_Z - R.speed * 1.2) return;
+    R.pickupRearm--;
+    R.pickupLane = (R.pickupLane + 1 + Math.floor(Math.random() * 2)) % 3;
+    R.pickupZ = PLAYER_Z - R.speed * 0.95; R.prevPickupZ = R.pickupZ;
+    R.pickupCommitted = false;
+    if (R.pickup) { R.pickup.visible = true; R.pickup.position.set(LANE_X[R.pickupLane], 1.3, R.pickupZ); }
+  }
   function pickupPass() {
     if (R.pickupCommitted || R.phase !== "run") return;
     R.pickupCommitted = true;
     if (R.pickup) R.pickup.visible = false;
-    if (R.lane !== R.pickupLane) return;
+    if (R.lane !== R.pickupLane) { rearmPickup(); return; }
     R.score += 45; R.gap = Math.min(100, R.gap + 6);
     setText("sr-callout", "捕获回声 · +45 星辉,词怪被拉开距离");
+    rearmPickup();
     try { if (typeof speak === "function" && R.list[R.round]) speak(R.list[R.round].w); } catch (e) { }
     try { if (window.SFX && SFX.good) SFX.good(); } catch (e2) { }
     updateHud();
@@ -533,7 +558,7 @@
       if (!ok && i === R.lane) gates[i].classList.add("wrong");
     }
     if (ok) {
-      R.right++; R.combo++; R.bestCombo = Math.max(R.bestCombo, R.combo); R.score += 130 + Math.min(170, R.combo * 18); R.gap = Math.min(100, R.gap + 11);
+      R.right++; R.combo++; R.bestCombo = Math.max(R.bestCombo, R.combo); R.score += Math.round((130 + Math.min(170, R.combo * 18)) * (R.pattern === "rush" ? 1.5 : 1)); R.gap = Math.min(100, R.gap + 11);
       setText("sr-callout", R.list[R.round].w + " = " + R.list[R.round].m + " · 冲刺击退词怪");
       var rootGood = byId("skytrail"); if (rootGood) rootGood.classList.add("sr-good", "sr-boost");
       try { if (window.SFX && SFX.good) SFX.good(); } catch (e) { }
@@ -627,7 +652,20 @@
     if (R.phase === "run") {
       if (R.mappingUntil && R.simTime >= R.mappingUntil) { R.mappingUntil = 0; setGateMapping(false); }
       R.prevObstacleZ = R.obstacleZ; R.obstacleZ += R.speed * delta;
-      if (R.obstacle) { R.obstacle.position.z = R.obstacleZ; R.obstacle.rotation.y += delta * 1.4; }
+      if (R.sweep && !R.obstacleCommitted && R.obstacle && R.obstacle.visible) {
+        var eta = (PLAYER_Z - R.obstacleZ) / Math.max(1, R.speed);
+        if (eta > 1.15) {
+          R.sweepLocked = false;
+          R.obstacle.position.x = Math.sin(R.simTime * 2.1) * LANE_X[2];
+          R.obstacle.rotation.y += delta * 5;
+        } else if (!R.sweepLocked) {
+          R.sweepLocked = true;
+          var nearest = 0, best = 1e9;
+          for (var li = 0; li < 3; li++) { var dxl = Math.abs(R.obstacle.position.x - LANE_X[li]); if (dxl < best) { best = dxl; nearest = li; } }
+          R.obstacleLane = nearest; R.obstacle.position.x = LANE_X[nearest];
+        }
+      }
+      if (R.obstacle) { R.obstacle.position.z = R.obstacleZ; if (!R.sweep || R.sweepLocked) R.obstacle.rotation.y += delta * 1.4; }
       if (!R.obstacleCommitted && R.prevObstacleZ < PLAYER_Z && R.obstacleZ >= PLAYER_Z) obstacleHit();
 
       R.prevPickupZ = R.pickupZ; R.pickupZ += R.speed * delta;

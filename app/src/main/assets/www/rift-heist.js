@@ -219,6 +219,16 @@
       var step = ways[0], nx = here.x + step[0], ny = here.y + step[1];
       grid[here.y + step[1] / 2][here.x + step[0] / 2] = 0; grid[ny][nx] = 0; stack.push({ x: nx, y: ny });
     }
+    // v6.6:树状迷宫任意两点仅一条路,配合完美寻路的词灵=必被抓。
+    // 敲掉 ~18% 隔在两块地板之间的墙,制造环路,玩家可以绕圈摆脱追击。
+    for (y = 1; y < ROWS - 1; y++) {
+      for (x = 1; x < COLS - 1; x++) {
+        if (grid[y][x] !== 1) continue;
+        var lr = grid[y][x - 1] === 0 && grid[y][x + 1] === 0;
+        var ud = grid[y - 1][x] === 0 && grid[y + 1][x] === 0;
+        if ((lr || ud) && !(lr && ud) && random() < 0.18) grid[y][x] = 0;
+      }
+    }
     return grid;
   }
   function distance(a, b) {
@@ -250,8 +260,8 @@
     var enemy = enemies[0] || { x: 15, y: 7 };
     E.grid = grid; E.gates = gates; E.sealed = [false, false, false]; E.shards = shards; E.shardCount = 0;
     E.player = { x: 1, y: 1, drawX: 1, drawY: 1 };
-    E.enemy = { x: enemy.x, y: enemy.y, drawX: enemy.x, drawY: enemy.y, nextAt: E.simTime + 2.2, speed: E.routeMode === 1 ? .62 : .8 };
-    E.hunter = (E.boss || E.routeMode === 1) ? { x: 15, y: 1, drawX: 15, drawY: 1, nextAt: E.simTime + 3, speed: E.boss ? .88 : 1.05 } : null;
+    E.enemy = { x: enemy.x, y: enemy.y, homeX: enemy.x, homeY: enemy.y, drawX: enemy.x, drawY: enemy.y, nextAt: E.simTime + 2.2, speed: E.routeMode === 1 ? .62 : .8 };
+    E.hunter = (E.boss || E.routeMode === 1) ? { x: 15, y: 1, homeX: 15, homeY: 1, drawX: 15, drawY: 1, nextAt: E.simTime + 3, speed: E.boss ? .88 : 1.05 } : null;
     E.trail = []; E.roundMistake = false; E.resolvedRound = false;
   }
 
@@ -354,7 +364,12 @@
     if (E.shield <= 0) {
       // 护盾耗尽不会让用户卡死：自动把当前房间判为一次困难回忆，并进入复盘。
       E.roundMistake = true; finishRound(false, "护盾耗尽 · 裂隙把你送回了回声台");
-    } else resetPlayer("词灵撞上来了 · 护盾 -1");
+    } else {
+      // v6.6:不再把玩家拖回起点 —— 词灵被震退回巢并冻结,你继续走你的
+      if (hunter && hunter.homeX != null) { hunter.x = hunter.homeX; hunter.y = hunter.homeY; }
+      if (hunter) hunter.nextAt = E.simTime + 2.6;
+      status("词灵撞上 · 护盾 -1,它被震退回巢了", "bad");
+    }
     updateHud();
   }
   function neighbors(x, y) {
@@ -383,9 +398,25 @@
     while (prev && !(prev.x === from.x && prev.y === from.y)) { step = prev; prev = came[cellKey(prev.x, prev.y)]; }
     return step;
   }
+  function safeCell(x, y) {
+    if (Math.abs(x - 1) + Math.abs(y - 1) <= 1) return true;
+    for (var i = 0; i < E.gates.length; i++) {
+      if (Math.abs(E.gates[i].x - x) + Math.abs(E.gates[i].y - y) <= 1) return true;
+    }
+    return false;
+  }
   function moveHunter(hunter) {
     if (!hunter || E.phase !== "play") return;
-    var step = nextStep(hunter, E.player);
+    // v6.6:不再全程 BFS 完美追踪 —— 距离≤3 才穷追(85%),远处大概率游荡,
+    // 玩家凭环路和安全区(入口/门口一格内)可以真正甩开它。
+    var step, d = distance(hunter, E.player), roll = (E.rng || Math.random)();
+    var chase = d <= 3 ? 0.85 : 0.5;
+    if (roll < chase) step = nextStep(hunter, E.player);
+    else {
+      var ns = neighbors(hunter.x, hunter.y);
+      step = ns.length ? ns[Math.floor((E.rng || Math.random)() * ns.length)] : hunter;
+    }
+    if (safeCell(step.x, step.y)) return;
     hunter.x = step.x; hunter.y = step.y;
     if (hunter.x === E.player.x && hunter.y === E.player.y) hitByHunter(hunter);
   }
@@ -435,7 +466,7 @@
       text("eh-meaning-kicker", "错误符文已解码");
       text("eh-meaning-text", GATE_GLYPHS[index] + " = " + ((E.options[index] && E.options[index].m) || "未知") + " · 与目标词不匹配");
       if (E.shield <= 0 || E.sealed.filter(Boolean).length >= 2) finishRound(false, "错误出口崩塌 · 先把这个词带回回声台");
-      else { resetPlayer("这道门不是它的含义 · 护盾 -1"); status("门后是空的 · 还有别的出口，但词灵更近了", "bad"); }
+      else { status("这道门不对 · 护盾 -1,已标记排除,去另一道门", "bad"); }
       return;
     }
     addBurstAt(E.gates[index], "#f2d991", 24, E.map.cell * .035); playSfx("win");
