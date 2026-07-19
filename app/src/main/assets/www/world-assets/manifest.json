@@ -1,0 +1,199 @@
+{
+  "schema": 1,
+  "source": "KayKit Medieval Hexagon Pack 1.0 — https://github.com/KayKit-Game-Assets/KayKit-Medieval-Hexagon-Pack-1.0",
+  "license": "CC0 1.0 Universal — https://creativecommons.org/publicdomain/zero/1.0/",
+  "models": [
+    {
+      "id": "grass-hex",
+      "url": "models/grass-hex/hex_grass.gltf",
+      "scale": 1
+    },
+    {
+      "id": "coast-hex",
+      "url": "models/coast-hex/hex_coast_A.gltf",
+      "scale": 1
+    },
+    {
+      "id": "citadel",
+      "url": "models/citadel/building_castle_blue.gltf",
+      "scale": 1
+    },
+    {
+      "id": "sky-tower",
+      "url": "models/sky-tower/building_tower_A_blue.gltf",
+      "scale": 1
+    },
+    {
+      "id": "cottage",
+      "url": "models/cottage/building_home_A_blue.gltf",
+      "scale": 1
+    },
+    {
+      "id": "lodge",
+      "url": "models/lodge/building_home_B_blue.gltf",
+      "scale": 1
+    },
+    {
+      "id": "windmill",
+      "url": "models/windmill/building_windmill_blue.gltf",
+      "scale": 1
+    },
+    {
+      "id": "academy-hall",
+      "url": "models/academy-hall/building_church_blue.gltf",
+      "scale": 1
+    },
+    {
+      "id": "forum-market",
+      "url": "models/forum-market/building_market_blue.gltf",
+      "scale": 1
+    },
+    {
+      "id": "tree-single",
+      "url": "models/tree-single/tree_single_A.gltf",
+      "scale": 1
+    },
+    {
+      "id": "tree-grove",
+      "url": "models/tree-grove/trees_A_medium.gltf",
+      "scale": 1
+    },
+    {
+      "id": "mountain-grove",
+      "url": "models/mountain-grove/mountain_A_grass_trees.gltf",
+      "scale": 1
+    },
+    {
+      "id": "cloud-small",
+      "url": "models/cloud-small/cloud_small.gltf",
+      "scale": 1
+    },
+    {
+      "id": "cloud-large",
+      "url": "models/cloud-large/cloud_big.gltf",
+      "scale": 1
+    }
+  ],
+  "placements": [
+    {
+      "model": "coast-hex",
+      "position": [0, 0, 0],
+      "rotationY": 0,
+      "scale": 1.7
+    },
+    {
+      "model": "citadel",
+      "position": [0, 0.03, 0],
+      "rotationY": -0.28,
+      "scale": 0.9
+    },
+    {
+      "model": "tree-grove",
+      "position": [-1.05, 0.04, 0.72],
+      "rotationY": 0.55,
+      "scale": 0.48
+    },
+    {
+      "model": "coast-hex",
+      "position": [-4.5, -0.35, 0.25],
+      "rotationY": 0.52,
+      "scale": 1.25
+    },
+    {
+      "model": "academy-hall",
+      "position": [-4.5, -0.32, 0.25],
+      "rotationY": 0.32,
+      "scale": 1.08
+    },
+    {
+      "model": "tree-single",
+      "position": [-5.25, -0.3, 0.72],
+      "rotationY": -0.45,
+      "scale": 0.72
+    },
+    {
+      "model": "grass-hex",
+      "position": [4.5, -0.2, -0.1],
+      "rotationY": -0.52,
+      "scale": 1.25
+    },
+    {
+      "model": "windmill",
+      "position": [4.48, -0.17, -0.08],
+      "rotationY": -0.65,
+      "scale": 1.1
+    },
+    {
+      "model": "tree-single",
+      "position": [5.2, -0.15, 0.62],
+      "rotationY": 0.8,
+      "scale": 0.68
+    },
+    {
+      "model": "coast-hex",
+      "position": [0, -0.55, -4.2],
+      "rotationY": 0,
+      "scale": 1.35
+    },
+    {
+      "model": "sky-tower",
+      "position": [-0.38, -0.52, -4.18],
+      "rotationY": 0.36,
+      "scale": 1.05
+    },
+    {
+      "model": "mountain-grove",
+      "position": [0.75, -0.51, -4.3],
+      "rotationY": -0.38,
+      "scale": 0.62
+    },
+    {
+      "model": "grass-hex",
+      "position": [0, -0.25, 4.4],
+      "rotationY": 0,
+      "scale": 1.45
+    },
+    {
+      "model": "forum-market",
+      "position": [0, -0.22, 4.25],
+      "rotationY": 0.15,
+      "scale": 0.68
+    },
+    {
+      "model": "cottage",
+      "position": [-0.78, -0.21, 4.82],
+      "rotationY": -0.72,
+      "scale": 0.86
+    },
+    {
+      "model": "lodge",
+      "position": [0.84, -0.21, 4.84],
+      "rotationY": 0.68,
+      "scale": 0.78
+    },
+    {
+      "model": "cloud-large",
+      "position": [-3.2, 1.8, -2.6],
+      "rotationY": 0.3,
+      "scale": 0.72
+    },
+    {
+      "model": "cloud-large",
+      "position": [4.4, 0.8, 2.6],
+      "rotationY": -0.8,
+      "scale": 0.55
+    },
+    {
+      "model": "cloud-small",
+      "position": [-5.5, 0.8, 3.8],
+      "rotationY": 0.65,
+      "scale": 0.72
+    },
+    {
+      "model": "cloud-small",
+      "position": [1.5, 2.4, -5.2],
+      "rotationY": -0.25,
+      "scale": 0.62
+    }
+  ]
+}

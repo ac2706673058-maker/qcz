@@ -68,7 +68,7 @@ function registerProfile(meta) {
   PROFILES[meta.id] = {
     name: meta.name, short: meta.short, icon: meta.icon, store: meta.store,
     template: meta.template, builtin: !!meta.builtin, archived: !!meta.archived,
-    menuHide: meta.builtin ? (meta.id === "fin" ? { chase: 1 } : { sim: 1, screens: 1 }) : {},
+    menuHide: meta.builtin ? (meta.id === "fin" ? { chase: 1 } : { sim: 1, screens: 1, cloud: 1 }) : {},
     deckOk: t.deckOk, slogans: t.slogans
   };
 }
@@ -156,7 +156,7 @@ function rate(w, g) {
   let rec = P.words[w];
   if (!rec || rec.st === 0 || rec.st === undefined) {
     const sd = initSD(g);
-    rec = { st: g >= 3 ? 2 : 1, S: sd.S, D: sd.D, due: now + sd.S * DAY, reps: 1, lapses: g === 1 ? 1 : 0, last: now, fd: todayStr() };
+    rec = { st: g >= 3 ? 2 : 1, S: sd.S, D: sd.D, due: now + (g === 1 ? 10 * 60000 : sd.S * DAY), reps: 1, lapses: g === 1 ? 1 : 0, last: now, fd: todayStr() };
   } else {
     const t = Math.max(0, (now - rec.last) / DAY);
     const R = retriev(t, rec.S);
@@ -284,8 +284,11 @@ function loadDecks() {
   try { list = JSON.parse(NativeBridge.getDecks()); } catch (e) { list = []; }
   WORDS = {};
   DECKS = [];
-  // 按使用者过滤词库:manifest 里 profile 标 "fin"/"teen",不标=双方共用;U盘外部词库双方可见
-  list = list.filter(d => d.source === "ext" || PF().deckOk(d.profile || ""));
+  // 弟弟空间严格只使用中考核心词汇；爸爸/其他空间仍按各自模板加载可开关词书。
+  // 高考与外部词书文件完整保留在安装包/用户目录，不改动原始数据。
+  list = CUR === "teen"
+    ? list.filter(d => d.id === "zk" && d.profile === "teen")
+    : list.filter(d => d.source === "ext" || PF().deckOk(d.profile || ""));
   for (const d of list) {
     let total = 0;
     for (const f of (d.files || [])) {
@@ -301,9 +304,9 @@ function loadDecks() {
     }
     DECKS.push({ id: d.id, name: d.name, icon: d.icon || "📘", source: d.source, total: total });
   }
-  appendCloudDecks();
+  if (CUR !== "teen") appendCloudDecks();
 }
-const deckOn = id => !P.decksOff[id];
+const deckOn = id => (CUR === "teen" && id === "zk") || !P.decksOff[id];
 const deckName = id => { const d = DECKS.find(x => x.id === id); return d ? d.name : ""; };
 function activeWords() { return Object.values(WORDS).filter(e => deckOn(e.deck)); }
 function newQuota() { return Math.max(0, P.set.newPerDay - (P.dayNew[todayStr()] || 0)); }
@@ -596,6 +599,18 @@ function scheduleFocusFx(key, before, beforeRect) {
   });
 }
 function show(name) {
+  if (SCREEN === "world" && name !== "world" && window.WordWorld && typeof window.WordWorld.stop === "function") {
+    try { window.WordWorld.stop(); } catch (e) { }
+  }
+  if (SCREEN === "skytrail" && name !== "skytrail" && window.WordRush && typeof window.WordRush.stop === "function") {
+    try { window.WordRush.stop(); } catch (e) { }
+  }
+  if (SCREEN === "memory-maze" && name !== "memory-maze" && window.MemoryMaze && typeof window.MemoryMaze.stop === "function") {
+    try { window.MemoryMaze.stop(); } catch (e) { }
+  }
+  if (SCREEN === "echo-heist" && name !== "echo-heist" && window.EchoHeist && typeof window.EchoHeist.stop === "function") {
+    try { window.EchoHeist.stop(); } catch (e) { }
+  }
   cancelFocusFx(false);
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
   $(name).classList.add("active");
@@ -604,7 +619,19 @@ function show(name) {
   catch (e) { toast("界面错误:" + (e && e.message)); }
   requestAnimationFrame(() => placeFocusHalo(focusRect(navFocused())));
 }
+const TV_CARRY_GUARD = { key: "", until: 0, span: 0 };
+function armTvCarryGuard(key, ms) {
+  TV_CARRY_GUARD.key = key;
+  TV_CARRY_GUARD.span = Math.max(320, Number(ms) || 0);
+  TV_CARRY_GUARD.until = NOW() + TV_CARRY_GUARD.span;
+}
 window.onTvKey = k => {
+  const signalAt = NOW();
+  if (TV_CARRY_GUARD.key === k && signalAt < TV_CARRY_GUARD.until) {
+    TV_CARRY_GUARD.until = signalAt + TV_CARRY_GUARD.span;
+    return;
+  }
+  if (signalAt >= TV_CARRY_GUARD.until) TV_CARRY_GUARD.key = "";
   try { $("toast").classList.remove("show"); } catch (e) { }
   const before = navFocused();
   const beforeRect = NAV_DIR[k] ? focusRect(before) : null;
@@ -627,10 +654,23 @@ document.addEventListener("keydown", e => {
   const map = { ArrowUp: "UP", ArrowDown: "DOWN", ArrowLeft: "LEFT", ArrowRight: "RIGHT", Enter: "OK", Escape: "BACK", Backspace: "BACK" };
   if (map[e.key]) { e.preventDefault(); window.onTvKey(map[e.key]); }
 });
-document.addEventListener("visibilitychange", () => { if (document.hidden && P) { flushP(); saveApp(); } });
-window.addEventListener("pagehide", () => { if (P) { flushP(); saveApp(); } });
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    if (P) { flushP(); saveApp(); }
+    try { if (typeof pauseChase === "function") pauseChase(); } catch (e) { }
+  } else {
+    try { if (typeof resumeChase === "function") resumeChase(); } catch (e) { }
+  }
+});
+window.addEventListener("pagehide", () => {
+  if (P) { flushP(); saveApp(); }
+  try { if (typeof pauseChase === "function") pauseChase(); } catch (e) { }
+});
+window.addEventListener("blur", () => { try { if (typeof pauseChase === "function") pauseChase(); } catch (e) { } });
+window.addEventListener("focus", () => { try { if (typeof resumeChase === "function") resumeChase(); } catch (e) { } });
 
 const MENU = [
+  { id: "world", ic: "\uD83C\uDF0D", t: "\u8BCD\u6C47\u4E16\u754C", d: "\u63A2\u7D22\u8BCD\u6C47\u79D8\u5883 \u00B7 \u5728\u5192\u9669\u4E2D\u5DE9\u56FA\u590D\u4E60" },
   { id: "new", ic: "✒️", t: "学新词", d: "衬线大字卡 · 自动发音" },
   { id: "review", ic: "🧠", t: "智能复习", d: "FSRS 记忆算法调度" },
   { id: "weak", ic: "🛡️", t: "弱项突围", d: "按遗忘风险精准选题" },
@@ -647,6 +687,9 @@ const MENU = [
   { id: "settings", ic: "⚙️", t: "设置", d: "新词量 · 发音 · 语速" }
 ];
 const GAME_MENU = [
+  { id: "echo", ic: "◈", t: "记忆裂隙", d: "实时潜入 · 分叉路线 · 词义决定世界" },
+  { id: "skytrail", ic: "✦", t: "词境疾驰", d: "三车道冒险 · 躲避追击穿越词义门" },
+  { id: "maze", ic: "⌘", t: "星火遗迹", d: "真迷宫潜行 · 收集回声躲开词怪" },
   { id: "quiz", ic: "⚡", t: "闪电测验", d: "限时四选一 · 连击得分" },
   { id: "listen", ic: "🎧", t: "听音辨义", d: "只听发音 · 训练听力反应" },
   { id: "cloze", ic: "📝", t: "例句填空", d: "读懂整句中文选英文词" },
@@ -662,7 +705,8 @@ const GAME_MENU = [
 function homeItems() { return MENU.filter(it => !PF().menuHide[it.id]); }
 function homeCols() { return homeItems().length >= 13 ? 5 : 4; }
 function arcadeItems() { return GAME_MENU.slice(); }
-function arcadeCols() { return arcadeItems().length > 10 ? 6 : 5; }
+// 电视端固定五列：新增真正的游戏后仍保持远距离可读，不把卡片压成手机式小字。
+function arcadeCols() { return 5; }
 
 /* 首页每日:英文日期 + 一句鸡汤(中英),按年内天数轮换,每天自动换一句 */
 const WEEKDAYS = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
@@ -751,6 +795,10 @@ function homeFocus() {
 function openMenu(id) {
   if (id === "new") startStudy("new");
   else if (id === "review") startStudy("review");
+  else if (id === "world") {
+    if (window.WordWorld && typeof window.WordWorld.open === "function") window.WordWorld.open();
+    else toast("\u8BCD\u6C47\u4E16\u754C\u8FD8\u5728\u51C6\u5907\u4E2D\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5");
+  }
   else if (id === "weak") startQuiz("weak");
   else if (id === "arcade") { AR.idx = 0; show("arcade"); }
   else if (id === "quiz") startQuiz("quiz");
@@ -767,6 +815,18 @@ function openMenu(id) {
   else if (id === "sentence") { startSentence(); }
   else if (id === "starship") { startStarship(); }
   else if (id === "chase") { startChase(); }
+  else if (id === "skytrail") {
+    if (window.WordRush && typeof window.WordRush.open === "function") window.WordRush.open();
+    else toast("词境疾驰正在唤醒，请稍后重试");
+  }
+  else if (id === "maze") {
+    if (window.MemoryMaze && typeof window.MemoryMaze.open === "function") window.MemoryMaze.open();
+    else toast("星火遗迹正在重建，请稍后重试");
+  }
+  else if (id === "echo") {
+    if (window.EchoHeist && typeof window.EchoHeist.open === "function") window.EchoHeist.open();
+    else toast("记忆裂隙正在唤醒，请稍后重试");
+  }
   else if (id === "who") { WHO.phase = "list"; WHO.idx = Math.max(0, activeProfileMeta().findIndex(m => m.id === CUR)); show("who"); }
   else if (id === "cloud") { CLOUD.phase = "list"; CLOUD.row = 0; show("cloud"); }
   else if (id === "screens") { SC.view = "list"; SC.gi = 0; show("screens"); }
@@ -1180,7 +1240,10 @@ function customFocus() {
 function schedHit(w, ok) {
   practiceHit(w, ok);
   const r = P.words[w];
-  if (r && r.due <= NOW() + DAY / 2) rate(w, ok ? 3 : 1);
+  // 游戏也算一次真正的首次接触：不能只记 drill 而把单词永远留在“未学习”。
+  // 首次答对先进入熟悉阶段(st=1)，再次到期时仍由 FSRS 正常调度；首次答错则短期复习。
+  if (!r || !r.st) rate(w, ok ? 2 : 1);
+  else if (r.due <= NOW() + DAY / 2) rate(w, ok ? 3 : 1);
   else { bumpDay(); saveP(); }
 }
 
@@ -1621,6 +1684,9 @@ handlers.browse.key = function (k) {
 let deckIdx = 0;
 handlers.decks = {
   enter() {
+    const fixedTeenDeck = CUR === "teen";
+    $("deck-hint").textContent = fixedTeenDeck ? "弟弟空间固定使用中考核心词汇" : "OK 开关词库 · 关闭后不再出新词";
+    $("deck-tip").style.display = fixedTeenDeck ? "none" : "";
     const box = $("deck-list"); box.innerHTML = "";
     DECKS.forEach((d, i) => {
       const learned = Object.values(WORDS).filter(e => e.deck === d.id && P.words[e.w] && P.words[e.w].st > 0).length;
@@ -1631,7 +1697,7 @@ handlers.decks = {
         + '<div class="info"><div class="name">' + esc(d.name) + (d.source === "ext" ? ' <span style="color:var(--gold);font-size:2vmin">外部</span>' : (d.source === "online" ? ' <span style="color:var(--gold);font-size:2vmin">云端 v' + d.version + '</span>' : "")) + '</div>'
         + '<div class="desc">已学 ' + learned + ' / ' + d.total + ' 词 · ' + pct + '%</div>'
         + '<div class="deckbar"><i style="width:' + pct + '%"></i></div></div>'
-        + '<div class="val"><span class="ios-sw' + (deckOn(d.id) ? " on" : "") + '"></span></div>';
+        + (fixedTeenDeck ? '<div class="val val-blue">固定启用</div>' : '<div class="val"><span class="ios-sw' + (deckOn(d.id) ? " on" : "") + '"></span></div>');
       box.appendChild(el);
     });
   },
@@ -1642,6 +1708,7 @@ handlers.decks = {
     else if (k === "DOWN") { deckIdx = (deckIdx + 1) % DECKS.length; deckFocus(); return; }
     else if (k === "OK") {
       const d = DECKS[deckIdx];
+      if (CUR === "teen") { toast("弟弟空间固定使用中考核心词汇"); return; }
       if (deckOn(d.id)) P.decksOff[d.id] = 1; else delete P.decksOff[d.id];
       saveP();
     }
@@ -2713,67 +2780,166 @@ handlers.starship = {
 /* ================= 词怪追逐(闯关逃生) =================
    小人在前跑,词怪在后追,间距越拉越近。答对词义→甩出道具击退词怪、向前闯关;
    答错/超时→词怪逼近。被追上=失败,闯到终点=逃生成功。 */
-const CH = { list: [], i: 0, sel: 0, ansIdx: 0, gap: 62, pos: 0, goal: 15, score: 0, combo: 0, best: 0, right: 0, wrong: 0, lock: false, over: false, timer: null, creep: null, t0: 0, run: 0 };
+const CH = { list: [], bank: [], i: 0, sel: 0, ansIdx: 0, gap: 62, pos: 0, goal: 15, score: 0, combo: 0, best: 0, right: 0, wrong: 0, lock: false, over: false, timer: null, creep: null, feedbackTimer: null, t0: 0, deadline: 0, remaining: 0, feedbackRemaining: 0, paused: false, inputGate: 0, lastOkAt: 0, run: 0, questionId: 0, phase: "idle", pendingWin: null, resultCommitted: false, ownerP: null, ownerCur: null };
 const CH_TIME = 8000, CH_KNOCK = 15, CH_PENALTY = 20, CH_CREEP = 0.22;
+function chaseNorm(value) {
+  let text = String(value || "");
+  try { if (text.normalize) text = text.normalize("NFKC"); } catch (e) { }
+  return text.trim().replace(/\s+/g, " ").toLowerCase();
+}
+function chaseMeaningKey(value) { return chaseNorm(value); }
+function chaseWordKey(value) { return chaseNorm(value); }
+function chaseOwnerValid() {
+  try { return CH.ownerP === P && CH.ownerCur === CUR && SCREEN === "chase"; }
+  catch (e) { return false; }
+}
+function resetChaseVisuals() {
+  const root = $("chase");
+  if (root) {
+    root.classList.remove("danger", "shake", "boost");
+    root.setAttribute("data-ch-lane", "0"); root.setAttribute("data-ch-zone", "0"); root.style.setProperty("--spd", "1");
+  }
+  ["ch-runner", "ch-monster", "ch-speed", "ch-shock"].forEach(id => {
+    const el = $(id); if (el) el.classList.remove("dash", "recoil", "lunge", "on", "go");
+  });
+  const particles = $("ch-particles"); if (particles) particles.innerHTML = "";
+  const vignette = document.querySelector("#chase .ch-vignette"); if (vignette) vignette.style.opacity = "";
+}
+function makeChaseBank() {
+  const out = [], words = Object.create(null);
+  activeWords().forEach(e => {
+    const wk = e && chaseWordKey(e.w), mk = e && chaseMeaningKey(e.m);
+    if (!wk || !mk || words[wk]) return;
+    words[wk] = true; out.push(e);
+  });
+  return out;
+}
 function startChase() {
   CH.run++;
-  const pool = activeWords().filter(e => e.m);
-  if (pool.length < 8) { toast("当前词库太小,先开一个词库再来玩"); return; }
-  CH.list = shuffle(pool.slice());
-  CH.i = 0; CH.gap = 62; CH.pos = 0; CH.goal = 15; CH.score = 0; CH.combo = 0; CH.best = 0; CH.right = 0; CH.wrong = 0; CH.over = false;
+  const pool = makeChaseBank(), meanings = new Set(pool.map(e => chaseMeaningKey(e.m)));
+  if (pool.length < 8 || meanings.size < 4) { toast("当前启用词书至少需要 8 个词和 4 种不同释义"); return; }
+  CH.bank = pool.slice(); CH.list = shuffle(pool.slice());
+  CH.i = 0; CH.gap = 62; CH.pos = 0; CH.goal = 15; CH.score = 0; CH.combo = 0; CH.best = 0; CH.right = 0; CH.wrong = 0;
+  CH.over = false; CH.paused = false; CH.lastOkAt = 0; CH.questionId = 0; CH.phase = "starting"; CH.pendingWin = null; CH.resultCommitted = false; CH.ownerP = P; CH.ownerCur = CUR;
+  stopChaseClock(false); stopChaseFeedback(); resetChaseVisuals();
   show("chase"); renderChase();
 }
 function chaseOpts(e) {
   const opts = [e];
-  const pool = shuffle(activeWords().filter(x => x.w !== e.w && x.m !== e.m));
-  for (const c of pool) { if (opts.length >= 4) break; opts.push(c); }
+  const targetWord = chaseWordKey(e.w), usedMeanings = new Set([chaseMeaningKey(e.m)]);
+  const pool = shuffle(CH.bank.filter(x => chaseWordKey(x.w) !== targetWord));
+  for (const c of pool) {
+    const meaning = chaseMeaningKey(c.m);
+    if (!meaning || usedMeanings.has(meaning)) continue;
+    usedMeanings.add(meaning); opts.push(c);
+    if (opts.length >= 4) break;
+  }
+  if (opts.length < 4) return null;
   shuffle(opts);
   CH.ansIdx = opts.indexOf(e);
   return opts;
 }
-function renderChase() {
-  CH.lock = false; CH.sel = 0;
-  const e = CH.list[CH.i % CH.list.length];
-  CH.cur = e;
-  $("ch-prog").textContent = "逃生 " + CH.pos + " / " + CH.goal;
-  $("ch-score").textContent = CH.score + " 分";
-  $("ch-combo").textContent = CH.combo > 1 ? "🔥 连击 ×" + CH.combo : "";
-  $("ch-word").textContent = e.w;
-  $("ch-phon").textContent = e.p ? "/" + e.p + "/" : "";
-  $("ch-fb").textContent = "";
-  const opts = chaseOpts(e);
-  const box = $("ch-opts"); box.innerHTML = "";
-  opts.forEach((o, i) => {
-    const d = document.createElement("div");
-    d.className = "opt" + (i === 0 ? " focus" : "");
-    d.innerHTML = '<span class="idx">' + (i + 1) + '</span><span>' + esc(o.m) + '</span>';
-    box.appendChild(d);
-  });
-  drawChase();
-  speak(e.w);
-  // 计时条 + 词怪缓慢逼近(制造紧张)
-  clearTimeout(CH.timer); clearInterval(CH.creep); CH.t0 = NOW();
-  CH.timer = timerBar("ch-timer", CH_TIME, () => chaseAnswer(-1));
+function stopChaseClock(freeze) {
+  clearTimeout(CH.timer); clearInterval(CH.creep); CH.timer = null; CH.creep = null;
+  if (freeze) stopTimerBar(0, "ch-timer");
+}
+function stopChaseFeedback() {
+  clearTimeout(CH.feedbackTimer); CH.feedbackTimer = null;
+}
+function scheduleChaseAdvance(delay, pendingWin) {
+  stopChaseFeedback();
+  const duration = Math.max(80, Number(delay) || 0), run = CH.run, questionId = CH.questionId;
+  CH.feedbackRemaining = duration; CH.deadline = NOW() + duration; CH.pendingWin = pendingWin;
+  CH.phase = pendingWin === null ? "feedback" : "ending"; CH.paused = false;
+  CH.feedbackTimer = setTimeout(() => {
+    CH.feedbackTimer = null;
+    if (!chaseOwnerValid() || CH.run !== run || CH.questionId !== questionId || CH.paused || document.hidden) return;
+    if (pendingWin === null) renderChase(); else finishChase(pendingWin);
+  }, duration);
+}
+function startChaseClock(ms, resetBar) {
+  stopChaseClock(false);
+  const duration = Math.max(260, Number(ms) || CH_TIME), bar = $("ch-timer"), run = CH.run, questionId = CH.questionId;
+  CH.remaining = duration; CH.deadline = NOW() + duration; CH.paused = false;
+  if (bar) {
+    bar.style.transition = "none";
+    if (resetBar) bar.style.width = "100%";
+    void bar.offsetWidth;
+    bar.style.transition = "width " + duration + "ms linear";
+    requestAnimationFrame(() => { if (chaseOwnerValid() && CH.run === run && CH.questionId === questionId && CH.phase === "question" && !CH.paused) bar.style.width = "0%"; });
+  }
+  CH.timer = setTimeout(() => {
+    CH.timer = null;
+    if (chaseOwnerValid() && CH.run === run && CH.questionId === questionId && CH.phase === "question" && !CH.paused && !document.hidden) chaseAnswer(-1);
+  }, duration + 20);
   CH.creep = setInterval(() => {
-    if (CH.lock) return;
+    if (CH.lock || CH.paused || document.hidden || !chaseOwnerValid() || CH.phase !== "question" || CH.run !== run || CH.questionId !== questionId) return;
     CH.gap = Math.max(0, CH.gap - CH_CREEP);
     drawChase();
     if (CH.gap <= 0) chaseAnswer(-1);
   }, 160);
+}
+function pauseChase() {
+  if (SCREEN !== "chase" || CH.paused || !chaseOwnerValid()) return;
+  if (CH.phase === "question") {
+    CH.remaining = Math.max(260, CH.deadline - NOW()); CH.paused = true; stopChaseClock(true);
+  } else if (CH.phase === "feedback" || CH.phase === "ending") {
+    CH.feedbackRemaining = Math.max(80, CH.deadline - NOW()); CH.paused = true; stopChaseFeedback();
+  }
+}
+function resumeChase() {
+  if (SCREEN !== "chase" || !CH.paused || document.hidden || !chaseOwnerValid()) return;
+  if (CH.phase === "question") startChaseClock(CH.remaining, false);
+  else if (CH.phase === "feedback" || CH.phase === "ending") scheduleChaseAdvance(CH.feedbackRemaining, CH.pendingWin);
+}
+function renderChase() {
+  if (!chaseOwnerValid() || CH.over || document.hidden) return;
+  stopChaseFeedback(); CH.questionId++; CH.phase = "question"; CH.pendingWin = null; CH.lock = false; CH.paused = false; CH.sel = 0;
+  $("chase").classList.remove("shake");
+  ["ch-runner", "ch-monster", "ch-speed", "ch-shock"].forEach(id => { const el = $(id); if (el) el.classList.remove("dash", "recoil", "lunge", "on", "go"); });
+  const vignette = document.querySelector("#chase .ch-vignette"); if (vignette) vignette.style.opacity = "";
+  const e = CH.list[CH.i % CH.list.length];
+  CH.cur = e;
+  const zones = ["晨雾边境", "风蚀高地", "星火峡口"];
+  $("ch-prog").textContent = zones[Math.min(2, Math.floor(CH.pos / 5))] + "  " + CH.pos + " / " + CH.goal;
+  $("ch-score").textContent = CH.score + " 分";
+  $("ch-combo").textContent = CH.combo > 1 ? "🔥 连击 ×" + CH.combo : "";
+  $("ch-word").textContent = e.w;
+  const chasePhon = String(e.p || "").trim().replace(/^\/+|\/+$/g, "");
+  $("ch-phon").textContent = chasePhon ? "/" + chasePhon + "/" : "";
+  $("ch-fb").textContent = "方向键锁定能量门 · OK 穿越 · 播放键重听";
+  const opts = chaseOpts(e);
+  if (!opts) { CH.over = true; toast("当前词书释义过于相近，暂时无法生成四座星门"); show(RETURN_SCREEN || "arcade"); return; }
+  const box = $("ch-opts"); box.innerHTML = "";
+  const gateKeys = ["↖", "↗", "↙", "↘"];
+  opts.forEach((o, i) => {
+    const d = document.createElement("div");
+    d.className = "opt" + (i === 0 ? " focus" : "");
+    d.innerHTML = '<span class="idx">' + gateKeys[i] + '</span><span>' + esc(o.m) + '</span>';
+    box.appendChild(d);
+  });
+  syncChaseGate();
+  drawChase();
+  speak(e.w);
+  // 计时与追击在页面隐藏时暂停，回到电视应用后从剩余时间继续。
+  CH.t0 = NOW(); CH.inputGate = CH.t0 + 620;
+  startChaseClock(CH_TIME, true);
   requestFocusSync();
 }
 function drawChase() {
   const gap = clamp(CH.gap, 0, 100);
-  // 小人朝右逃(靠右),词怪在其左后方紧追;间距越小词怪越近、越大越狰狞
-  const runnerX = 60;
-  const monsterX = clamp(runnerX - 6 - gap * 0.5, 2, runnerX - 6);
+  // 角色在峡谷左侧奔跑，四座答案星门位于前方；距离越小词怪越逼近。
+  const runnerX = 34;
+  const monsterX = clamp(runnerX - 8 - gap * 0.38, 1, runnerX - 7);
   $("ch-runner").style.left = runnerX + "%";
   $("ch-monster").style.left = monsterX + "%";
-  const prox = clamp(1 - gap / 60, 0, 1);            // 0=远 1=贴脸
-  const mfig = $("ch-mfig"); if (mfig) mfig.style.fontSize = (7 + prox * 4.5).toFixed(2) + "vmin";
+  const prox = clamp(1 - gap / 60, 0, 1);
+  $("ch-monster").style.setProperty("--monster-scale", (0.84 + prox * 0.38).toFixed(2));
   $("ch-gapbar").style.width = gap + "%";
   const danger = gap < 28;
   $("chase").classList.toggle("danger", danger);
+  $("chase").classList.toggle("boost", CH.combo >= 3);
+  $("chase").setAttribute("data-ch-zone", String(Math.min(2, Math.floor(CH.pos / 5))));
   $("ch-gapbar").style.background = danger ? "var(--bad)" : "linear-gradient(90deg,var(--good),var(--gold))";
   // 连击 → 奔跑越快(视差/地面加速)
   const spd = (1 + Math.min(CH.combo, 8) * 0.16).toFixed(2);
@@ -2795,16 +2961,22 @@ function chaseParticles(xPct, color, n) {
     setTimeout(() => { try { box.removeChild(p); } catch (e) { } }, 840);
   }
 }
-function chaseMove(k) {
-  const n = 4;
-  if (k === "UP") CH.sel = (CH.sel + n - 2) % n;
-  else if (k === "DOWN") CH.sel = (CH.sel + 2) % n;
-  else if (k === "LEFT" || k === "RIGHT") CH.sel = (CH.sel % 2 === 0) ? Math.min(CH.sel + 1, n - 1) : CH.sel - 1;
+function syncChaseGate() {
+  $("chase").setAttribute("data-ch-lane", String(CH.sel));
   document.querySelectorAll("#ch-opts .opt").forEach((o, i) => o.classList.toggle("focus", i === CH.sel));
 }
+function chaseMove(k) {
+  let row = Math.floor(CH.sel / 2), col = CH.sel % 2;
+  if (k === "UP") row = 0;
+  else if (k === "DOWN") row = 1;
+  else if (k === "LEFT") col = 0;
+  else if (k === "RIGHT") col = 1;
+  CH.sel = row * 2 + col;
+  syncChaseGate();
+}
 function chaseAnswer(idx) {
-  if (CH.lock) return;
-  CH.lock = true; stopTimerBar(CH.timer, "ch-timer"); clearInterval(CH.creep);
+  if (CH.lock || CH.phase !== "question" || CH.paused || document.hidden || !chaseOwnerValid()) return;
+  CH.lock = true; CH.phase = "feedback"; stopChaseClock(true);
   const e = CH.cur;
   const opts = document.querySelectorAll("#ch-opts .opt");
   const ok = idx === CH.ansIdx;
@@ -2819,7 +2991,7 @@ function chaseAnswer(idx) {
     // 小人急冲 + 速度线 + 冲击波炸退词怪 + 粒子迸溅
     const r = $("ch-runner"); r.classList.remove("dash"); void r.offsetWidth; r.classList.add("dash");
     const sp = $("ch-speed"); sp.classList.remove("on"); void sp.offsetWidth; sp.classList.add("on");
-    const monX = Math.max(2, 54 - CH.gap * 0.5);
+    const monX = clamp(26 - CH.gap * 0.38, 1, 27);
     const sh = $("ch-shock"); sh.style.left = (monX + 6) + "%"; sh.classList.remove("go"); void sh.offsetWidth; sh.classList.add("go");
     const m = $("ch-monster"); m.classList.remove("recoil"); void m.offsetWidth; m.classList.add("recoil");
     chaseParticles(monX + 6, "#FF9F0A", 12);
@@ -2831,28 +3003,44 @@ function chaseAnswer(idx) {
     try { if (window.SFX) { SFX.bad(); SFX.danger(); } } catch (x) { }
     $("chase").classList.remove("shake"); void $("chase").offsetWidth; $("chase").classList.add("shake");
     const m = $("ch-monster"); m.classList.remove("lunge"); void m.offsetWidth; m.classList.add("lunge");
-    const v = document.querySelector("#chase .ch-vignette"), run = CH.run; if (v) { v.style.opacity = "1"; setTimeout(() => { if (CH.run === run && CH.gap >= 28) v.style.opacity = ""; }, 260); }
-    chaseParticles(Math.max(6, 54 - CH.gap * 0.5) + 6, "#FF3B30", 8);
+    const v = document.querySelector("#chase .ch-vignette"), run = CH.run, questionId = CH.questionId; if (v) { v.style.opacity = "1"; setTimeout(() => { if (CH.run === run && CH.questionId === questionId && CH.gap >= 28) v.style.opacity = ""; }, 260); }
+    chaseParticles(clamp(26 - CH.gap * 0.38, 1, 27) + 5, "#FF3B30", 8);
   }
   drawChase();
   schedHit(e.w, ok);
-  const run = CH.run;
-  if (CH.pos >= CH.goal) { CH.over = true; setTimeout(() => { if (SCREEN === "chase" && CH.run === run) finishChase(true); }, 800); return; }
-  if (CH.gap <= 0) { CH.over = true; setTimeout(() => { if (SCREEN === "chase" && CH.run === run) finishChase(false); }, 900); return; }
+  if (CH.pos >= CH.goal) { CH.over = true; commitChaseResult(true); scheduleChaseAdvance(800, true); return; }
+  if (CH.gap <= 0) { CH.over = true; commitChaseResult(false); scheduleChaseAdvance(900, false); return; }
   CH.i++;
-  setTimeout(() => { if (SCREEN === "chase" && CH.run === run && !CH.over) renderChase(); }, ok ? 750 : 1500);
+  scheduleChaseAdvance(ok ? 750 : 1500, null);
 }
 handlers.chase = {
   key(k) {
-    if (k === "BACK") { CH.run++; stopTimerBar(CH.timer, "ch-timer"); clearInterval(CH.creep); CH.over = true; show(RETURN_SCREEN || "home"); return; }
+    if (k === "OK") {
+      const now = NOW(), previous = CH.lastOkAt; CH.lastOkAt = now;
+      if ((previous && now - previous < 620) || now < CH.inputGate) return;
+    }
+    if (k === "BACK") {
+      CH.run++; stopChaseClock(true); stopChaseFeedback(); CH.over = true; CH.phase = "aborted"; CH.paused = false;
+      CH.ownerP = null; CH.ownerCur = null; armTvCarryGuard("BACK", 650); show(RETURN_SCREEN || "home"); return;
+    }
     if (k === "MENU" || k === "PLAY") { if (CH.cur) speak(CH.cur.w); return; }
     if (CH.lock) return;
     if (k === "OK") chaseAnswer(CH.sel);
     else if (["UP", "DOWN", "LEFT", "RIGHT"].includes(k)) chaseMove(k);
   }
 };
+function commitChaseResult(win) {
+  if (CH.resultCommitted || !chaseOwnerValid()) return false;
+  CH.resultCommitted = true; CH.pendingWin = !!win;
+  const tot = CH.right + CH.wrong;
+  gameResult("chase", CH.right, tot, CH.score);
+  return true;
+}
 function finishChase(win) {
-  stopTimerBar(CH.timer, "ch-timer"); clearInterval(CH.creep);
+  if (!chaseOwnerValid()) return;
+  stopChaseClock(true); stopChaseFeedback();
+  commitChaseResult(win);
+  CH.phase = "finish"; CH.paused = false;
   const tot = CH.right + CH.wrong;
   const acc = tot ? Math.round(CH.right / tot * 100) : 0;
   $("f-title").textContent = win ? "🎉 成功逃生!" : "👾 被词怪追上了";
@@ -2862,7 +3050,8 @@ function finishChase(win) {
     + '<div class="stat"><div class="n">' + acc + '%</div><div class="l">正确率</div></div>';
   $("f-msg").textContent = win ? "词义配对越快越准,道具威力越大!" : "别灰心,答对就能击退它,再来一次!";
   try { if (window.SFX) (win ? SFX.win() : SFX.danger()); } catch (x) { }
-  gameResult("chase", CH.right, tot, CH.score); show("finish");
+  armTvCarryGuard("OK", 700);
+  show("finish");
 }
 
 /* ================= 启动 ================= */
@@ -2874,5 +3063,10 @@ function boot() {
   loadScreens();
   try { ttsOK = !!NativeBridge.isTtsReady(); } catch (e) { }
   show("home");
+  // 游戏优先启动：脚本全部就绪后直接进入词汇世界；返回键仍可抵达完整经典首页。
+  window.addEventListener("load", () => {
+    try { if (SCREEN === "home" && window.WordWorld && typeof window.WordWorld.open === "function") window.WordWorld.open(); }
+    catch (e) { }
+  }, { once: true });
 }
 boot();
