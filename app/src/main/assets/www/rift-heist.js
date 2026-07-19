@@ -110,10 +110,10 @@
       ".eh-brand b{font-size:2.7vmin;letter-spacing:.08em}.eh-brand small{font:650 1.35vmin/1.1 Inter,sans-serif;letter-spacing:.26em;color:rgba(224,231,255,.64)}",
       ".eh-hud{display:grid;grid-template-columns:repeat(4,minmax(9.2vmin,auto));gap:.7vmin;padding:.55vmin;border:.1vmin solid rgba(214,224,255,.22);border-radius:1.65vmin;background:rgba(14,20,43,.82);box-shadow:0 .7vmin 2.1vmin rgba(0,0,0,.22)}",
       ".eh-stat{min-width:8.8vmin;padding:.5vmin .9vmin;border-radius:1.1vmin;text-align:center;background:rgba(226,235,255,.07)}.eh-stat small{display:block;font-size:1.35vmin;letter-spacing:.1em;color:rgba(218,228,255,.62)}.eh-stat b{display:block;margin-top:.24vmin;font:780 2.05vmin/1 Inter,'PingFang SC',sans-serif;color:#fff}.eh-stat.shield b{color:#f2d991;letter-spacing:.08em}",
-      ".eh-side{position:absolute;z-index:4;right:4.2vw;top:18vh;width:min(25vw,37vmin);pointer-events:none}",
+      ".eh-side{position:absolute;z-index:4;right:4.2vw;top:16.5vh;width:min(31vw,48vmin);pointer-events:none}",
       ".eh-kicker{font:750 1.35vmin/1 Inter,sans-serif;letter-spacing:.3em;color:#9adbd2}.eh-target{margin-top:.8vmin;padding:1.45vmin 1.55vmin 1.55vmin;border:.1vmin solid rgba(205,218,255,.25);border-radius:1.9vmin;background:rgba(15,23,50,.84);box-shadow:0 .9vmin 2.4vmin rgba(0,0,0,.2)}",
-      ".eh-target small{display:block;font-size:1.35vmin;color:rgba(218,228,255,.55);letter-spacing:.2em}.eh-target b{display:block;margin-top:.55vmin;font:850 4.7vmin/.95 Inter,'PingFang SC',sans-serif;letter-spacing:-.04em;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.eh-target span{display:block;margin-top:.65vmin;color:#aebbe1;font:600 1.7vmin/1.2 Inter,sans-serif}",
-      ".eh-meaning{margin-top:1.1vmin;padding:1.15vmin 1.35vmin;border-left:.35vmin solid #f2d991;color:#e7ebff;background:rgba(13,19,42,.76);font-size:1.7vmin;line-height:1.42;min-height:8vmin}.eh-meaning b{display:block;color:#f2d991;font-size:1.3vmin;letter-spacing:.16em;margin-bottom:.45vmin}.eh-room{margin-top:1.05vmin;color:rgba(219,228,255,.72);font-size:1.55vmin;line-height:1.45}.eh-log{margin-top:1.25vmin;min-height:5.5vmin;color:#9daed8;font-size:1.55vmin;line-height:1.45}",
+      ".eh-target small{display:block;font-size:1.55vmin;color:rgba(218,228,255,.62);letter-spacing:.18em}.eh-target b{display:block;margin-top:.6vmin;font:850 5.8vmin/.95 Inter,'PingFang SC',sans-serif;letter-spacing:-.04em;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.eh-target span{display:block;margin-top:.7vmin;color:#c0cae8;font:650 2vmin/1.2 Inter,sans-serif}",
+      ".eh-meaning{margin-top:1.1vmin;padding:1.25vmin 1.45vmin 1.4vmin;border-left:.38vmin solid #f2d991;color:#eef1ff;background:rgba(13,19,42,.82);font-size:2.15vmin;line-height:1.35;min-height:20vmin}.eh-meaning> b{display:block;color:#f2d991;font-size:1.55vmin;letter-spacing:.13em;margin-bottom:.65vmin}.eh-rune-guide{display:block;margin-bottom:.8vmin;color:#dbe3ff;font:650 1.65vmin/1.35 'PingFang SC','Noto Sans SC',sans-serif}.eh-rune-list{display:grid;gap:.62vmin}.eh-rune-row{display:grid;grid-template-columns:6.1vmin minmax(0,1fr);align-items:center;gap:1vmin;min-height:5.9vmin}.eh-rune-ring{--rune:#8ee2d0;position:relative;width:5.4vmin;height:5.4vmin;display:grid;place-items:center;border:.28vmin solid transparent;border-top-color:var(--rune);border-right-color:var(--rune);border-bottom-color:var(--rune);border-radius:50%;color:var(--rune);filter:drop-shadow(0 0 .5vmin var(--rune))}.eh-rune-ring:before{content:'';position:absolute;inset:.66vmin;border:.22vmin solid var(--rune);border-radius:50%;opacity:.92}.eh-rune-glyph{position:relative;z-index:1;font:850 2.5vmin/1 Inter,sans-serif;color:var(--rune)}.eh-rune-copy{font:760 2.35vmin/1.15 Inter,'PingFang SC','Noto Sans SC',sans-serif;color:#fff;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}.eh-room{margin-top:.9vmin;color:rgba(226,233,255,.78);font-size:1.7vmin;line-height:1.4}.eh-log{margin-top:.8vmin;min-height:4.5vmin;color:#aebfe5;font-size:1.7vmin;line-height:1.4}",
       ".eh-bottom{position:absolute;z-index:4;left:4.3vw;right:4.3vw;bottom:3.6vh;display:flex;justify-content:space-between;align-items:center;color:rgba(220,229,255,.72);font-size:1.55vmin;letter-spacing:.04em;pointer-events:none}.eh-bottom b{display:inline-block;margin:0 .35vmin;padding:.18vmin .62vmin;border:.1vmin solid rgba(220,229,255,.32);border-radius:.55vmin;color:#f5f6ff}",
       ".eh-overlay{position:absolute;z-index:8;inset:0;display:grid;place-items:center;text-align:center;background:radial-gradient(circle at 50% 43%,rgba(83,119,223,.16),rgba(6,10,27,.78) 58%,rgba(4,7,18,.94));opacity:1}.eh-overlay[hidden]{display:none!important}",
       ".eh-intro-copy{position:relative;width:min(88vmin,72vw);padding:4vmin}.eh-intro-copy:before,.eh-intro-copy:after{content:'';position:absolute;left:50%;top:50%;border:.12vmin solid rgba(145,221,215,.32);border-radius:50%;pointer-events:none}.eh-intro-copy:before{width:58vmin;height:58vmin;margin:-29vmin;animation:eh-orbit 11s linear infinite}.eh-intro-copy:after{width:40vmin;height:40vmin;margin:-20vmin;border-color:rgba(242,217,145,.25);animation:eh-orbit 7s linear infinite reverse}@keyframes eh-orbit{to{transform:rotate(360deg)}}",
@@ -122,7 +122,7 @@
       ".eh-route-wrap{width:min(90vmin,70vw)}.eh-route-wrap h2{margin-top:1vmin;font:820 5.2vmin/.98 Inter,'PingFang SC',sans-serif}.eh-route-wrap>p{margin-top:.9vmin;color:#b8c4e7;font-size:1.8vmin}.eh-route-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.3vmin;margin-top:2.1vmin}.eh-route-card{width:auto;min-height:18vmin;padding:2.1vmin 2.2vmin;text-align:left;transition:transform .1s,border-color .1s,background .1s}.eh-route-card h3{font-size:2.45vmin;color:#fff}.eh-route-card p{margin-top:.8vmin;color:#aebbe0;font-size:1.6vmin;line-height:1.45}.eh-route-card .eh-route-key{display:inline-block;margin-top:1.25vmin;color:#f2d991;font:750 1.35vmin/1 Inter,sans-serif;letter-spacing:.16em}.eh-route-card.focus{border-color:#f2d991;background:rgba(39,49,88,.98);transform:translateY(-.45vmin) scale(1.035);box-shadow:0 0 0 .22vmin rgba(242,217,145,.7),0 1.2vmin 3vmin rgba(0,0,0,.3)}",
       ".eh-finish-card h2{margin-top:1vmin;font:830 6.1vmin/.98 Inter,'PingFang SC',sans-serif;color:#fff}.eh-finish-stats{margin-top:1.4vmin;font-size:2.4vmin;color:#f2d991}.eh-finish-card p{margin:1.1vmin auto 0;color:#bbc7e7;font-size:1.8vmin;line-height:1.5}",
       "html.eye #echo-heist{filter:saturate(.78) brightness(.98)}html.eye #echo-heist .eh-target,html.eye #echo-heist .eh-hud{background:rgba(31,38,61,.9)}",
-      "@media(max-width:1300px){.eh-side{right:3.5vw;width:27vw}.eh-target b{font-size:4.1vmin}.eh-hud{grid-template-columns:repeat(4,minmax(8vmin,auto))}.eh-route-card h3{font-size:2.15vmin}}",
+      "@media(max-width:1300px){.eh-side{right:3.5vw;width:min(31vw,48vmin)}.eh-target b{font-size:5.45vmin}.eh-hud{grid-template-columns:repeat(4,minmax(8vmin,auto))}.eh-route-card h3{font-size:2.15vmin}}",
       "@media(prefers-reduced-motion:reduce){#echo-heist.active,.eh-intro-copy:before,.eh-intro-copy:after{animation:none!important}.eh-route-card,.eh-review-card button,.eh-finish-card button{transition-duration:.01ms!important}}"
     ].join("");
     document.head.appendChild(style);
@@ -132,7 +132,7 @@
       + '<canvas id="eh-canvas" aria-label="实时记忆裂隙地图"></canvas><div class="eh-vignette"></div>'
       + '<div class="eh-top"><div class="eh-brand"><span class="eh-mark">◈</span><b>记忆裂隙</b><small>ECHO HEIST · LEXTV ORIGINAL</small></div>'
       + '<div class="eh-hud"><div class="eh-stat"><small>房间</small><b id="eh-round">1 / 6</b></div><div class="eh-stat"><small>回声</small><b id="eh-score">0</b></div><div class="eh-stat"><small>夺回</small><b id="eh-shards">0 / 3</b></div><div class="eh-stat shield"><small>护盾</small><b id="eh-shield">◆◆◆</b></div></div></div>'
-      + '<div class="eh-side"><div class="eh-kicker">TARGET MEMORY</div><div class="eh-target"><small>正在追踪的词</small><b id="eh-word">—</b><span id="eh-phon">—</span></div><div class="eh-meaning"><b id="eh-meaning-kicker">裂隙规则</b><span id="eh-meaning-text">符文会短暂显示释义，信号消失后再潜入寻找出口。</span></div><div class="eh-room" id="eh-room">每次选择都会改变下一间房。</div><div class="eh-log" id="eh-log"></div></div>'
+      + '<div class="eh-side"><div class="eh-kicker">TARGET MEMORY</div><div class="eh-target"><small>正在追踪的词</small><b id="eh-word">—</b><span id="eh-phon">—</span></div><div class="eh-meaning" id="eh-meaning"><b id="eh-meaning-kicker">裂隙规则</b><div id="eh-meaning-text">先看目标词，再对照中文，最后走进地图中相同的圆环符文门。</div></div><div class="eh-room" id="eh-room">每次选择都会改变下一间房。</div><div class="eh-log" id="eh-log"></div></div>'
       + '<div class="eh-bottom"><span id="eh-phase">方向键移动 · OK 夺取符文门 · 返回撤离</span><span><b>方向键</b>移动 <b>OK</b>交互 <b>返回</b>撤离</span></div>'
       + '<div class="eh-overlay" id="eh-intro"><div class="eh-intro-copy"><small>A LEXTV ORIGINAL · MEMORY RIFT</small><h1>ECHO <em>HEIST</em></h1><p>不是答题，是把记忆从裂隙里夺回来</p><div class="eh-intro-meta">方向键潜入 · 收集回声 · 亲自决定出口</div></div></div>'
       + '<div class="eh-overlay" id="eh-review" hidden><div class="eh-review-card"><div class="eh-review-kicker" id="eh-review-kicker">ECHO RECOVERED</div><h2 id="eh-review-word">word</h2><div class="eh-review-meaning" id="eh-review-meaning">meaning</div><div class="eh-review-ex" id="eh-review-ex">example</div><button id="eh-review-next" type="button">OK · 继续潜入</button></div></div>'
@@ -253,15 +253,31 @@
       if (shards.some(function (q) { return distance(q, c) < 2; })) continue;
       used[cellKey(c.x, c.y)] = true; shards.push({ x: c.x, y: c.y, phase: random() * 6.28, got: false });
     }
+    function protectedSpawn(x, y) {
+      if (x === 1 && y === 1) return true;
+      return gates.some(function (g) { return g.x === x && g.y === y; });
+    }
+    function hasHunterExit(p) {
+      var names = ["LEFT", "RIGHT", "UP", "DOWN"];
+      for (var hi = 0; hi < names.length; hi++) {
+        var hd = DIRS[names[hi]], hx = p.x + hd[0], hy = p.y + hd[1];
+        if (grid[hy] && grid[hy][hx] === 0 && !protectedSpawn(hx, hy)) return true;
+      }
+      return false;
+    }
+    // Spawn only on cells that have at least one legal way out. This prevents
+    // a rare maze dead-end from pinning a spirit behind a protected rune tile.
     var enemies = shuffle(cells, random).filter(function (p) {
-      return !used[cellKey(p.x, p.y)] && distance(p, { x: 1, y: 1 }) > 7;
+      return !used[cellKey(p.x, p.y)] && distance(p, { x: 1, y: 1 }) > 7 && hasHunterExit(p);
     });
     enemies.sort(function (a, b) { return distance(b, { x: 1, y: 1 }) - distance(a, { x: 1, y: 1 }); });
-    var enemy = enemies[0] || { x: 15, y: 7 };
+    var enemy = enemies[0] || cells.filter(function (p) { return !protectedSpawn(p.x, p.y) && hasHunterExit(p); })[0] || { x: 15, y: 7 };
+    var hunterHome = enemies.filter(function (p) { return (p.x !== enemy.x || p.y !== enemy.y) && distance(p, enemy) >= 4; })[0]
+      || enemies[1] || enemy;
     E.grid = grid; E.gates = gates; E.sealed = [false, false, false]; E.shards = shards; E.shardCount = 0;
     E.player = { x: 1, y: 1, drawX: 1, drawY: 1 };
     E.enemy = { x: enemy.x, y: enemy.y, homeX: enemy.x, homeY: enemy.y, drawX: enemy.x, drawY: enemy.y, nextAt: E.simTime + 2.2, speed: E.routeMode === 1 ? .62 : .8 };
-    E.hunter = (E.boss || E.routeMode === 1) ? { x: 15, y: 1, homeX: 15, homeY: 1, drawX: 15, drawY: 1, nextAt: E.simTime + 3, speed: E.boss ? .88 : 1.05 } : null;
+    E.hunter = (E.boss || E.routeMode === 1) ? { x: hunterHome.x, y: hunterHome.y, homeX: hunterHome.x, homeY: hunterHome.y, drawX: hunterHome.x, drawY: hunterHome.y, nextAt: E.simTime + 3, speed: E.boss ? .88 : 1.05 } : null;
     E.trail = []; E.roundMistake = false; E.resolvedRound = false;
   }
 
@@ -273,7 +289,7 @@
     E.scale = E.cw >= 2600 ? .54 : (E.cw >= 1800 ? .72 : 1);
     E.canvas.width = Math.max(1, Math.floor(E.cw * E.scale));
     E.canvas.height = Math.max(1, Math.floor(E.ch * E.scale));
-    var maxH = E.ch * .7, maxW = E.cw * .67;
+    var maxH = E.ch * .7, maxW = E.cw * .62;
     var cell = Math.min(maxW / COLS, maxH / ROWS);
     E.map.cell = cell; E.map.w = cell * COLS; E.map.h = cell * ROWS;
     E.map.x = E.cw * .055; E.map.y = E.ch * .18 + Math.max(0, (maxH - E.map.h) * .35);
@@ -311,8 +327,10 @@
     text("eh-meaning-kicker", label || "符文扫描");
     var el = byId("eh-meaning-text"); if (!el) return;
     var rows = [];
-    for (var i = 0; i < E.options.length; i++) rows.push('<b style="color:' + GATE_COLORS[i] + '">' + GATE_GLYPHS[i] + '</b> ' + esc(E.options[i].m));
-    el.innerHTML = rows.join("<br>");
+    for (var i = 0; i < E.options.length; i++) {
+      rows.push('<span class="eh-rune-row"><span class="eh-rune-ring" style="--rune:' + GATE_COLORS[i] + ';transform:rotate(' + (i * 37) + 'deg)"><span class="eh-rune-glyph" style="transform:rotate(' + (-i * 37) + 'deg)">' + GATE_GLYPHS[i] + '</span></span><span class="eh-rune-copy">' + esc(E.options[i].m) + '</span></span>');
+    }
+    el.innerHTML = '<span class="eh-rune-guide">目标词 → 对照中文 → 找地图里同色、同字形的圆环门，站上去按 OK</span><span class="eh-rune-list">' + rows.join("") + '</span>';
   }
   function beginGateScan(duration, label) {
     E.scanVisible = true; E.scanUntil = nowMs() + Math.max(700, duration || 2600);
@@ -399,16 +417,18 @@
     return step;
   }
   function safeCell(x, y) {
-    if (Math.abs(x - 1) + Math.abs(y - 1) <= 1) return true;
+    // Only the exact entrance and rune tiles are protected. Protecting their
+    // neighbours can trap a spirit behind a gate and make it appear frozen.
+    if (x === 1 && y === 1) return true;
     for (var i = 0; i < E.gates.length; i++) {
-      if (Math.abs(E.gates[i].x - x) + Math.abs(E.gates[i].y - y) <= 1) return true;
+      if (E.gates[i].x === x && E.gates[i].y === y) return true;
     }
     return false;
   }
   function moveHunter(hunter) {
     if (!hunter || E.phase !== "play") return;
     // v6.6:不再全程 BFS 完美追踪 —— 距离≤3 才穷追(85%),远处大概率游荡,
-    // 玩家凭环路和安全区(入口/门口一格内)可以真正甩开它。
+    // 玩家凭环路和安全区(入口/门的精确格)可以真正甩开它。
     var step, d = distance(hunter, E.player), roll = (E.rng || Math.random)();
     var chase = d <= 3 ? 0.85 : 0.5;
     if (roll < chase) step = nextStep(hunter, E.player);
@@ -416,7 +436,15 @@
       var ns = neighbors(hunter.x, hunter.y);
       step = ns.length ? ns[Math.floor((E.rng || Math.random)() * ns.length)] : hunter;
     }
-    if (safeCell(step.x, step.y)) return;
+    if (safeCell(step.x, step.y)) {
+      // Keep the chase/roam decision above intact; only reroute a blocked step.
+      var alternatives = neighbors(hunter.x, hunter.y).filter(function (cell) { return !safeCell(cell.x, cell.y); });
+      if (!alternatives.length) return;
+      if (roll < chase) {
+        alternatives.sort(function (a, b) { return distance(a, E.player) - distance(b, E.player); });
+        step = alternatives[0];
+      } else step = alternatives[Math.floor((E.rng || Math.random)() * alternatives.length)];
+    }
     hunter.x = step.x; hunter.y = step.y;
     if (hunter.x === E.player.x && hunter.y === E.player.y) hitByHunter(hunter);
   }
@@ -463,8 +491,7 @@
     if (!good) {
       E.sealed[index] = true; E.roundMistake = true; E.combo = 0; E.shield = Math.max(0, E.shield - 1);
       addBurstAt(E.gates[index], "#f08c9d", 14, E.map.cell * .022); playSfx("bad"); updateHud();
-      text("eh-meaning-kicker", "错误符文已解码");
-      text("eh-meaning-text", GATE_GLYPHS[index] + " = " + ((E.options[index] && E.options[index].m) || "未知") + " · 与目标词不匹配");
+      renderGateScan("错误符文已排除 · 三组对照仍保留");
       if (E.shield <= 0 || E.sealed.filter(Boolean).length >= 2) finishRound(false, "错误出口崩塌 · 先把这个词带回回声台");
       else { status("这道门不对 · 护盾 -1,已标记排除,去另一道门", "bad"); }
       return;
@@ -598,8 +625,31 @@
     if (E.phase === "play") { var pp = cellCenter({ x: E.player.drawX, y: E.player.drawY }); ctx.strokeStyle = "rgba(242,217,145,.42)"; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(pp.x, pp.y, m.cell * (.52 + Math.sin(t * .004) * .05), 0, Math.PI * 2); ctx.stroke(); }
   }
   function drawHunter(ctx, hunter, t, boss) {
-    if (!hunter) return; var c = cellCenter({ x: hunter.drawX, y: hunter.drawY }), m = E.map, radius = m.cell * (boss ? .28 : .21), color = boss ? "#f29bb0" : "#d27dbe";
-    ctx.save(); ctx.translate(c.x, c.y); ctx.globalAlpha = .9; ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = Math.min(18, m.cell * .32); ctx.beginPath(); ctx.arc(0, 0, radius * (1 + Math.sin(t * .005) * .08), 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0; ctx.fillStyle = "#11142e"; ctx.beginPath(); ctx.arc(radius * .2, -radius * .08, radius * .32, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = "#fff1d2"; ctx.beginPath(); ctx.arc(radius * .28, -radius * .12, radius * .1, 0, Math.PI * 2); ctx.fill(); if (boss) { ctx.strokeStyle = "rgba(242,217,145,.8)"; ctx.lineWidth = Math.max(1, m.cell * .035); ctx.beginPath(); ctx.arc(0, 0, radius * 1.55, t * .002, t * .002 + Math.PI * 1.5); ctx.stroke(); } ctx.restore();
+    if (!hunter) return;
+    var c = cellCenter({ x: hunter.drawX, y: hunter.drawY }), m = E.map;
+    var radius = m.cell * (boss ? .28 : .22), color = boss ? "#f29bb0" : "#d27dbe";
+    var phase = hunter.homeX * .73 + hunter.homeY * 1.17, bob = Math.sin(t * .0052 + phase) * radius * .2;
+    var mx = hunter.x - hunter.drawX, my = hunter.y - hunter.drawY, mag = Math.sqrt(mx * mx + my * my);
+    var tailX = mag > .015 ? -mx / mag : -(.72 + Math.sin(t * .0017 + phase) * .16);
+    var tailY = mag > .015 ? -my / mag : Math.sin(t * .0031 + phase) * .34;
+    ctx.save(); ctx.translate(c.x, c.y + bob);
+    // Three translucent echoes make movement readable without particles or timers.
+    for (var w = 3; w >= 1; w--) {
+      var drift = Math.sin(t * .004 + phase + w) * radius * .18;
+      ctx.globalAlpha = .055 + (3 - w) * .035; ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(tailX * radius * (.72 + w * .46) - tailY * drift, tailY * radius * (.72 + w * .46) + tailX * drift, radius * (.48 - w * .065), 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.rotate(clamp(mx, -1, 1) * .12 + Math.sin(t * .003 + phase) * .025);
+    ctx.scale(1 + Math.sin(t * .006 + phase) * .045, 1 - Math.sin(t * .006 + phase) * .035);
+    ctx.globalAlpha = .93; ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = Math.min(18, m.cell * .32);
+    ctx.beginPath(); ctx.arc(0, 0, radius, Math.PI, 0); ctx.quadraticCurveTo(radius * .92, radius * .72, radius * .46, radius * .66); ctx.quadraticCurveTo(radius * .12, radius * 1.12, -radius * .18, radius * .68); ctx.quadraticCurveTo(-radius * .62, radius * 1.02, -radius * .78, radius * .45); ctx.quadraticCurveTo(-radius, radius * .14, -radius, 0); ctx.closePath(); ctx.fill();
+    ctx.shadowBlur = 0;
+    var lookX = clamp((E.player.drawX - hunter.drawX) * .09, -.16, .16) * radius;
+    var lookY = clamp((E.player.drawY - hunter.drawY) * .09, -.13, .13) * radius;
+    var blink = Math.sin(t * .0011 + phase) > .985 ? .18 : 1;
+    ctx.save(); ctx.translate(radius * .18, -radius * .13); ctx.scale(1, blink); ctx.fillStyle = "#11142e"; ctx.beginPath(); ctx.arc(0, 0, radius * .34, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = "#fff1d2"; ctx.beginPath(); ctx.arc(radius * .08 + lookX, -radius * .04 + lookY, radius * .11, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    if (boss) { ctx.strokeStyle = "rgba(242,217,145,.86)"; ctx.lineWidth = Math.max(1, m.cell * .035); ctx.beginPath(); ctx.arc(0, 0, radius * 1.55, t * .002, t * .002 + Math.PI * 1.5); ctx.stroke(); }
+    ctx.restore();
   }
   function drawPlayer(ctx, t) {
     var c = cellCenter({ x: E.player.drawX, y: E.player.drawY }), m = E.map, r = m.cell * .22;

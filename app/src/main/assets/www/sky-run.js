@@ -14,6 +14,58 @@
   var PLAYER_Z = 3.2;
   var ROAD_SEGMENTS = 16;
   var ROAD_STEP = 6.4;
+  var QUESTIONS_PER_LEVEL = 2;
+  // 六关只重着色现有材质并调整现有障碍装填节奏，不增加模型、纹理或 draw call。
+  var LEVELS = [
+    {
+      name: "翡翠天穹", detail: "暖身航线 · 看准释义再换道", pattern: "tutorial", baseSpeed: 14.5,
+      gateLead: 3.35, obstacleLead: 2, obstacleSpacing: 1.05, obstacleRearm: 0, pickupRearm: 0, noObstacle: true,
+      bg: 0x173f4b, fog: 0x527b72, road: 0x285248, line: 0xf0dd91, scenery: 0x579178, stars: 0xffe7a0,
+      player: 0xffe5a4, chest: 0x55b994, wing: 0xeaffea, halo: 0xffdc72,
+      monster: 0x572b45, eye: 0xff7d6d, horn: 0xa57a82, gate: 0x62c999, gateFocus: 0xffdc78, gateRing: 0xb6f1cc,
+      obstacle: 0x63766f, crystal: 0xe77b6b, pickup: 0xffdc72
+    },
+    {
+      name: "珊瑚云海", detail: "回声航线 · 连续捕获三枚星辉", pattern: "echo", baseSpeed: 15.2,
+      gateLead: 3.65, obstacleLead: 2.05, obstacleSpacing: 1, obstacleRearm: 0, pickupRearm: 2,
+      bg: 0x54243d, fog: 0xa9575b, road: 0x713747, line: 0xffd39f, scenery: 0xc66b62, stars: 0xffe5bd,
+      player: 0xfff1dc, chest: 0xff7d69, wing: 0xffc8bc, halo: 0xffe08d,
+      monster: 0x252048, eye: 0x72e6ff, horn: 0x76558d, gate: 0xff806e, gateFocus: 0xffef9d, gateRing: 0xffb4a8,
+      obstacle: 0x704050, crystal: 0x71dcdf, pickup: 0xffe27a
+    },
+    {
+      name: "冰晶峡谷", detail: "双障航线 · 连续闪避两座冰塔", pattern: "double", baseSpeed: 16,
+      gateLead: 4, obstacleLead: 1.75, obstacleSpacing: 1.05, obstacleRearm: 1, pickupRearm: 0,
+      bg: 0x0c2a50, fog: 0x397aa0, road: 0x173d68, line: 0xa9f4ff, scenery: 0x50acc9, stars: 0xd7fbff,
+      player: 0xe9fbff, chest: 0x48c9ff, wing: 0xbcefff, halo: 0x93f7ff,
+      monster: 0x38225d, eye: 0xff5bc8, horn: 0x7d69a8, gate: 0x43d9ee, gateFocus: 0xffef99, gateRing: 0x9bedff,
+      obstacle: 0x315d82, crystal: 0x88f5ff, pickup: 0xb8f7ff
+    },
+    {
+      name: "紫电脉冲", detail: "游走航线 · 路障锁定前会横向漂移", pattern: "sweep", baseSpeed: 16.8,
+      gateLead: 3.8, obstacleLead: 2.25, obstacleSpacing: 1, obstacleRearm: 0, pickupRearm: 0,
+      bg: 0x1a0d3c, fog: 0x4d267b, road: 0x29165a, line: 0xf4a5ff, scenery: 0x7134a1, stars: 0xffa8ef,
+      player: 0xffd96c, chest: 0xff4fd1, wing: 0xffedff, halo: 0x72ffe7,
+      monster: 0x100d28, eye: 0x72ff85, horn: 0x75539d, gate: 0xc85cff, gateFocus: 0x65ffe3, gateRing: 0xff70d1,
+      obstacle: 0x512479, crystal: 0x72ffdf, pickup: 0xff70d1
+    },
+    {
+      name: "熔岩星桥", detail: "疾速航线 · 高速判路得分加成", pattern: "rush", baseSpeed: 19,
+      gateLead: 3.45, obstacleLead: 1.8, obstacleSpacing: 0.95, obstacleRearm: 0, pickupRearm: 0,
+      bg: 0x3e130c, fog: 0xa6451d, road: 0x5c2415, line: 0xffd066, scenery: 0x913719, stars: 0xffbd63,
+      player: 0xfff2bc, chest: 0xff6424, wing: 0xffd39a, halo: 0xffec72,
+      monster: 0x1e0e19, eye: 0x64f7ff, horn: 0x873529, gate: 0xff5833, gateFocus: 0xffe36d, gateRing: 0xff9a4d,
+      obstacle: 0x682517, crystal: 0xffd13d, pickup: 0xffed72
+    },
+    {
+      name: "霓虹终局", detail: "终局航线 · 三重路障连续来袭", pattern: "finale", baseSpeed: 18.2,
+      gateLead: 4.75, obstacleLead: 1.35, obstacleSpacing: 1.05, obstacleRearm: 2, pickupRearm: 1,
+      bg: 0x03131f, fog: 0x073f4c, road: 0x092936, line: 0x00ffe0, scenery: 0x145a70, stars: 0xff4fc7,
+      player: 0xf4ffff, chest: 0xff2ca8, wing: 0x65ffe9, halo: 0xffe75c,
+      monster: 0x350a45, eye: 0x00f6ff, horn: 0x86209b, gate: 0x00dff5, gateFocus: 0xffe752, gateRing: 0xff42c4,
+      obstacle: 0x202653, crystal: 0xff38bd, pickup: 0x00ffe0
+    }
+  ];
   var R = {
     active: false,
     suspended: false,
@@ -24,6 +76,7 @@
     returnScreen: "world",
     list: [],
     bank: [],
+    levelIndex: 0,
     round: 0,
     resolved: 0,
     right: 0,
@@ -64,6 +117,10 @@
     road: null,
     roadLines: null,
     scenery: null,
+    starMaterial: null,
+    themeMaterials: Object.create(null),
+    gateRingMaterials: [],
+    gateCoreMaterials: [],
     roadZ: [],
     sceneryZ: [],
     dummy: null,
@@ -82,6 +139,8 @@
     prevObstacleZ: -24,
     pickupZ: -22,
     prevPickupZ: -22,
+    gateLead: 3.45,
+    obstacleSpacing: 1.1,
     failed: false,
     degraded: false,
     renderScale: 0.9,
@@ -159,11 +218,11 @@
     }
     var list = [], used = Object.create(null);
     addUnique(list, mapBank(due), 4, used);
-    addUnique(list, mapBank(weak), 7, used);
-    addUnique(list, shuffleCopy(mapBank(learned)), 10, used);
-    addUnique(list, shuffleCopy(bank), 10, used);
-    if (list.length < 10) return null;
-    return { list: list.slice(0, 10), bank: bank };
+    addUnique(list, mapBank(weak), 8, used);
+    addUnique(list, shuffleCopy(mapBank(learned)), 12, used);
+    addUnique(list, shuffleCopy(bank), 12, used);
+    if (list.length < LEVELS.length * QUESTIONS_PER_LEVEL) return null;
+    return { list: list.slice(0, LEVELS.length * QUESTIONS_PER_LEVEL), bank: bank };
   }
 
   function makeOptions(target) {
@@ -209,6 +268,49 @@
     return new THREE.MeshLambertMaterial({ color: color, transparent: opacity < 1, opacity: opacity, depthWrite: opacity >= 1 });
   }
 
+  function colorCss(value) { return "#" + ("000000" + Number(value || 0).toString(16)).slice(-6); }
+  function setMaterialColor(mat, value) {
+    if (mat && mat.color && typeof mat.color.setHex === "function") mat.color.setHex(value);
+  }
+  function setMaterialList(list, value) {
+    for (var i = 0; list && i < list.length; i++) setMaterialColor(list[i], value);
+  }
+  function levelForRound(round) {
+    return clamp(Math.floor(Math.max(0, round) / QUESTIONS_PER_LEVEL), 0, LEVELS.length - 1);
+  }
+  function currentLevel() { return LEVELS[R.levelIndex] || LEVELS[0]; }
+
+  function applyLevelTheme(index) {
+    R.levelIndex = clamp(index, 0, LEVELS.length - 1);
+    var theme = currentLevel(), mats = R.themeMaterials || {};
+    if (R.scene) {
+      if (R.scene.background && R.scene.background.setHex) R.scene.background.setHex(theme.bg);
+      if (R.scene.fog && R.scene.fog.color) R.scene.fog.color.setHex(theme.fog);
+    }
+    if (R.renderer) R.renderer.setClearColor(theme.bg, 1);
+    setMaterialColor(R.road && R.road.material, theme.road);
+    setMaterialColor(R.roadLines && R.roadLines.material, theme.line);
+    setMaterialColor(R.scenery && R.scenery.material, theme.scenery);
+    setMaterialColor(R.starMaterial, theme.stars);
+    setMaterialColor(mats.playerBody, theme.player);
+    setMaterialColor(mats.playerChest, theme.chest);
+    setMaterialList(mats.playerWings, theme.wing);
+    setMaterialColor(mats.playerHalo, theme.halo);
+    setMaterialColor(R.monsterMaterial, theme.monster);
+    setMaterialColor(mats.monsterEye, theme.eye);
+    setMaterialColor(mats.monsterHorn, theme.horn);
+    setMaterialList(R.gateRingMaterials, theme.gateRing);
+    setMaterialList(R.gateCoreMaterials, theme.gateFocus);
+    setMaterialColor(mats.obstacleBase, theme.obstacle);
+    setMaterialColor(mats.obstacleCrystal, theme.crystal);
+    setMaterialList(mats.pickup, theme.pickup);
+    var stage = byId("sr-stage");
+    if (stage) stage.style.background = "linear-gradient(180deg," + colorCss(theme.bg) + "," + colorCss(theme.fog) + " 58%," + colorCss(theme.road) + ")";
+    var root = byId("skytrail");
+    if (root) { root.style.setProperty("--sr-mint", colorCss(theme.gate)); root.style.setProperty("--sr-gold", colorCss(theme.gateFocus)); }
+    updateLaneVisual(); updateHud();
+  }
+
   function makeWingGeometry(flip) {
     var geometry = new THREE.BufferGeometry();
     var side = flip ? -1 : 1;
@@ -237,6 +339,10 @@
     shadow.rotation.x = -Math.PI / 2; shadow.position.y = -0.78; group.add(shadow);
     group.add(visual); group.position.set(0, 1.45, PLAYER_Z); group.scale.setScalar(1.18);
     group.userData.leftWing = leftWing; group.userData.rightWing = rightWing; group.userData.halo = halo;
+    R.themeMaterials.playerBody = body.material;
+    R.themeMaterials.playerChest = chest.material;
+    R.themeMaterials.playerWings = [leftWing.material, rightWing.material];
+    R.themeMaterials.playerHalo = halo.material;
     R.player = group; R.playerVisual = visual; R.playerShadow = shadow;
     R.root.add(group);
   }
@@ -252,11 +358,12 @@
     var hornMat = material(0x8f777b, 1);
     var hornA = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.55, 5), hornMat);
     var hornB = hornA.clone(); hornA.position.set(-0.43, 0.72, 0); hornB.position.set(0.43, 0.72, 0); hornA.rotation.z = 0.28; hornB.rotation.z = -0.28; group.add(hornA); group.add(hornB);
+    R.themeMaterials.monsterEye = eyeMat; R.themeMaterials.monsterHorn = hornMat;
     group.position.set(-4.65, 1.15, 5.8); group.scale.setScalar(0.52); R.monster = group; R.root.add(group);
   }
 
   function buildGates() {
-    R.gateRoot = new THREE.Group(); R.gateMaterials = [];
+    R.gateRoot = new THREE.Group(); R.gateMaterials = []; R.gateRingMaterials = []; R.gateCoreMaterials = [];
     for (var i = 0; i < 3; i++) {
       var gate = new THREE.Group(); gate.position.x = LANE_X[i];
       var mat = new THREE.MeshBasicMaterial({ color: 0x62a889, transparent: true, opacity: 0.92 }); R.gateMaterials.push(mat);
@@ -265,9 +372,11 @@
       left.position.set(-1.18, 1.7, 0); right.position.set(1.18, 1.7, 0); gate.add(left); gate.add(right);
       var lintel = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.34, 0.38), mat);
       lintel.position.y = 3.28; gate.add(lintel);
-      var ring = new THREE.Mesh(new THREE.TorusGeometry(1.08, 0.055, 5, 28), new THREE.MeshBasicMaterial({ color: 0xe7d68d, transparent: true, opacity: 0.58 }));
+      var ringMat = new THREE.MeshBasicMaterial({ color: 0xe7d68d, transparent: true, opacity: 0.58 }); R.gateRingMaterials.push(ringMat);
+      var ring = new THREE.Mesh(new THREE.TorusGeometry(1.08, 0.055, 5, 28), ringMat);
       ring.position.y = 1.78; gate.add(ring);
-      var core = new THREE.Mesh(new THREE.OctahedronGeometry(0.18, 0), new THREE.MeshBasicMaterial({ color: 0xfff2b2 }));
+      var coreMat = new THREE.MeshBasicMaterial({ color: 0xfff2b2 }); R.gateCoreMaterials.push(coreMat);
+      var core = new THREE.Mesh(new THREE.OctahedronGeometry(0.18, 0), coreMat);
       core.position.y = 1.78; gate.add(core);
       R.gateRoot.add(gate);
     }
@@ -280,6 +389,7 @@
     base.scale.set(1.25, 0.82, 0.9); base.position.y = 0.65; group.add(base);
     var crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.42, 0), material(0xc98578, 1));
     crystal.position.y = 1.45; crystal.scale.set(0.8, 1.5, 0.8); group.add(crystal);
+    R.themeMaterials.obstacleBase = base.material; R.themeMaterials.obstacleCrystal = crystal.material;
     group.position.set(0, 0, R.obstacleZ); R.obstacle = group; R.root.add(group);
   }
 
@@ -290,6 +400,7 @@
     var coreMat = new THREE.MeshBasicMaterial({ color: 0xb8e3c7 }); coreMat.toneMapped = false;
     var core = new THREE.Mesh(new THREE.OctahedronGeometry(0.3, 0), coreMat); group.add(core);
     var orbit = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.025, 5, 20), ringMat.clone()); orbit.rotation.y = Math.PI / 2; group.add(orbit);
+    R.themeMaterials.pickup = [ringMat, coreMat, orbit.material];
     group.position.set(0, 1.3, R.pickupZ); group.userData.ring = ring; group.userData.orbit = orbit;
     R.pickup = group; R.root.add(group);
   }
@@ -324,7 +435,8 @@
       var starGeo = new THREE.BufferGeometry(), points = new Float32Array(54 * 3);
       for (var p = 0; p < 54; p++) { points[p * 3] = (Math.random() - 0.5) * 34; points[p * 3 + 1] = 3 + Math.random() * 12; points[p * 3 + 2] = -10 - Math.random() * 65; }
       starGeo.setAttribute("position", new THREE.BufferAttribute(points, 3));
-      R.root.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xf5e7a9, size: 0.09, transparent: true, opacity: 0.72, sizeAttenuation: true })));
+      R.starMaterial = new THREE.PointsMaterial({ color: 0xf5e7a9, size: 0.09, transparent: true, opacity: 0.72, sizeAttenuation: true });
+      R.root.add(new THREE.Points(starGeo, R.starMaterial));
       buildPlayer(); buildMonster(); buildGates(); buildObstacle(); buildPickup();
 
       // Android TV 以稳帧和温度为先；跑酷本身会按帧率自适应分辨率。
@@ -401,7 +513,8 @@
   }
 
   function updateHud() {
-    setText("sr-round", Math.min(R.total || 10, R.round + 1) + " / " + (R.total || 10));
+    var within = Math.min(QUESTIONS_PER_LEVEL, (R.round % QUESTIONS_PER_LEVEL) + 1);
+    setText("sr-round", "第" + (R.levelIndex + 1) + "关 · " + within + "/" + QUESTIONS_PER_LEVEL);
     setText("sr-score", String(Math.max(0, R.score)));
     setText("sr-combo", String(R.combo));
     var shield = ""; for (var i = 0; i < R.maxShield; i++) shield += i < R.shield ? "◆" : "◇";
@@ -413,10 +526,11 @@
   }
 
   function updateLaneVisual() {
+    var theme = currentLevel();
     var gates = document.querySelectorAll("#sr-gates .sr-gate");
     for (var i = 0; i < gates.length; i++) gates[i].classList.toggle("focus", i === R.lane);
     for (var j = 0; j < R.gateMaterials.length; j++) {
-      if (R.gateMaterials[j] && R.gateMaterials[j].color) R.gateMaterials[j].color.setHex(j === R.lane ? 0xe4d48d : 0x79b99c);
+      if (R.gateMaterials[j] && R.gateMaterials[j].color) R.gateMaterials[j].color.setHex(j === R.lane ? theme.gateFocus : theme.gate);
     }
     try { if (typeof requestFocusSync === "function") requestFocusSync(); } catch (e) { }
   }
@@ -450,7 +564,7 @@
   function beginQuestionRun() {
     if (!ownerValid() || R.phase !== "preview") return;
     R.phase = "run"; R.mappingUntil = 0; setGateMapping(true, "STEER"); updateLaneVisual();
-    var PATTERN_NAMES = { tutorial: "热身航段 · 无路障,看释义换道", double: "双重路障 · 连续躲两次", echo: "回声链 · 连吃 3 枚回声", sweep: "游走路障 · 它会变道,看准再躲", rush: "疾速冲刺 · 分数 ×1.5" };
+    var PATTERN_NAMES = { tutorial: "热身航段 · 无路障,看释义换道", double: "双重路障 · 连续躲两次", echo: "回声链 · 连吃 3 枚回声", sweep: "游走路障 · 它会变道,看准再躲", rush: "疾速冲刺 · 分数 ×1.5", finale: "终局航段 · 三重路障与回声交替" };
     setText("sr-callout", (PATTERN_NAMES[R.pattern] || "看准释义换道") + " · ↑ 跳跃");
     var host = byId("sr-gates"); if (host) { host.style.opacity = ".9"; host.style.transform = "translate3d(-50%,-6vmin,0) scale(.8)"; }
   }
@@ -466,18 +580,18 @@
     R.lane = 1;
     R.jumpY = 0; R.jumpV = 0;
     R.obstacleCommitted = R.failed; R.pickupCommitted = R.failed;
-    // v6.6:滚动天空式航段系统 —— 每关一种花样,零新增3D物件(复用现有网格)
-    var PATTERNS = ["double", "echo", "sweep", "rush"];
-    R.pattern = R.round < 2 ? "tutorial" : PATTERNS[(R.round - 2) % PATTERNS.length];
-    R.obstacleRearm = R.pattern === "double" ? 1 : 0;
-    R.pickupRearm = R.pattern === "echo" ? 2 : 0;
+    // 六个连续关卡复用同一批网格，只切换主题色和航段编排。
+    var level = currentLevel();
+    R.pattern = level.pattern;
+    R.obstacleRearm = level.obstacleRearm;
+    R.pickupRearm = level.pickupRearm;
     R.sweep = R.pattern === "sweep"; R.sweepLocked = false;
-    R.speed = 15 + R.round * 0.3 + Math.min(5, R.combo * 0.72);
-    if (R.pattern === "rush") R.speed *= 1.3;
-    R.gateZ = PLAYER_Z - R.speed * 3.45; R.prevGateZ = R.gateZ;
-    R.obstacleZ = PLAYER_Z - R.speed * 2.1; R.prevObstacleZ = R.obstacleZ;
+    R.speed = level.baseSpeed + (R.round % QUESTIONS_PER_LEVEL) * 0.35 + Math.min(3.2, R.combo * 0.42);
+    R.gateLead = level.gateLead; R.obstacleSpacing = level.obstacleSpacing;
+    R.gateZ = PLAYER_Z - R.speed * R.gateLead; R.prevGateZ = R.gateZ;
+    R.obstacleZ = PLAYER_Z - R.speed * level.obstacleLead; R.prevObstacleZ = R.obstacleZ;
     R.obstacleLane = Math.floor(Math.random() * 3);
-    var noObstacle = R.pattern === "tutorial";
+    var noObstacle = !!level.noObstacle;
     R.pickupZ = R.obstacleZ + 2.1; R.prevPickupZ = R.pickupZ;
     R.pickupLane = (R.obstacleLane + 1 + Math.floor(Math.random() * 2)) % 3;
     R.phase = "preview"; R.phaseUntil = R.simTime + (reducedMotion() ? 0.5 : 0.9); R.mappingUntil = 0; R.pendingFinish = false;
@@ -486,7 +600,7 @@
     if (noObstacle) R.obstacleCommitted = true;
     if (R.obstacle) { R.obstacle.visible = !R.failed && !noObstacle; R.obstacle.position.set(LANE_X[R.obstacleLane], 0, R.obstacleZ); }
     if (R.pickup) { R.pickup.visible = !R.failed; R.pickup.position.set(LANE_X[R.pickupLane], 1.3, R.pickupZ); }
-    setText("sr-callout", "冲向与单词相符的释义星门 · ← → 换道");
+    setText("sr-callout", "第" + (R.levelIndex + 1) + "关 · " + level.name + " · 冲向正确释义星门");
     var host = byId("sr-gates"); if (host) { host.style.opacity = "1"; host.style.transform = "translate3d(-50%,-1vmin,0) scale(.92)"; }
     try { if (!document.hidden && typeof speak === "function") speak(target.w); } catch (e) { }
   }
@@ -518,7 +632,7 @@
     if (R.obstacleRearm > 0 && !R.failed && R.gateZ < PLAYER_Z - R.speed * 1.35) {
       R.obstacleRearm--;
       R.obstacleLane = (R.obstacleLane + 1 + Math.floor(Math.random() * 2)) % 3;
-      R.obstacleZ = PLAYER_Z - R.speed * 1.1; R.prevObstacleZ = R.obstacleZ;
+      R.obstacleZ = PLAYER_Z - R.speed * R.obstacleSpacing; R.prevObstacleZ = R.obstacleZ;
       R.obstacleCommitted = false;
       if (R.obstacle) { R.obstacle.visible = true; R.obstacle.position.set(LANE_X[R.obstacleLane], 0, R.obstacleZ); }
     }
@@ -599,6 +713,26 @@
     try { if (window.SFX && SFX.win) SFX.win(); } catch (e2) { }
   }
 
+  function setCountdownCopy(kicker, count, message) {
+    var countdown = byId("sr-countdown"); if (countdown) countdown.classList.remove("hidden");
+    var kickerEl = document.querySelector("#sr-countdown .sr-count-kicker"); if (kickerEl) kickerEl.textContent = kicker;
+    var messageEl = document.querySelector("#sr-countdown > span"); if (messageEl) messageEl.textContent = message;
+    setText("sr-count", count);
+  }
+
+  function startLevelTransition(index) {
+    if (!ownerValid()) return;
+    applyLevelTheme(index);
+    var level = currentLevel();
+    R.phase = "level"; R.phaseUntil = R.simTime + (reducedMotion() ? 0.35 : 1.25);
+    if (R.gateRoot) R.gateRoot.visible = false;
+    if (R.obstacle) R.obstacle.visible = false;
+    if (R.pickup) R.pickup.visible = false;
+    setCountdownCopy("LEVEL " + (R.levelIndex + 1) + " / " + LEVELS.length, String(R.levelIndex + 1), level.name + " · " + level.detail);
+    setText("sr-callout", "第" + (R.levelIndex + 1) + "关已开启 · " + level.name);
+    try { if (window.SFX && SFX.ok) SFX.ok(); } catch (e) { }
+  }
+
   function updateSimulation(delta) {
     R.simTime += delta;
     if (R.phase === "countdown") {
@@ -610,6 +744,14 @@
       }
       if (remain <= 0) {
         var countdown = byId("sr-countdown"); if (countdown) countdown.classList.add("hidden");
+        startQuestion();
+      }
+      return;
+    }
+    if (R.phase === "level") {
+      updateInstances(delta * 0.52);
+      if (R.simTime >= R.phaseUntil) {
+        var levelCard = byId("sr-countdown"); if (levelCard) levelCard.classList.add("hidden");
         startQuestion();
       }
       return;
@@ -677,7 +819,7 @@
 
       R.prevGateZ = R.gateZ; R.gateZ += R.speed * delta;
       if (R.gateRoot) R.gateRoot.position.z = R.gateZ;
-      var progress = clamp((R.gateZ - (PLAYER_Z - R.speed * 3.45)) / Math.max(1, R.speed * 3.45), 0, 1);
+      var progress = clamp((R.gateZ - (PLAYER_Z - R.speed * R.gateLead)) / Math.max(1, R.speed * R.gateLead), 0, 1);
       var gateHost = byId("sr-gates");
       if (gateHost) {
         var scaleHud = 0.8 + progress * 0.22, y = -6 + progress * 6;
@@ -687,7 +829,12 @@
       if (R.prevGateZ < PLAYER_Z && R.gateZ >= PLAYER_Z) commitGate();
     } else if (R.simTime >= R.phaseUntil) {
       if (R.pendingFinish) showFinish();
-      else { R.round++; startQuestion(); }
+      else {
+        R.round++;
+        var nextLevel = levelForRound(R.round);
+        if (nextLevel !== R.levelIndex) startLevelTransition(nextLevel);
+        else startQuestion();
+      }
     }
   }
 
@@ -722,16 +869,18 @@
 
   function startCountdown() {
     if (!ownerValid()) return;
+    applyLevelTheme(0);
+    var level = currentLevel();
     R.phase = "countdown"; R.simTime = 0; R.phaseUntil = reducedMotion() ? 0.35 : 3; R.countdownLast = -1;
-    var countdown = byId("sr-countdown"); if (countdown) countdown.classList.remove("hidden");
-    setText("sr-count", reducedMotion() ? "GO" : "3"); setText("sr-callout", "左右选道 · 上键或 OK 跃过障碍");
+    setCountdownCopy("第 1 关 · " + level.name, reducedMotion() ? "GO" : "3", level.detail + " · 左右选道,上键或 OK 跳跃");
+    setText("sr-callout", "六关连续航程 · 左右选道 · 上键或 OK 跃过障碍");
     startFrame();
   }
 
   function resetRun(prepared) {
     R.runId++; R.active = true; R.suspended = false; R.phase = "loading";
     R.ownerP = P; R.ownerCur = CUR; R.list = prepared.list; R.bank = prepared.bank; R.total = prepared.list.length;
-    R.round = 0; R.resolved = 0; R.right = 0; R.score = 0; R.combo = 0; R.bestCombo = 0; R.shield = R.maxShield; R.gap = 72;
+    R.levelIndex = 0; R.round = 0; R.resolved = 0; R.right = 0; R.score = 0; R.combo = 0; R.bestCombo = 0; R.shield = R.maxShield; R.gap = 72;
     R.lane = 1; R.speed = 15; R.questionToken = 0; R.answerCommitted = false; R.committedTokens = Object.create(null); R.sessionCommitted = false;
     R.options = []; R.answerLane = -1; R.obstacleCommitted = false; R.pickupCommitted = false; R.jumpY = 0; R.jumpV = 0; R.pendingFinish = false; R.mappingUntil = 0; R.failed = R.contextLost;
     R.inputSignals = { LEFT: 0, DOWN: 0, RIGHT: 0, UP: 0, OK: 0 };
@@ -836,7 +985,8 @@
       var canvas = R.renderer.domElement; try { R.renderer.dispose(); } catch (e) { }
       try { if (canvas && canvas.parentNode) canvas.parentNode.removeChild(canvas); } catch (e2) { }
     }
-    R.renderer = R.scene = R.camera = R.root = R.road = R.roadLines = R.scenery = R.player = R.monster = R.gateRoot = R.obstacle = R.pickup = null;
+    R.renderer = R.scene = R.camera = R.root = R.road = R.roadLines = R.scenery = R.starMaterial = R.player = R.monster = R.gateRoot = R.obstacle = R.pickup = null;
+    R.themeMaterials = Object.create(null); R.gateMaterials = []; R.gateRingMaterials = []; R.gateCoreMaterials = [];
     R.contextLost = false;
     R.ownerP = null; R.ownerCur = null;
   }
