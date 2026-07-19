@@ -1108,11 +1108,14 @@
     select(W.index, true);
   }
 
+  /* v6.5:提高渲染分辨率下限 —— 流畅模式此前把 1080p 砍到 ~0.65 倍再拉伸,
+     画面明显发糊。现在完整版基准 0.9,降级只轻砍到 0.85 倍、下限 0.72,
+     清晰度保住;若仍掉帧才会走 CSS 兜底景观(不黑屏)。 */
   function chooseRenderScale() {
     var w = Math.max(1, window.innerWidth || 1280);
-    if (w >= 3000) return 0.55;
-    if (w >= 1700) return 0.84;
-    if (w >= 1200) return 0.92;
+    if (w >= 3000) return 0.62;
+    if (w >= 1700) return 0.9;
+    if (w >= 1200) return 0.95;
     return 1;
   }
 
@@ -1419,10 +1422,12 @@
   function degrade() {
     if (W.degraded || !W.renderer) return;
     W.degraded = true;
-    W.renderScale = Math.max(0.5, W.renderScale * 0.78);
+    // 少砍分辨率(0.85 倍、下限 0.72),优先关粒子等装饰保帧率
+    W.renderScale = Math.max(0.72, W.renderScale * 0.85);
     if (W.motes) W.motes.visible = false;
+    if (W.cloudGroup) { try { W.cloudGroup.visible = false; } catch (e) { } }
     onResize();
-    setQuality("流畅模式 · 24–30 FPS");
+    setQuality("流畅模式 · 高清");
   }
 
   function publishStats() {

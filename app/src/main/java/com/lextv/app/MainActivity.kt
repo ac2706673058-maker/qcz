@@ -82,6 +82,20 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         if (hasFocus) hideSystemUi()
     }
 
+    // 后台挂起/恢复必须转发给 WebView:不转发的话部分电视盒子回到前台后
+    // WebView 渲染与 JS 计时器停在挂起态,表现为"整个应用点不动,只能强退重开"。
+    override fun onPause() {
+        try { web.onPause(); web.pauseTimers() } catch (_: Exception) {}
+        super.onPause()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        try { web.resumeTimers(); web.onResume() } catch (_: Exception) {}
+        hideSystemUi()
+        js("window.onAppResume && window.onAppResume()")
+    }
+
     override fun onInit(status: Int) {
         if (destroyed) return
         if (status == TextToSpeech.SUCCESS) {

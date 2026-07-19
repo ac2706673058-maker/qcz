@@ -483,11 +483,13 @@ function clearFocusBursts() {
   ensureFocusFx();
   while (FOCUS_FX.layer.children.length > 1) FOCUS_FX.layer.removeChild(FOCUS_FX.layer.lastChild);
 }
-/* v6.4:液态彗星焦点整体停用 —— 低端电视上"飞行框+撞击粒子"每次按键要建
-   十几个动画元素,表现为按键后先停顿、透明框迟到且与卡片对不上位。
-   焦点反馈完全交给卡片自身的即时 CSS(96ms 弹性 + 0 延迟描边),按下即亮。 */
+/* v6.5:液态彗星回归"极速版" —— 保留飞行光轨/撞击视觉,但时长压缩近半、
+   粒子减量,并且卡片自身反馈始终即时(特效只是叠加,不再是唯一指示)。 */
 function placeFocusHalo(r) {
-  if (FOCUS_FX.halo) FOCUS_FX.halo.style.opacity = "0";
+  ensureFocusFx();
+  if (!r) { FOCUS_FX.halo.style.opacity = "0"; return; }
+  const pad = 5;
+  Object.assign(FOCUS_FX.halo.style, { left: (r.left - pad) + "px", top: (r.top - pad) + "px", width: (r.width + pad * 2) + "px", height: (r.height + pad * 2) + "px", opacity: "1" });
 }
 function cancelFocusFx(snap) {
   FOCUS_FX.seq++; FOCUS_FX.pending = null;
@@ -535,13 +537,13 @@ function focusImpact(r, key, target, seq) {
     try { ring.animate([
       { transform: start, opacity: 0 }, { transform: "scale(1)", opacity: i ? .48 : .88, offset: .28 },
       { transform: end, opacity: 0 }
-    ], { duration: 330 + i * 90, delay: i * 34, easing: "cubic-bezier(.18,.72,.18,1)" }); } catch (e) { }
+    ], { duration: 190 + i * 50, delay: i * 20, easing: "cubic-bezier(.18,.72,.18,1)" }); } catch (e) { }
   }
   // 火花按控件短边计算并设上限；超宽列表不会再把火花拉成横跨全屏的光柱。
   const shortSide = Math.min(r.width, r.height);
   const sparkStart = clamp(shortSide * .25, 16, 44);
   const sparkEnd = clamp(shortSide * .72, 44, 108);
-  const count = 8;
+  const count = 5;
   for (let i = 0; i < count; i++) {
     const a = (Math.PI * 2 * i / count) + (vector[0] ? 0 : Math.PI / 8);
     const spark = document.createElement("div"); spark.className = "focus-spark";
@@ -551,19 +553,20 @@ function focusImpact(r, key, target, seq) {
       { transform: "rotate(" + a + "rad) translateX(" + sparkStart + "px) scaleX(.1)", opacity: 0 },
       { opacity: .9, offset: .18 },
       { transform: "rotate(" + a + "rad) translateX(" + sparkEnd + "px) scaleX(1)", opacity: 0 }
-    ], { duration: 300 + (i % 3) * 35, easing: "cubic-bezier(.12,.7,.22,1)" }); } catch (e) { }
+    ], { duration: 180 + (i % 3) * 25, easing: "cubic-bezier(.12,.7,.22,1)" }); } catch (e) { }
   }
   setTimeout(() => {
     if (seq !== FOCUS_FX.seq) return;
     clearFocusBursts();
     // 卡片自身的 96ms 上浮缩放已完成，再以最终像素位置校准共享焦点框。
     placeFocusHalo(focusRect(navFocused()));
-  }, 520);
+  }, 300);
 }
 function playFocusFx(key, from, to, target, rapid) {
   ensureFocusFx(); clearFocusBursts();
   const seq = ++FOCUS_FX.seq, dx = to.cx - from.cx, dy = to.cy - from.cy;
-  const dist = Math.sqrt(dx * dx + dy * dy), duration = rapid ? 92 : Math.round(clamp(138 + dist * .16, 145, 218));
+  // v6.5 极速:飞行 80~120ms(连按 60ms),框子和卡片几乎同时到位
+  const dist = Math.sqrt(dx * dx + dy * dy), duration = rapid ? 60 : Math.round(clamp(78 + dist * .06, 80, 120));
   placeFocusHalo(to);
   if (FOCUS_FX.haloAnim) { try { FOCUS_FX.haloAnim.cancel(); } catch (e) { } FOCUS_FX.haloAnim = null; }
   const sx = clamp(from.width / to.width, .55, 1.8), sy = clamp(from.height / to.height, .55, 1.8);
@@ -581,10 +584,9 @@ function playFocusFx(key, from, to, target, rapid) {
   FOCUS_FX.settle = setTimeout(() => {
     const current = navFocused(), r = focusRect(current);
     if (seq === FOCUS_FX.seq && current === FOCUS_FX.target) focusImpact(r, FOCUS_FX.key, current, seq);
-  }, rapid ? 105 : Math.min(96, duration * .44));
+  }, rapid ? 55 : Math.min(60, duration * .5));
 }
 function scheduleFocusFx(key, before, beforeRect) {
-  return; // v6.4:停用飞行动效,见 placeFocusHalo 注释
   const target = navFocused();
   if (!NAV_DIR[key] || !before || !target || before === target) return;
   // who/cloud 等列表会整块重建 DOM，必须在 handler 运行前保存出发位置。
@@ -634,8 +636,11 @@ window.onTvKey = k => {
   }
   if (signalAt >= TV_CARRY_GUARD.until) TV_CARRY_GUARD.key = "";
   try { $("toast").classList.remove("show"); } catch (e) { }
+  const before = NAV_DIR[k] ? navFocused() : null;
+  const beforeRect = before ? focusRect(before) : null;
   const h = handlers[SCREEN];
   try { if (h && h.key) h.key(k); } catch (e) { toast("按键错误:" + (e && e.message)); }
+  if (NAV_DIR[k]) scheduleFocusFx(k, before, beforeRect);
   // 音效延后到焦点状态更新之后,永远不阻塞遥控输入。
   Promise.resolve().then(() => {
     try {
@@ -666,6 +671,16 @@ window.addEventListener("pagehide", () => {
 });
 window.addEventListener("blur", () => { try { if (typeof pauseChase === "function") pauseChase(); } catch (e) { } });
 window.addEventListener("focus", () => { try { if (typeof resumeChase === "function") resumeChase(); } catch (e) { } });
+
+/* 原生 onResume 兜底:部分电视盒子从后台回来时不触发 focus/visibility 事件,
+   导致游戏帧循环和音频停在挂起态。原生层恢复时直接调这里,把一切叫醒。 */
+window.onAppResume = () => {
+  try { if (window.SFX && SFX.resume) SFX.resume(); } catch (e) { }
+  try { window.dispatchEvent(new Event("focus")); } catch (e) { }
+  try { document.dispatchEvent(new Event("visibilitychange")); } catch (e) { }
+  try { if (typeof resumeChase === "function") resumeChase(); } catch (e) { }
+  try { if (SCREEN === "home" && handlers.home && handlers.home.enter) handlers.home.enter(); } catch (e) { }
+};
 
 const MENU = [
   { id: "world", ic: "\uD83C\uDF0D", t: "\u8BCD\u6C47\u4E16\u754C", d: "\u63A2\u7D22\u8BCD\u6C47\u79D8\u5883 \u00B7 \u5728\u5192\u9669\u4E2D\u5DE9\u56FA\u590D\u4E60" },

@@ -246,11 +246,12 @@
     var enemies = shuffle(cells, random).filter(function (p) {
       return !used[cellKey(p.x, p.y)] && distance(p, { x: 1, y: 1 }) > 7;
     });
-    var enemy = enemies[0] || { x: 13, y: 7 };
+    enemies.sort(function (a, b) { return distance(b, { x: 1, y: 1 }) - distance(a, { x: 1, y: 1 }); });
+    var enemy = enemies[0] || { x: 15, y: 7 };
     E.grid = grid; E.gates = gates; E.sealed = [false, false, false]; E.shards = shards; E.shardCount = 0;
     E.player = { x: 1, y: 1, drawX: 1, drawY: 1 };
-    E.enemy = { x: enemy.x, y: enemy.y, drawX: enemy.x, drawY: enemy.y, nextAt: E.simTime + .7, speed: E.routeMode === 1 ? .48 : .66 };
-    E.hunter = (E.boss || E.routeMode === 1) ? { x: 11, y: 1, drawX: 11, drawY: 1, nextAt: E.simTime + 1.2, speed: E.boss ? .72 : .86 } : null;
+    E.enemy = { x: enemy.x, y: enemy.y, drawX: enemy.x, drawY: enemy.y, nextAt: E.simTime + 2.2, speed: E.routeMode === 1 ? .62 : .8 };
+    E.hunter = (E.boss || E.routeMode === 1) ? { x: 15, y: 1, drawX: 15, drawY: 1, nextAt: E.simTime + 3, speed: E.boss ? .88 : 1.05 } : null;
     E.trail = []; E.roundMistake = false; E.resolvedRound = false;
   }
 
@@ -333,11 +334,11 @@
       if (!shard.got && shard.x === E.player.x && shard.y === E.player.y) {
         shard.got = true; E.shardCount++; E.score += 18;
         addBurstAt(shard, "#8ee2d0", 10, E.map.cell * .018); playSfx("collect");
-        status("回声已夺回 · 还差 " + (E.shards.length - E.shardCount) + " 枚才能唤醒符文门", "good");
+        status("回声 +18 分(加分项,不必集齐)", "good");
         updateHud();
         if (E.shardCount >= E.shards.length) {
-          beginGateScan(reducedMotion() ? 1200 : 900, "回声重放 · 对照表在右侧");
-          status("全部回声共鸣 · 符文映射只重放一次", "good");
+          E.score += 60; if (E.shield < E.maxShield) E.shield++;
+          status("集齐全部回声!+60 分,护盾 +1", "good"); updateHud();
         }
       }
     }
@@ -421,13 +422,12 @@
     collectShard();
     var gate = gateAt(nx, ny);
     if (gate >= 0) {
-      if (E.shardCount >= E.shards.length && !E.sealed[gate]) status("符文门已醒来 · 按 OK 让记忆决定出口", "good");
-      else if (E.sealed[gate]) status("这道门已经拒绝过你 · 继续寻找另一道", "bad");
-      else status("门还在沉睡 · 先夺回全部回声", "bad");
+      if (E.sealed[gate]) status("这道门已经排除 · 去另一道门", "bad");
+      else status("按 OK 开门 · 对照表在右侧,选与单词相符的门", "good");
     }
   }
   function resolveGate(index) {
-    if (E.phase !== "play" || !ownerValid() || index < 0 || E.shardCount < E.shards.length || E.sealed[index]) return;
+    if (E.phase !== "play" || !ownerValid() || index < 0 || E.sealed[index]) return;
     var good = index === E.correctGate;
     if (!good) {
       E.sealed[index] = true; E.roundMistake = true; E.combo = 0; E.shield = Math.max(0, E.shield - 1);
