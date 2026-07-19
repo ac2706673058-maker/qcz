@@ -169,7 +169,12 @@
     var weak = [];
     try { weak = weakWords(); } catch (e2) { weak = []; }
     var seen = bank.filter(function (e) { var r = P.words && P.words[e.w]; return r && r.st > 0; });
-    add(shuffled(due), 3); add(weak, 3); add(shuffled(seen), 3); add(shuffled(bank), 8);
+    var srcPool = [];
+    try { srcPool = typeof gameWords === "function" ? gameWords().filter(function (e) { return bank.some(function (b) { return normal(b.w) === normal(e.w); }); }) : seen; } catch (ep) { srcPool = seen; }
+    var poolKeys = Object.create(null);
+    for (var pk = 0; pk < srcPool.length; pk++) poolKeys[normal(srcPool[pk].w)] = true;
+    function inPool(item) { return item && poolKeys[normal(item.w)]; }
+    add(shuffled(due).filter(inPool), 3); add(weak.filter(inPool), 3); add(shuffled(srcPool), 8);
     if (selected.length < 8) return null;
     return { bank: bank, list: selected.slice(0, 8) };
   }
@@ -610,7 +615,7 @@
   }
   function open() {
     if (!installUi()) { try { toast("当前电视无法创建遗迹画布"); } catch (e) { } return false; }
-    var prepared = prepareRun(); if (!prepared) { try { toast("当前启用词书至少需要 12 个有效词和 3 种不同释义"); } catch (e2) { } return false; }
+    var prepared = prepareRun(); if (!prepared) { try { toast("训练词源词量不足 8 个,可到设置调整「训练词源」"); } catch (e2) { } return false; }
     M.returnScreen = typeof SCREEN === "string" && SCREEN !== "memory-maze" ? SCREEN : "world";
     resetRun(prepared); show("memory-maze"); resizeCanvas();
     M.phase = "intro"; M.phaseUntil = reducedMotion() ? 0.28 : 1.05; setCallout("遗迹正在生成新的道路", ""); render(nowMs()); startFrame();

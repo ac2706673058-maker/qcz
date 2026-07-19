@@ -180,8 +180,12 @@
         used[key] = true; selected.push(x); count++;
       }
     }
-    add(map(due), 3); add(map(weak), 3); add(shuffle(unseen, E.rng), 3); add(shuffle(all, E.rng), 8);
-    if (selected.length < 3) add(shuffle(all, E.rng), 8);
+    var srcPool = [];
+    try { srcPool = typeof gameWords === "function" ? map(gameWords()) : []; } catch (ep) { srcPool = []; }
+    var poolKeys = Object.create(null);
+    for (var pk = 0; pk < srcPool.length; pk++) poolKeys[normal(srcPool[pk].w)] = true;
+    function inPool(item) { return item && poolKeys[normal(item.w)]; }
+    add(map(due).filter(inPool), 3); add(map(weak).filter(inPool), 3); add(shuffle(srcPool, E.rng), 8);
     return { bank: all, list: selected.slice(0, Math.min(6, selected.length)) };
   }
 
@@ -559,7 +563,7 @@
   function startRun() {
     if (!E.active || !ownerValid()) return;
     var prepared = prepareBank();
-    if (!prepared) { stop(); if (typeof toast === "function") toast("记忆裂隙至少需要 3 个可用单词"); return; }
+    if (!prepared) { stop(); if (typeof toast === "function") toast("训练词源词量不足 3 个,可到设置调整「训练词源」"); return; }
     E.bank = prepared.bank; E.list = prepared.list; E.total = E.list.length; E.round = 0; E.score = 0; E.combo = 0; E.right = 0; E.solved = 0; E.mistakes = 0; E.shield = 3; E.maxShield = 3; E.routeMode = 0; E.routeMultiplier = 1; E.sessionCommitted = false; E.boss = false; E.simTime = 0;
     E.seed = hash(String(new Date().toISOString().slice(0, 10)) + ":" + String(typeof CUR === "undefined" ? "fin" : CUR)); E.rng = rng(E.seed); layout();
     var intro = byId("eh-intro"); if (intro) intro.hidden = true;

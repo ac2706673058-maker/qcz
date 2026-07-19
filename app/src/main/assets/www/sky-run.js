@@ -205,7 +205,10 @@
     var due = [], weak = [], learned = [];
     try { due = typeof dueWords === "function" ? dueWords() : []; } catch (e2) { due = []; }
     try { weak = typeof weakWords === "function" ? weakWords() : []; } catch (e3) { weak = []; }
-    try { learned = typeof seenWords === "function" ? seenWords() : []; } catch (e4) { learned = []; }
+    try { learned = typeof gameWords === "function" ? gameWords() : (typeof seenWords === "function" ? seenWords() : []); } catch (e4) { learned = []; }
+    var poolKeys = Object.create(null);
+    for (var pk = 0; pk < learned.length; pk++) poolKeys[normal(learned[pk].w)] = true;
+    function inPool(item) { return item && poolKeys[normal(item.w)]; }
     var byWord = Object.create(null);
     for (var b = 0; b < bank.length; b++) byWord[normal(bank[b].w)] = bank[b];
     function mapBank(source) {
@@ -622,6 +625,7 @@
     if (collided) {
       R.shield = Math.max(0, R.shield - 1); R.gap = Math.max(5, R.gap - 12); R.score = Math.max(0, R.score - 35); R.combo = 0;
       setText("sr-callout", "路障命中 · 护盾受损"); pulseClass("sr-hit", 420);
+      if (R.shield <= 0) { triggerFail(); }
       try { if (window.SFX && SFX.bad) SFX.bad(); } catch (e) { }
     } else {
       var dodgeGain = R.pattern === "rush" ? 30 : 20;
@@ -672,12 +676,13 @@
       if (!ok && i === R.lane) gates[i].classList.add("wrong");
     }
     if (ok) {
-      R.right++; R.combo++; R.bestCombo = Math.max(R.bestCombo, R.combo); R.score += Math.round((130 + Math.min(170, R.combo * 18)) * (R.pattern === "rush" ? 1.5 : 1)); R.gap = Math.min(100, R.gap + 11);
+      R.right++; R.combo++; R.bestCombo = Math.max(R.bestCombo, R.combo); R.score += Math.round((130 + Math.min(170, R.combo * 18)) * (R.pattern === "rush" ? 1.5 : 1) * (R.scoreMult || 1)); R.gap = Math.min(100, R.gap + 11);
       setText("sr-callout", R.list[R.round].w + " = " + R.list[R.round].m + " · 冲刺击退词怪");
       var rootGood = byId("skytrail"); if (rootGood) rootGood.classList.add("sr-good", "sr-boost");
       try { if (window.SFX && SFX.good) SFX.good(); } catch (e) { }
     } else {
       R.combo = 0; R.shield = Math.max(0, R.shield - 1); R.score = Math.max(0, R.score - 45); R.gap = Math.max(5, R.gap - 18);
+      if (R.shield <= 0) { R.pendingFail = true; }
       setText("sr-callout", "正确星门：" + R.list[R.round].m + " · 词怪正在逼近");
       var rootBad = byId("skytrail"); if (rootBad) rootBad.classList.add("sr-bad"); pulseClass("sr-hit", 420);
       try { if (window.SFX && SFX.bad) SFX.bad(); } catch (e2) { }
@@ -698,6 +703,24 @@
     return true;
   }
 
+  function triggerFail() {
+    if (R.pendingFail || R.phase === "finish") return;
+    R.pendingFail = true; R.phase = "resolve"; R.phaseUntil = R.simTime + 0.9;
+    setText("sr-callout", "护盾耗尽 · 航程即将中断"); pulseClass("sr-hit", 600);
+  }
+  function failRun() {
+    if (R.phase === "finish") return;
+    R.phase = "finish"; cancelFrame();
+    try { if (typeof gameResult === "function") gameResult("skytrail", R.right, Math.max(1, R.resolved), R.score); } catch (e) { }
+    setText("sr-finish-title", "护盾耗尽 · 航程中断");
+    setText("sr-finish-stats", R.right + " / " + R.resolved + " 共鸣 · " + R.score + " 星辉");
+    setText("sr-finish-msg", (R.difficulty === "hard" ? "极限模式下每一格都要算准。" : "") + "被击中就会消耗护盾:躲开路障、冲对星门。再来一程!");
+    var finish = byId("sr-finish"); if (finish) finish.hidden = false;
+    var button = byId("sr-return"); if (button) button.classList.add("focus");
+    R.inputGateUntil = nowMs() + 700;
+    try { if (typeof armTvCarryGuard === "function") armTvCarryGuard("OK", 700); } catch (e2) { }
+    try { if (window.SFX && SFX.bad) SFX.bad(); } catch (e3) { }
+  }
   function showFinish() {
     if (!ownerValid() || !R.sessionCommitted) return;
     R.phase = "finish"; cancelFrame();
@@ -735,6 +758,7 @@
 
   function updateSimulation(delta) {
     R.simTime += delta;
+    if (R.phase === "difficulty") { updateInstances(delta * 0.3); return; }
     if (R.phase === "countdown") {
       updateInstances(delta * 0.45);
       var remain = Math.max(0, R.phaseUntil - R.simTime), number = Math.ceil(remain);
@@ -828,6 +852,7 @@
       }
       if (R.prevGateZ < PLAYER_Z && R.gateZ >= PLAYER_Z) commitGate();
     } else if (R.simTime >= R.phaseUntil) {
+      if (R.pendingFail) { failRun(); return; }
       if (R.pendingFinish) showFinish();
       else {
         R.round++;
@@ -867,14 +892,33 @@
   }
   function cancelFrame() { if (R.raf) { cancelAnimationFrame(R.raf); R.raf = 0; } R.lastRealTime = 0; R.accumulator = 0; }
 
+  var SR_DIFFS = [
+    { id: "easy", n: "轻松巡航", shield: 5, mult: 1, d: "5 层护盾 · 护盾耗尽航程失败" },
+    { id: "hard", n: "极限挑战", shield: 3, mult: 1.25, d: "3 层护盾 · 耗尽即失败 · 全部得分 ×1.25" }
+  ];
+  function renderDiffSelect() {
+    var d = SR_DIFFS[R.diffSel];
+    setCountdownCopy("SELECT DIFFICULTY · ← → 切换 · OK 确认", d.n, d.d);
+  }
   function startCountdown() {
     if (!ownerValid()) return;
     applyLevelTheme(0);
+    // v7.1:先选难度(轻松 5 盾 / 挑战 3 盾),护盾耗尽都会终止航程
+    R.phase = "difficulty"; R.simTime = 0;
+    R.diffSel = (P && P.set && P.set.srDiff === "hard") ? 1 : 0;
+    renderDiffSelect();
+    setText("sr-callout", "选择难度 · 护盾耗尽航程会失败");
+    startFrame();
+  }
+  function confirmDifficulty() {
+    var d = SR_DIFFS[R.diffSel];
+    R.difficulty = d.id; R.maxShield = d.shield; R.shield = d.shield; R.scoreMult = d.mult;
+    try { if (P && P.set) { P.set.srDiff = d.id; saveP(); } } catch (e) { }
     var level = currentLevel();
     R.phase = "countdown"; R.simTime = 0; R.phaseUntil = reducedMotion() ? 0.35 : 3; R.countdownLast = -1;
     setCountdownCopy("第 1 关 · " + level.name, reducedMotion() ? "GO" : "3", level.detail + " · 左右选道,上键或 OK 跳跃");
     setText("sr-callout", "六关连续航程 · 左右选道 · 上键或 OK 跃过障碍");
-    startFrame();
+    updateHud();
   }
 
   function resetRun(prepared) {
@@ -884,6 +928,7 @@
     R.lane = 1; R.speed = 15; R.questionToken = 0; R.answerCommitted = false; R.committedTokens = Object.create(null); R.sessionCommitted = false;
     R.options = []; R.answerLane = -1; R.obstacleCommitted = false; R.pickupCommitted = false; R.jumpY = 0; R.jumpV = 0; R.pendingFinish = false; R.mappingUntil = 0; R.failed = R.contextLost;
     R.inputSignals = { LEFT: 0, DOWN: 0, RIGHT: 0, UP: 0, OK: 0 };
+    R.pendingFail = false; R.diffSel = 0; R.difficulty = "easy"; R.scoreMult = 1;
     cancelFrame(); clearResultClasses();
     var root = byId("skytrail");
     if (root) {
@@ -899,7 +944,7 @@
 
   function open() {
     var prepared = prepareRun();
-    if (!prepared) { try { toast("当前启用词书至少需要 12 个有效词，才能开启词境疾驰"); } catch (e) { } return false; }
+    if (!prepared) { try { toast("训练词源「" + (typeof gameSrcName === "function" ? gameSrcName() : "") + "」词量不足 10 个,可到设置调整"); } catch (e) { } return false; }
     R.returnScreen = typeof SCREEN === "string" ? SCREEN : "world";
     resetRun(prepared);
     var runId = R.runId;
@@ -950,6 +995,12 @@
     var signal = nowMs(), guarded = k === "LEFT" || k === "DOWN" || k === "RIGHT" || k === "UP" || k === "OK";
     var previous = guarded ? (R.inputSignals[k] || 0) : 0;
     if (guarded) R.inputSignals[k] = signal;
+    if (R.phase === "difficulty") {
+      if (k === "LEFT" || k === "RIGHT") { R.diffSel = 1 - R.diffSel; renderDiffSelect(); try { if (window.SFX) SFX.nav(); } catch (e) { } }
+      else if (k === "OK") { confirmDifficulty(); try { if (window.SFX) SFX.ok(); } catch (e) { } }
+      else if (k === "BACK") abortToReturn("", k);
+      return;
+    }
     if (R.phase === "finish") {
       if (k === "BACK" && signal >= R.inputGateUntil) abortToReturn("", k);
       else if (k === "OK" && signal >= R.inputGateUntil && (!previous || signal - previous >= 380)) abortToReturn("", k);

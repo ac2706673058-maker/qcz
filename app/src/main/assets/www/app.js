@@ -25,7 +25,7 @@ window.onTtsReady = ok => { ttsOK = !!ok; };
 let WORDS = {};
 let DECKS = [];
 let P = null;
-const DEFAULTS = { xp: 0, streak: 0, lastDay: "", dayLog: {}, dayNew: {}, words: {}, decksOff: {}, tr: {}, drill: {}, game: {}, set: { newPerDay: 20, tts: 1, auto: 1, eye: 0, rate: 0.9 } };
+const DEFAULTS = { xp: 0, streak: 0, lastDay: "", dayLog: {}, dayNew: {}, words: {}, decksOff: {}, tr: {}, drill: {}, game: {}, set: { newPerDay: 20, tts: 1, auto: 1, eye: 0, rate: 0.9, gameSrc: "today" } };
 
 /* ================= 家庭空间 v2 =================
    “人物”与“学习模板”分离。爸爸/弟弟保留原 id 和原存储 key，升级绝不搬迁旧进度；
@@ -321,6 +321,29 @@ function dueWords() {
     .sort((a, b) => P.words[a.w].due - P.words[b.w].due);
 }
 function seenWords() { return activeWords().filter(e => { const r = P.words[e.w]; return r && r.st > 0; }); }
+
+/* ---------- 训练词源:训练馆游戏取词范围(按档案保存,默认今日学习) ---------- */
+const GAME_SRC = [
+  { id: "today", n: "今天学的" },
+  { id: "yesterday", n: "昨天学的" },
+  { id: "3d", n: "近 3 天" },
+  { id: "7d", n: "近 7 天" },
+  { id: "all", n: "全部已学" }
+];
+function gameSrcId() { return (P && P.set && P.set.gameSrc) || "today"; }
+function gameSrcName(id) { const f = GAME_SRC.find(o => o.id === (id || gameSrcId())); return f ? f.n : "今天学的"; }
+function inGameSrc(rec) {
+  if (!rec) return false;
+  const src = gameSrcId();
+  if (src === "all") return true;
+  const now = NOW();
+  if (src === "yesterday") { const y = todayStr(now - 86400000); return rec.fd === y || todayStr(rec.last || 0) === y; }
+  const days = src === "3d" ? 3 : (src === "7d" ? 7 : 1);
+  for (let i = 0; i < days; i++) { const d = todayStr(now - i * 86400000); if (rec.fd === d || todayStr(rec.last || 0) === d) return true; }
+  return false;
+}
+window.gameWords = function () { return seenWords().filter(e => inGameSrc(P.words[e.w])); };
+const SRC_HINT = ";词量不够可到设置调整「训练词源」";
 function weakScore(e) {
   const r = P.words[e.w] || {};
   const d = (P.drill && P.drill[e.w]) || {};
@@ -618,6 +641,9 @@ function show(name) {
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
   $(name).classList.add("active");
   SCREEN = name;
+  // 进屏动画(v5-screen-in .15s)期间测量的焦点框位置会随内容整体偏下,
+  // 动画结束后再校准一次,消除"刚进菜单选择框向下歪"的错位。
+  setTimeout(() => { try { requestFocusSync(); } catch (e) { } }, 210);
   try { if (handlers[name] && handlers[name].enter) handlers[name].enter(); }
   catch (e) { toast("界面错误:" + (e && e.message)); }
   requestAnimationFrame(() => placeFocusHalo(focusRect(navFocused())));
@@ -867,7 +893,7 @@ handlers.arcade = {
     $("arc-mark").textContent = items.length;
     const reco = arcadeRecommended(items);
     $("arc-rec-name").textContent = reco.it.t;
-    $("arc-rec-desc").textContent = reco.why;
+    $("arc-rec-desc").textContent = reco.why + " · 词源:" + gameSrcName();
     const grid = $("arc-grid"); grid.innerHTML = "";
     grid.style.gridTemplateColumns = "repeat(" + arcadeCols() + ",1fr)";
     items.forEach((it, i) => {
@@ -992,9 +1018,9 @@ const QUIZ_N = 15, QUIZ_MS = 9000;
 function startQuiz(mode) {
   QZ.run++;
   if (mode === "listen" && !P.set.tts) { toast("请先在设置中开启发音"); return; }
-  let pool = mode === "weak" ? weakWords() : seenWords();
+  let pool = mode === "weak" ? weakWords() : gameWords();
   if (mode === "cloze") pool = pool.filter(e => e.x && e.x.length > 8);
-  if (pool.length < 8) { toast("先学至少 8 个新词再来挑战"); return; }
+  if (pool.length < 8) { toast("「" + gameSrcName() + "」词量不足 8 个" + SRC_HINT); return; }
   QZ.list = mode === "weak" ? pool.slice(0, QUIZ_N) : shuffle(pool.slice()).slice(0, QUIZ_N);
   QZ.i = 0; QZ.mode = mode; QZ.score = 0; QZ.combo = 0; QZ.best = 0; QZ.right = 0;
   show("quiz"); renderQuiz();
@@ -1264,7 +1290,7 @@ function schedHit(w, ok) {
 const MT = { cells: [], idx: 0, sel: -1, round: 0, rounds: 5, score: 0, combo: 0, best: 0, right: 0, wrong: 0, pool: [], lock: false, err: null, run: 0 };
 function startMatch() {
   MT.run++;
-  const pool = seenWords();
+  const pool = gameWords();
   if (pool.length < 12) { toast("先学至少 12 个新词再来配对"); return; }
   MT.pool = shuffle(pool.slice()); MT.round = 0; MT.rounds = Math.min(5, Math.floor(MT.pool.length / 4));
   MT.score = 0; MT.combo = 0; MT.best = 0; MT.right = 0; MT.wrong = 0; MT.err = null;
@@ -1360,7 +1386,7 @@ const TF = { list: [], i: 0, truth: true, score: 0, combo: 0, best: 0, right: 0,
 const TF_N = 20, TF_MS = 4000;
 function startTF(vs) {
   TF.run++;
-  const pool = seenWords();
+  const pool = gameWords();
   if (pool.length < 10) { toast("先学至少 10 个新词再来挑战"); return; }
   TF.list = shuffle(pool.slice()).slice(0, TF_N);
   TF.i = 0; TF.score = 0; TF.combo = 0; TF.best = 0; TF.right = 0;
@@ -1983,13 +2009,14 @@ const SETTINGS = [
   { id: "newPerDay", name: "每日新词量", desc: "每天最多学多少个新词", opts: [5, 10, 15, 20, 30, 50], fmt: v => v + " 词" },
   { id: "tts", name: "发音", desc: "在线真人发音,需电视联网;离线时自动尝试系统TTS", opts: [1, 0], fmt: v => v ? "开启" : "关闭" },
   { id: "auto", name: "自动朗读", desc: "出示卡片时自动读单词", opts: [1, 0], fmt: v => v ? "开启" : "关闭" },
+  { id: "gameSrc", name: "训练词源", desc: "训练馆游戏使用哪些单词(默认今天学的)", opts: ["today", "yesterday", "3d", "7d", "all"], fmt: v => gameSrcName(v || "today") },
   { id: "eye", name: "护眼模式", desc: "暖灰低蓝光配色,降低大屏亮度刺激", opts: [1, 0], fmt: v => v ? "开启" : "关闭" },
   { id: "rate", name: "语速", desc: "朗读速度", opts: [0.7, 0.9, 1.0, 1.2], fmt: v => v + "×" },
   { id: "update", name: "检查更新", desc: "在线检查新版本并一键下载安装,进度保留", opts: null, fmt: () => "OK 检查" },
   { id: "reset", name: "重置全部进度", desc: "清空学习记录,不可恢复", opts: null, fmt: () => "OK 按两次" }
 ];
 let resetArm = false;
-const SET_ICON = { newPerDay: "🎯", tts: "🔊", auto: "▶️", eye: "◐", rate: "⏩", update: "🔄", reset: "🗑️" };
+const SET_ICON = { newPerDay: "🎯", tts: "🔊", auto: "▶️", gameSrc: "🗂", eye: "◐", rate: "⏩", update: "🔄", reset: "🗑️" };
 handlers.settings = {
   enter() {
     const box = $("set-list"); box.innerHTML = "";
@@ -2335,7 +2362,7 @@ const SPL = { list: [], i: 0, ans: "", input: [], ki: 0, score: 0, xpEarned: 0, 
 const SPL_KEYS = "abcdefghijklmnopqrstuvwxyz".split("").concat(["DEL", "HINT"]);
 function startSpell() {
   SPL.run++;
-  const pool = seenWords().filter(e => /^[a-zA-Z]{3,12}$/.test(e.w));
+  const pool = gameWords().filter(e => /^[a-zA-Z]{3,12}$/.test(e.w));
   if (pool.length < 8) { toast("先学至少 8 个可拼写的单词(纯字母)再来挑战"); return; }
   SPL.list = shuffle(pool.slice()).slice(0, 10);
   SPL.i = 0; SPL.score = 0; SPL.xpEarned = 0; SPL.combo = 0; SPL.best = 0; SPL.right = 0;
@@ -2504,9 +2531,9 @@ function startChunks() { startPuzzle("chunks"); }
 function startSentence() { startPuzzle("sentence"); }
 function startPuzzle(mode) {
   let pool;
-  if (mode === "chunks") pool = seenWords().filter(e => /^[a-zA-Z]{5,15}$/.test(e.w));
+  if (mode === "chunks") pool = gameWords().filter(e => /^[a-zA-Z]{5,15}$/.test(e.w));
   else {
-    const eligible = seenWords().filter(e => e.x && sentenceTokens(e.x).length >= 4 && sentenceTokens(e.x).length <= 10);
+    const eligible = gameWords().filter(e => e.x && sentenceTokens(e.x).length >= 4 && sentenceTokens(e.x).length <= 10);
     const translated = shuffle(eligible.filter(e => e.tr || (P.tr && P.tr[e.w])));
     // 优先使用自带/已缓存整句中文的题；数量不足时才让 AI 在解题期间补译。
     pool = translated.length >= 6 ? translated : translated.concat(shuffle(eligible.filter(e => !e.tr && !(P.tr && P.tr[e.w]))));
@@ -2680,7 +2707,7 @@ function roundList(pool, n) {
 }
 function startStarship() {
   SS.run++;
-  const pool = seenWords().filter(e => e.m);
+  const pool = gameWords().filter(e => e.m);
   if (pool.length < 8) { toast("先学至少 8 个单词再驾驶词汇星舰"); return; }
   SS.list = roundList(pool, SS_N); SS.i = 0; SS.hull = 3; SS.score = 0; SS.combo = 0; SS.best = 0; SS.right = 0; SS.wrong = 0;
   show("starship");
@@ -2820,7 +2847,7 @@ function resetChaseVisuals() {
 }
 function makeChaseBank() {
   const out = [], words = Object.create(null);
-  activeWords().forEach(e => {
+  (window.gameWords ? gameWords() : activeWords()).forEach(e => {
     const wk = e && chaseWordKey(e.w), mk = e && chaseMeaningKey(e.m);
     if (!wk || !mk || words[wk]) return;
     words[wk] = true; out.push(e);
@@ -2830,7 +2857,7 @@ function makeChaseBank() {
 function startChase() {
   CH.run++;
   const pool = makeChaseBank(), meanings = new Set(pool.map(e => chaseMeaningKey(e.m)));
-  if (pool.length < 8 || meanings.size < 4) { toast("当前启用词书至少需要 8 个词和 4 种不同释义"); return; }
+  if (pool.length < 8 || meanings.size < 4) { toast("「" + gameSrcName() + "」需要至少 8 个词和 4 种释义" + SRC_HINT); return; }
   CH.bank = pool.slice(); CH.list = shuffle(pool.slice());
   CH.i = 0; CH.gap = 62; CH.pos = 0; CH.goal = 15; CH.score = 0; CH.combo = 0; CH.best = 0; CH.right = 0; CH.wrong = 0;
   CH.over = false; CH.paused = false; CH.lastOkAt = 0; CH.questionId = 0; CH.phase = "starting"; CH.pendingWin = null; CH.resultCommitted = false; CH.ownerP = P; CH.ownerCur = CUR;
