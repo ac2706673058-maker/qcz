@@ -33,6 +33,7 @@
     raf: 0, lastFrame: 0, accumulator: 0, simTime: 0,
     introTimer: 0, resumeTimer: 0, inputAt: Object.create(null),
     scanUntil: 0, scanVisible: false,
+    freeze: null, frozenUntil: 0, roomStart: 0, rageTier: 0, dangerAt: 0,
     acceptedAt: Object.create(null), measuredFps: 30, sampleTime: 0, sampleFrames: 0,
     lastOutcome: "", sessionCommitted: false, pausedByBlur: false
   };
@@ -101,6 +102,8 @@
     style.textContent = [
       "#echo-heist{display:none;padding:0;overflow:hidden;isolation:isolate;background:#090d1b;color:#f5f6ff}",
       "#echo-heist.active{display:flex;animation:eh-in .32s cubic-bezier(.18,.78,.2,1)}",
+      "#echo-heist.eh-danger .eh-vignette{background:linear-gradient(180deg,rgba(60,8,20,.55),transparent 24%,transparent 70%,rgba(60,8,18,.8)),radial-gradient(ellipse at 45% 48%,transparent 30%,rgba(140,20,32,.42) 100%);animation:eh-heart .9s ease-in-out infinite}",
+      "@keyframes eh-heart{0%,100%{opacity:.75}45%{opacity:1}}",
       "@keyframes eh-in{from{opacity:0;transform:scale(1.012)}to{opacity:1;transform:none}}",
       "#eh-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;outline:0}",
       ".eh-vignette{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(180deg,rgba(4,7,20,.5),transparent 22%,transparent 72%,rgba(4,7,18,.8)),radial-gradient(ellipse at 45% 48%,transparent 38%,rgba(4,7,19,.5) 100%)}",
@@ -285,6 +288,14 @@
     E.enemy = { x: enemy.x, y: enemy.y, homeX: enemy.x, homeY: enemy.y, drawX: enemy.x, drawY: enemy.y, nextAt: E.simTime + 1.4, speed: E.routeMode === 1 ? .52 : .66 };
     E.hunter = (E.boss || E.routeMode === 1) ? { x: hunterHome.x, y: hunterHome.y, homeX: hunterHome.x, homeY: hunterHome.y, drawX: hunterHome.x, drawY: hunterHome.y, nextAt: E.simTime + 2, speed: E.boss ? .75 : .88 } : null;
     E.trail = []; E.roundMistake = false; E.resolvedRound = false;
+    // v7.2 好玩包:每房一枚冻结水晶 —— 踩到冻结词灵 3 秒,是逃生的关键道具
+    E.freeze = null; E.frozenUntil = 0; E.roomStart = E.simTime; E.rageTier = 0;
+    var fc = shuffle(cells, random).filter(function (p2) {
+      if (used[cellKey(p2.x, p2.y)] || distance(p2, { x: 1, y: 1 }) < 4) return false;
+      for (var fg = 0; fg < gates.length; fg++) if (distance(gates[fg], p2) <= 2) return false;
+      return true;
+    });
+    if (fc.length) { E.freeze = { x: fc[0].x, y: fc[0].y, taken: false }; used[cellKey(fc[0].x, fc[0].y)] = true; }
   }
 
   function layout() {
@@ -466,12 +477,26 @@
     if (E.enemy) {
       E.enemy.drawX += (E.enemy.x - E.enemy.drawX) * ease;
       E.enemy.drawY += (E.enemy.y - E.enemy.drawY) * ease;
-      if (E.simTime >= E.enemy.nextAt) { E.enemy.nextAt = E.simTime + E.enemy.speed; moveHunter(E.enemy); }
+      var rage = E.simTime - E.roomStart > 40 ? 0.72 : (E.simTime - E.roomStart > 22 ? 0.85 : 1);
+      if (rage < 1 && E.rageTier < (rage < 0.8 ? 2 : 1)) {
+        E.rageTier = rage < 0.8 ? 2 : 1;
+        status(E.rageTier === 2 ? "词灵彻底暴走了!!" : "词灵开始暴走 · 移速提升", "bad");
+        try { if (window.SFX && SFX.danger) SFX.danger(); } catch (er) { }
+      }
+      if (E.simTime < E.frozenUntil) { E.enemy.nextAt = E.simTime + 0.2; }
+      else if (E.simTime >= E.enemy.nextAt) { E.enemy.nextAt = E.simTime + E.enemy.speed * rage; moveHunter(E.enemy); }
+      var pd = distance(E.enemy, E.player);
+      var root = byId("echo-heist");
+      if (root) root.classList.toggle("eh-danger", E.phase === "play" && pd <= 3 && E.simTime >= E.frozenUntil);
+      if (E.phase === "play" && pd <= 3 && E.simTime >= E.frozenUntil && E.simTime - E.dangerAt > 1.25) {
+        E.dangerAt = E.simTime; try { if (window.SFX && SFX.danger) SFX.danger(); } catch (ed) { }
+      }
     }
     if (E.hunter) {
       E.hunter.drawX += (E.hunter.x - E.hunter.drawX) * ease;
       E.hunter.drawY += (E.hunter.y - E.hunter.drawY) * ease;
-      if (E.simTime >= E.hunter.nextAt) { E.hunter.nextAt = E.simTime + E.hunter.speed; moveHunter(E.hunter); }
+      if (E.simTime < E.frozenUntil) { E.hunter.nextAt = E.simTime + 0.2; }
+      else if (E.simTime >= E.hunter.nextAt) { E.hunter.nextAt = E.simTime + E.hunter.speed; moveHunter(E.hunter); }
     }
     for (var i = E.particles.length - 1; i >= 0; i--) {
       var q = E.particles[i]; q.life -= dt; q.x += q.vx * dt * 26; q.y += q.vy * dt * 26; q.vx *= .97; q.vy *= .97;
@@ -485,6 +510,11 @@
     E.player.x = nx; E.player.y = ny; E.trail.push({ x: nx, y: ny, life: 1 });
     if (E.trail.length > 24) E.trail.shift();
     collectShard();
+    if (E.freeze && !E.freeze.taken && E.freeze.x === nx && E.freeze.y === ny) {
+      E.freeze.taken = true; E.frozenUntil = E.simTime + 3;
+      addBurstAt(E.freeze, "#9fd8ff", 18, E.map.cell * .028); playSfx("good");
+      status("❄ 词灵被冻结 3 秒 · 快跑!", "good");
+    }
     var gate = gateAt(nx, ny);
     if (gate >= 0) {
       if (E.sealed[gate]) status("这道门已经排除 · 去另一道门", "bad");
@@ -613,6 +643,7 @@
     // Echo shards.
     for (var i = 0; i < E.shards.length; i++) {
       var sh = E.shards[i]; if (sh.got) continue; var sc = cellCenter(sh), pulse = 1 + Math.sin(t * .004 + sh.phase) * .16;
+      void 0;
       ctx.save(); ctx.translate(sc.x, sc.y); ctx.rotate(Math.PI / 4); ctx.fillStyle = "#8ee2d0"; ctx.globalAlpha = .94; ctx.shadowColor = "#8ee2d0"; ctx.shadowBlur = Math.min(16, m.cell * .28); ctx.fillRect(-m.cell * .105 * pulse, -m.cell * .105 * pulse, m.cell * .21 * pulse, m.cell * .21 * pulse); ctx.restore(); ctx.globalAlpha = 1; ctx.shadowBlur = 0;
     }
     // The mapping is shown briefly before play; the maze itself keeps only glyphs.
@@ -623,7 +654,15 @@
       ctx.beginPath(); ctx.arc(0, 0, m.cell * (.3 + Math.sin(t * .003 + gi) * .025), 0, Math.PI * 2); ctx.stroke(); ctx.beginPath(); ctx.arc(0, 0, m.cell * .43, t * .0008 + gi, t * .0008 + gi + Math.PI * 1.35); ctx.stroke();
       ctx.shadowBlur = 0; ctx.fillStyle = sealed ? "#73809f" : color; ctx.font = "800 " + Math.max(14, m.cell * .35) + "px Inter, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(sealed ? "×" : GATE_GLYPHS[gi], 0, 0); ctx.restore();
     }
+    if (E.freeze && !E.freeze.taken) {
+      var fcen = cellCenter(E.freeze), fp = 1 + Math.sin(t * .005) * .18;
+      ctx.save(); ctx.translate(fcen.x, fcen.y); ctx.rotate(Math.PI / 4);
+      ctx.fillStyle = "#9fd8ff"; ctx.shadowColor = "#9fd8ff"; ctx.shadowBlur = Math.min(16, E.map.cell * .3);
+      var fs = E.map.cell * .18 * fp; ctx.fillRect(-fs, -fs, fs * 2, fs * 2); ctx.restore();
+    }
+    ctx.save(); if (E.simTime < E.frozenUntil) { ctx.globalAlpha = .55; ctx.filter = "hue-rotate(160deg)"; }
     drawHunter(ctx, E.enemy, t, false); if (E.hunter) drawHunter(ctx, E.hunter, t, true);
+    ctx.restore();
     drawPlayer(ctx, t);
     for (var p = E.particles.length - 1; p >= 0; p--) { var part = E.particles[p], pc = part; ctx.globalAlpha = clamp(part.life / part.max, 0, 1); ctx.fillStyle = part.color; ctx.beginPath(); ctx.arc(pc.x, pc.y, part.size, 0, Math.PI * 2); ctx.fill(); }
     ctx.globalAlpha = 1;

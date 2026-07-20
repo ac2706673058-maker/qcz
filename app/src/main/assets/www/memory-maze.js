@@ -28,6 +28,7 @@
     grid: [], distances: [], start: { x: 1, y: 1 },
     player: { x: 1, y: 1, px: 1, py: 1 },
     monster: { x: 13, y: 7, px: 13, py: 7, nextAt: 0 },
+    freeze: null, frozenUntil: 0, roomStart: 0, rageTier: 0, dangerAt: 0,
     trail: [], visited: Object.create(null),
     simTime: 0, phaseUntil: 0, inputGateUntil: 0,
     signalAt: { LEFT: 0, RIGHT: 0, UP: 0, DOWN: 0, OK: 0 },
@@ -95,6 +96,8 @@
     style.textContent = [
       "#memory-maze{--mm-gold:#efd58a;--mm-mint:#8fd0bd;--mm-ink:#102f35;padding:0;display:none;overflow:hidden;isolation:isolate;color:#f8f8ed;background:linear-gradient(145deg,#102e35,#244c4c 55%,#203b3b)}",
       "#memory-maze.active{display:block;animation:mm-screen-in .34s cubic-bezier(.18,.78,.2,1)}",
+      "#memory-maze.mm-danger:after{content:'';position:absolute;inset:0;z-index:3;pointer-events:none;background:radial-gradient(ellipse at 50% 50%,transparent 34%,rgba(150,24,36,.4) 100%);animation:mm-heart .9s ease-in-out infinite}",
+      "@keyframes mm-heart{0%,100%{opacity:.7}45%{opacity:1}}",
       "@keyframes mm-screen-in{from{opacity:0;transform:scale(1.012)}to{opacity:1;transform:none}}",
       "#mm-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;background:#12343a;outline:0}",
       ".mm-scrim{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(5,24,29,.42),transparent 22%,transparent 67%,rgba(5,22,27,.72)),radial-gradient(ellipse at 50% 48%,transparent 45%,rgba(5,20,23,.38));z-index:2}",
@@ -306,6 +309,17 @@
     excluded[cellKey(M.start.x, M.start.y)] = true;
     M.shards = chooseShards(M.grid, M.start, excluded, rng); M.shardCount = 0;
     M.shards.forEach(function (s) { excluded[cellKey(s.x, s.y)] = true; });
+    // v7.2 好玩包:冻结水晶 + 房间计时(词灵拖久了会暴走)
+    M.freeze = null; M.frozenUntil = 0; M.roomStart = M.simTime; M.rageTier = 0;
+    (function () {
+      var cells = floorCells(M.grid).filter(function (c) {
+        if (excluded[cellKey(c.x, c.y)]) return false;
+        if (Math.abs(c.x - M.start.x) + Math.abs(c.y - M.start.y) < 4) return false;
+        for (var pi = 0; pi < M.portals.length; pi++) if (Math.abs(M.portals[pi].x - c.x) + Math.abs(M.portals[pi].y - c.y) <= 2) return false;
+        return true;
+      });
+      if (cells.length) { var fcell = cells[Math.floor(Math.random() * cells.length)]; M.freeze = { x: fcell.x, y: fcell.y, taken: false }; excluded[cellKey(fcell.x, fcell.y)] = true; }
+    })();
     var monsterStart = farthestFree(M.grid, M.start, excluded);
     M.player.x = M.player.px = M.start.x; M.player.y = M.player.py = M.start.y;
     M.monster.x = M.monster.px = monsterStart.x; M.monster.y = M.monster.py = monsterStart.y;
@@ -403,6 +417,12 @@
       ctx.fillStyle = "rgba(143,190,168,.16)"; ctx.fillRect(bx + c * 0.09, by + c * 0.07, c * 0.78, c * 0.075);
     }
 
+    if (M.freeze && !M.freeze.taken) {
+      var fp2 = mapCenter(M.freeze.x, M.freeze.y), fpul = 1 + Math.sin(time * 0.005) * 0.18;
+      ctx.save(); ctx.translate(fp2.x, fp2.y); ctx.rotate(Math.PI / 4);
+      ctx.fillStyle = "#9fd8ff"; ctx.shadowColor = "#9fd8ff"; ctx.shadowBlur = Math.min(16, c * 0.3);
+      var fsz = c * 0.16 * fpul; ctx.fillRect(-fsz, -fsz, fsz * 2, fsz * 2); ctx.restore();
+    }
     for (var s = 0; s < M.shards.length; s++) if (!M.shards[s].taken) {
       var shard = M.shards[s], sp = mapCenter(shard.x, shard.y), size = c * (0.13 + Math.sin(time * 0.004 + s) * 0.018);
       ctx.save(); ctx.translate(sp.x, sp.y); ctx.rotate(time * 0.0018 + s); ctx.shadowColor = "#efd58a"; ctx.shadowBlur = c * 0.24; ctx.fillStyle = "#f5dfa0";
@@ -418,9 +438,11 @@
     }
 
     var mp = mapCenter(M.monster.px, M.monster.py), monsterPulse = 1 + Math.sin(time * 0.006) * 0.08;
+    if (M.simTime < M.frozenUntil) { ctx.save(); ctx.globalAlpha = 0.55; ctx.filter = "hue-rotate(160deg)"; }
     ctx.save(); ctx.translate(mp.x, mp.y); ctx.shadowColor = "#df6f68"; ctx.shadowBlur = c * 0.33; ctx.fillStyle = "rgba(124,54,54,.94)";
     ctx.beginPath(); ctx.arc(0, 0, c * 0.22 * monsterPulse, 0, Math.PI * 2); ctx.fill();
     ctx.shadowBlur = 0; ctx.fillStyle = "#f5d8c9"; ctx.beginPath(); ctx.arc(-c * 0.07, -c * 0.035, c * 0.035, 0, Math.PI * 2); ctx.arc(c * 0.07, -c * 0.035, c * 0.035, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    if (M.simTime < M.frozenUntil) ctx.restore();
 
     var player = mapCenter(M.player.px, M.player.py), glow = 1 + Math.sin(time * 0.005) * 0.08;
     ctx.save(); ctx.translate(player.x, player.y); ctx.shadowColor = "#f4e4a6"; ctx.shadowBlur = c * 0.44; ctx.fillStyle = "#f7e9ad";
@@ -466,6 +488,11 @@
   }
   function enterPortal(portal, previous) {
     if (!portal || portal.sealed || M.phase !== "run") return;
+    if (M.freeze && !M.freeze.taken && M.freeze.x === M.player.x && M.freeze.y === M.player.y) {
+      M.freeze.taken = true; M.frozenUntil = M.simTime + 3;
+      setCallout("❄ 词怪被冻结 3 秒 · 快走!", "good");
+      try { if (window.SFX && SFX.good) SFX.good(); } catch (ef) { }
+    }
     if (M.shardCount < M.shards.length) {
       M.player.x = previous.x; M.player.y = previous.y;
       setCallout("传送门仍在沉睡 · 先收齐三枚回声", "bad");
@@ -516,14 +543,28 @@
     if (M.phase === "run") resetMonsterFar();
   }
   function updateMonster() {
-    if (M.phase !== "run" || M.simTime < M.monster.nextAt) return;
+    if (M.phase !== "run") return;
+    var rootEl = byId("memory-maze");
+    var pdist = Math.abs(M.monster.x - M.player.x) + Math.abs(M.monster.y - M.player.y);
+    if (rootEl) rootEl.classList.toggle("mm-danger", pdist <= 3 && M.simTime >= M.frozenUntil);
+    if (pdist <= 3 && M.simTime >= M.frozenUntil && M.simTime - M.dangerAt > 1.25) {
+      M.dangerAt = M.simTime; try { if (window.SFX && SFX.danger) SFX.danger(); } catch (ed) { }
+    }
+    if (M.simTime < M.frozenUntil) { M.monster.nextAt = M.simTime + 0.2; return; }
+    if (M.simTime < M.monster.nextAt) return;
     var dist = Math.abs(M.monster.x - M.player.x) + Math.abs(M.monster.y - M.player.y);
     var chase = dist <= 4 ? 0.95 : 0.75;
     var step;
     if (Math.random() < chase) step = nextMonsterStep();
     else { var ns = neighbors(M.grid, M.monster); step = ns.length ? ns[Math.floor(Math.random() * ns.length)] : null; }
     if (step) { M.monster.x = step.x; M.monster.y = step.y; }
-    var pace = Math.max(0.62, 1.05 - M.round * 0.035 - M.shardCount * 0.06); M.monster.nextAt = M.simTime + pace;
+    var rage = M.simTime - M.roomStart > 40 ? 0.72 : (M.simTime - M.roomStart > 22 ? 0.85 : 1);
+    if (rage < 1 && M.rageTier < (rage < 0.8 ? 2 : 1)) {
+      M.rageTier = rage < 0.8 ? 2 : 1;
+      setCallout(M.rageTier === 2 ? "词怪彻底暴走了!!" : "词怪开始暴走 · 移速提升", "bad");
+      try { if (window.SFX && SFX.danger) SFX.danger(); } catch (er) { }
+    }
+    var pace = Math.max(0.62, 1.05 - M.round * 0.035 - M.shardCount * 0.06) * rage; M.monster.nextAt = M.simTime + pace;
     if (M.monster.x === M.player.x && M.monster.y === M.player.y) monsterHit();
   }
 
