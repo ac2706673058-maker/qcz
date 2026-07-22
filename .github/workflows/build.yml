@@ -40,15 +40,13 @@ jobs:
           tag_name: v${{ steps.ver.outputs.vn }}-${{ steps.ver.outputs.vc }}
           name: LexTV ${{ steps.ver.outputs.vn }}
           body: |
-            LexTV 7.2 迷宫双游"好玩包":冻结水晶 · 逼近警报 · 词灵暴走
+            LexTV 7.3 设置新增「软件商城」
 
-            - 记忆裂隙与星火遗迹各新增「冻结水晶」:每房一枚,踩到冻结
-              词灵/词怪 3 秒(冻结时变成冰蓝色),是反杀逃生的关键道具
-            - 逼近警报:词灵靠近 3 格内,全屏泛起红色脉动 + 低频心跳音,
-              紧张感拉满
-            - 暴走机制:同一房间拖过 22 秒词灵提速,40 秒彻底暴走 ——
-              逼你果断行动,不能磨蹭
-            - 训练词源/难度选择等 7.1 功能不变
+            - 设置里新增「软件商城」入口:为电视一键下载安装实用第三方 App
+            - 首发内置 Clash Meta for Android(Mihomo 内核代理工具)通用版,
+              下载地址指向 MetaCubeX 官方 GitHub 发布,与本软件自更新同一套
+              下载安装通道;首次安装电视会要求允许「未知来源」,点允许即可
+            - 商城为可扩展列表,后续可继续加入其它开源 App
           files: LexTV.apk
           make_latest: true
         env:

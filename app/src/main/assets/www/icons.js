@@ -40,6 +40,7 @@
     auto: '<path d="M7 4.5 19 12 7 19.5V4.5z"/>',
     eye: '<path d="M2.5 12s3.5-5.5 9.5-5.5 9.5 5.5 9.5 5.5-3.5 5.5-9.5 5.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>',
     gameSrc: '<rect x="4" y="5" width="16" height="16" rx="2.4"/><path d="M4 9.5h16M8.5 3v4M15.5 3v4M8.5 13.5h3M8.5 17h5"/>',
+    store: '<path d="M4.5 8.5h15l-1 11a1.2 1.2 0 0 1-1.2 1.1H6.7a1.2 1.2 0 0 1-1.2-1.1l-1-11z"/><path d="M8.5 8.5V6.2a3.5 3.5 0 0 1 7 0v2.3"/>',
     rate: '<path d="M4 17a9 9 0 1 1 16 0"/><path d="M12 13.5a1.6 1.6 0 1 0 0-3.2"/><path d="M13.4 10.4 17.5 7"/>',
     update: '<path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v4h-4"/>',
     reset: '<path d="M4 7h16M9.5 7V4h5v3M6.5 7l1 13h9l1-13"/>',
@@ -56,7 +57,7 @@
     decks: ['#4A91DE', '#286CB6'], cloud: ['#58A9D8', '#336DB7'], restore: ['#55A66F', '#347C4F'], stats: ['#51A66C', '#327C4C'], who: ['#50AEC2', '#2E7E9F'],
     settings: ['#76767E', '#4A4A50'],
     newPerDay: ['#4A91DE', '#286CB6'], tts: ['#D78634', '#AF5C24'], auto: ['#4DA16B', '#307A4E'],
-    eye: ['#A58A58', '#71603F'], gameSrc: ['#4AA39A', '#2E7771'], rate: ['#A969C4', '#754693'], update: ['#4A91DE', '#286CB6'], reset: ['#DF5A53', '#B83238'],
+    eye: ['#A58A58', '#71603F'], gameSrc: ['#4AA39A', '#2E7771'], store: ['#5AC8FA', '#287CB8'], rate: ['#A969C4', '#754693'], update: ['#4A91DE', '#286CB6'], reset: ['#DF5A53', '#B83238'],
     _default: ['#8E8E93', '#5B5B60']
   };
   window.iconSvg = function (id) {

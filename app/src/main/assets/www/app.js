@@ -2012,11 +2012,12 @@ const SETTINGS = [
   { id: "gameSrc", name: "训练词源", desc: "训练馆游戏使用哪些单词(默认今天学的)", opts: ["today", "yesterday", "3d", "7d", "all"], fmt: v => gameSrcName(v || "today") },
   { id: "eye", name: "护眼模式", desc: "暖灰低蓝光配色,降低大屏亮度刺激", opts: [1, 0], fmt: v => v ? "开启" : "关闭" },
   { id: "rate", name: "语速", desc: "朗读速度", opts: [0.7, 0.9, 1.0, 1.2], fmt: v => v + "×" },
+  { id: "store", name: "软件商城", desc: "为电视一键下载安装实用第三方 App", opts: null, fmt: () => "OK 打开" },
   { id: "update", name: "检查更新", desc: "在线检查新版本并一键下载安装,进度保留", opts: null, fmt: () => "OK 检查" },
   { id: "reset", name: "重置全部进度", desc: "清空学习记录,不可恢复", opts: null, fmt: () => "OK 按两次" }
 ];
 let resetArm = false;
-const SET_ICON = { newPerDay: "🎯", tts: "🔊", auto: "▶️", gameSrc: "🗂", eye: "◐", rate: "⏩", update: "🔄", reset: "🗑️" };
+const SET_ICON = { newPerDay: "🎯", tts: "🔊", auto: "▶️", gameSrc: "🗂", eye: "◐", store: "📦", rate: "⏩", update: "🔄", reset: "🗑️" };
 handlers.settings = {
   enter() {
     const box = $("set-list"); box.innerHTML = "";
@@ -2052,7 +2053,8 @@ handlers.settings = {
       const nx = (cur + (k === "RIGHT" ? 1 : s.opts.length - 1)) % s.opts.length;
       P.set[s.id] = s.opts[nx]; if (s.id === "eye") applyVisualPrefs(); saveP();
     } else if (k === "OK") {
-      if (s.id === "update") { checkUpdate(); return; }
+      if (s.id === "store") { storeIdx = 0; show("store"); return; }
+      else if (s.id === "update") { checkUpdate(); return; }
       else if (s.id === "reset") {
         if (!resetArm) { resetArm = true; }
         else { P = JSON.parse(JSON.stringify(DEFAULTS)); applyVisualPrefs(); saveP(); resetArm = false; toast("已重置全部进度"); }
@@ -2207,6 +2209,59 @@ handlers.settings.key = function (k) {
     upClose(); return;
   }
   _setKeyOrig(k);
+};
+
+/* ================= 软件商城:一键为电视下载安装第三方 App =================
+   复用与"检查更新"完全相同的原生下载安装通道(downloadAndInstall + ai-pop 进度弹层)。
+   每个 App 的下载地址均指向其开源项目官方 GitHub 发布页,与本软件的自更新同源同信任级别。 */
+const STORE_APPS = [
+  {
+    id: "clashmeta",
+    name: "Clash Meta for Android",
+    ver: "v2.11.32",
+    size: "通用版 · 含全部芯片架构",
+    desc: "开源规则代理工具(Mihomo 内核)· MetaCubeX 官方 GitHub 发布",
+    url: "https://github.com/MetaCubeX/ClashMetaForAndroid/releases/download/v2.11.32/cmfa-2.11.32-meta-universal-release.apk"
+  }
+];
+let storeIdx = 0;
+function storeFocus() {
+  const rows = $("store-list").children;
+  for (let i = 0; i < rows.length; i++) rows[i].classList.toggle("focus", i === storeIdx);
+}
+handlers.store = {
+  enter() {
+    if (storeIdx >= STORE_APPS.length) storeIdx = 0;
+    const box = $("store-list"); box.innerHTML = "";
+    STORE_APPS.forEach((a, i) => {
+      const el = document.createElement("div");
+      el.className = "rowitem" + (i === storeIdx ? " focus" : "");
+      el.innerHTML = (window.iconTile ? iconTile("store") : '<div class="ic">📦</div>')
+        + '<div class="info"><div class="name">' + esc(a.name) + ' <span style="color:var(--dim);font-size:2vmin;font-weight:500">' + esc(a.ver) + '</span></div>'
+        + '<div class="desc">' + esc(a.desc) + ' · ' + esc(a.size) + '</div></div>'
+        + '<div class="val val-blue">OK 安装</div>';
+      box.appendChild(el);
+    });
+    storeFocus();
+  },
+  key(k) {
+    if (UP.active) {
+      if (UP.phase === "found") { if (k === "OK") { startUpdateDownload(); return; } if (k === "BACK") { upClose(); return; } return; }
+      if (UP.phase === "downloading") return;
+      upClose(); return;
+    }
+    if (k === "BACK") { show("settings"); return; }
+    if (k === "UP") { storeIdx = (storeIdx + STORE_APPS.length - 1) % STORE_APPS.length; storeFocus(); return; }
+    if (k === "DOWN") { storeIdx = (storeIdx + 1) % STORE_APPS.length; storeFocus(); return; }
+    if (k === "OK") {
+      const a = STORE_APPS[storeIdx]; if (!a) return;
+      UP.phase = "found"; UP.url = a.url;
+      upBox('<div style="font-size:2.7vmin;line-height:1.7">下载并安装 <b style="color:var(--gold)">' + esc(a.name) + '</b> ' + esc(a.ver) + '?'
+        + '<br><span style="color:var(--dim);font-size:2.3vmin">' + esc(a.size) + ' · 来自官方 GitHub 发布</span>'
+        + '<br><br><b style="color:var(--good)">按 OK 开始下载</b>　·　按返回取消'
+        + '<br><span style="color:var(--dim);font-size:2.15vmin">下载完成后电视会弹出安装界面;首次需在系统里允许本应用「安装未知应用」</span></div>');
+    }
+  }
 };
 
 /* ================= 家庭空间:新增 / 切换 / 安全归档 ================= */
