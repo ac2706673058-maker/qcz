@@ -40,13 +40,13 @@ jobs:
           tag_name: v${{ steps.ver.outputs.vn }}-${{ steps.ver.outputs.vc }}
           name: LexTV ${{ steps.ver.outputs.vn }}
           body: |
-            LexTV 7.3 设置新增「软件商城」
+            LexTV 7.4 新增独立「AI 助手」(grok)
 
-            - 设置里新增「软件商城」入口:为电视一键下载安装实用第三方 App
-            - 首发内置 Clash Meta for Android(Mihomo 内核代理工具)通用版,
-              下载地址指向 MetaCubeX 官方 GitHub 发布,与本软件自更新同一套
-              下载安装通道;首次安装电视会要求允许「未知来源」,点允许即可
-            - 商城为可扩展列表,后续可继续加入其它开源 App
+            - 首页新增「AI 助手」:接入独立的 grok-4.5 接口,与 AI 外教(GLM)
+              完全分开、互不影响
+            - 支持快捷提问(考今天学的单词/讲笑话/复习建议/编单词小故事/闲聊)
+              与语音提问;回复可一键朗读、可清空
+            - 原生新增独立 aiChatX 通道,接口地址/密钥集中在一处便于更换
           files: LexTV.apk
           make_latest: true
         env:

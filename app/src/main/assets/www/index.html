@@ -1277,6 +1277,20 @@ html.eye #skytrail{filter:saturate(.78) brightness(.98)}html.eye .sr-target,html
   .focus-beam,.focus-impact,.focus-spark{display:none!important}.focus-halo{box-shadow:0 0 0 .28vmin var(--focus)!important;background:transparent!important}
   .ww-cloud,.wc-orbit,#world.world-echo .we-question:after,.wr-orbit,.wr-comet,#we-rift:before,.wr-surge,.wr-node.miss{animation:none!important}#world.active{animation:none!important}.world-cinematic,.world-action,.world-panel,#world-progress,#we-options>*,#we-next,#we-return,.wr-node,#we-rift-progress,#we-rift-continue{transition-duration:.01ms!important}
 }
+/* ===== AI 助手(grok,独立于 AI 外教) ===== */
+#assistant{padding:3.2vmin 5vmin}
+.ax-reply-box{flex:1;min-height:0;overflow-y:auto;font-size:2.85vmin;line-height:1.62;color:var(--paper);
+  background:var(--panel);border-radius:2.2vmin;padding:2.6vmin 3.2vmin;white-space:pre-wrap;
+  box-shadow:0 .2vmin .6vmin rgba(0,0,0,.05),0 1.2vmin 2.8vmin rgba(0,0,0,.06)}
+.ax-user{font-size:2.3vmin;color:var(--dim);min-height:2.4vmin;margin-bottom:1vmin}
+.ax-user b{color:var(--gold)}
+.ax-acts{display:flex;flex-wrap:wrap;gap:1.2vmin;margin-top:1.6vmin;flex:0 0 auto}
+.ax-chip{padding:1.35vmin 2.4vmin;border-radius:1.4vmin;background:var(--panel);color:var(--paper);
+  font-size:2.15vmin;font-weight:600;border:.1vmin solid var(--hair);box-shadow:0 .6vmin 1.6vmin rgba(0,0,0,.06)}
+.ax-chip.voice{color:var(--gold)}
+.ax-chip.focus{background:var(--focus-surface);color:var(--paper);transform:translateY(-.3vmin) scale(1.02);
+  box-shadow:0 0 0 .28vmin var(--focus),0 1.2vmin 3vmin rgba(0,0,0,.12)}
+.ax-fb{min-height:2.6vmin;font-size:2vmin;color:var(--dim);text-align:center;margin-top:.7vmin}
 </style>
 </head>
 <body>
@@ -1420,7 +1434,7 @@ html.eye #skytrail{filter:saturate(.78) brightness(.98)}html.eye .sr-target,html
 
   <div class="screen" id="home">
     <div class="top">
-      <div class="brand serif">千词斩<small>QIANCIZHAN · v7.3</small></div>
+      <div class="brand serif">千词斩<small>QIANCIZHAN · v7.4</small></div>
       <div class="meta">
         <span class="chip chip-user pf-fin" id="h-user-chip"><b id="h-user">爸爸</b></span>
         <span class="chip"><i class="g g-flame" id="h-flame"></i><b id="h-streak">0</b><small>连续天</small></span>
@@ -1685,6 +1699,14 @@ html.eye #skytrail{filter:saturate(.78) brightness(.98)}html.eye .sr-target,html
       <div class="aiopts" id="ai-opts"></div>
       <div class="feedback" id="ai-fb"></div>
     </div>
+  </div>
+
+  <div class="screen" id="assistant">
+    <div class="top"><div class="brand serif">AI 助手</div><div class="meta"><span id="ax-status">grok · 快捷提问或语音</span></div></div>
+    <div class="ax-user" id="ax-user"></div>
+    <div class="ax-reply-box" id="ax-reply">你好!我是你的 AI 助手,可以陪你练英语、考今天学的单词、随便聊。选下面的快捷提问,或按「🎤 语音提问」直接说话。</div>
+    <div class="ax-acts" id="ax-acts"></div>
+    <div class="ax-fb" id="ax-fb"></div>
   </div>
 
   <div class="screen" id="store">

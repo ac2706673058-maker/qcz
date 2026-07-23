@@ -719,6 +719,7 @@ const MENU = [
   { id: "browse", ic: "📖", t: "单词本", d: "今日新学 · 全部已学" },
   { id: "custom", ic: "🗓️", t: "自选复习", d: "按日期挑单词随时复习" },
   { id: "ai", ic: "👨‍🏫", t: "AI 外教", d: "对话 · 跟读 · 情景课 · 教练" },
+  { id: "assistant", ic: "🤖", t: "AI 助手", d: "grok 智能问答 · 语音提问" },
   { id: "decks", ic: "📚", t: "词库", d: "开关词书 · 外部扩展" },
   { id: "cloud", ic: "☁️", t: "云端词书", d: "搜索 · 安装 · 离线使用" },
   { id: "stats", ic: "📊", t: "统计", d: "热力图 · 掌握度" },
@@ -870,6 +871,7 @@ function openMenu(id) {
   else if (id === "cloud") { CLOUD.phase = "list"; CLOUD.row = 0; show("cloud"); }
   else if (id === "screens") { SC.view = "list"; SC.gi = 0; show("screens"); }
   else if (id === "ai") show("ai");
+  else if (id === "assistant") { AX.i = 0; show("assistant"); }
   else show(id);
 }
 
@@ -1664,12 +1666,17 @@ function aiReplyFocus() {
 /* ---------- 语音输入(录音→GLM-ASR云端识别) ---------- */
 const VC = { on: false, rec: false };
 const hasVoice = (() => { try { return !!(window.Bridge && window.Bridge.hasVoice && NativeBridge.hasVoice()); } catch (e) { return false; } })();
-window.onVoiceReady = () => { const f = $("ai-fb"); f.style.color = "var(--gold)"; f.textContent = "🔴 录音中... 说完再按一次 OK 结束并识别 · 返回取消"; VC.rec = true; };
-window.onVoicePart = t => { const f = $("ai-fb"); f.style.color = "var(--paper)"; f.textContent = t; };
+function voiceFbId() { return SCREEN === "assistant" ? "ax-fb" : "ai-fb"; }
+window.onVoiceReady = () => { const f = $(voiceFbId()); f.style.color = "var(--gold)"; f.textContent = "🔴 录音中... 说完再按一次 OK 结束并识别 · 返回取消"; VC.rec = true; };
+window.onVoicePart = t => { const f = $(voiceFbId()); f.style.color = "var(--paper)"; f.textContent = t; };
 window.onVoice = t => {
   VC.on = false; VC.rec = false;
-  if (SCREEN !== "ai" || AIS.phase !== 1) return;
   t = (t || "").trim();
+  if (SCREEN === "assistant") {
+    if (!t) { $("ax-fb").textContent = "没听清,再试一次"; return; }
+    $("ax-fb").textContent = ""; axSend(t); return;
+  }
+  if (SCREEN !== "ai" || AIS.phase !== 1) return;
   if (!t) { $("ai-fb").textContent = "没听清,再试一次"; return; }
   $("ai-say").textContent = "🗣️ " + t;
   $("ai-cn").textContent = "";
@@ -1678,17 +1685,17 @@ window.onVoice = t => {
 };
 window.onVoiceErr = m => {
   VC.on = false; VC.rec = false;
-  const f = $("ai-fb"); f.style.color = "var(--bad)";
+  const f = $(voiceFbId()); f.style.color = "var(--bad)";
   f.textContent = "🎤 " + m;
   setTimeout(() => { try { f.style.color = ""; } catch (e) { } }, 3000);
 };
 function startVoice(lang) {
   if (!hasVoice) { toast("此版本不支持语音"); return; }
   VC.on = true; VC.rec = false; VC.lang = lang || "en";
-  const f = $("ai-fb"); f.style.color = "var(--gold)"; f.textContent = "🎤 正在开启麦克风...";
-  try { NativeBridge.startListen(VC.lang); } catch (e) { VC.on = false; $("ai-fb").textContent = "麦克风启动失败"; }
+  const f = $(voiceFbId()); f.style.color = "var(--gold)"; f.textContent = "🎤 正在开启麦克风...";
+  try { NativeBridge.startListen(VC.lang); } catch (e) { VC.on = false; $(voiceFbId()).textContent = "麦克风启动失败"; }
 }
-function stopVoice() { if (VC.rec) { $("ai-fb").textContent = "⏳ 正在识别..."; try { NativeBridge.stopListen(); } catch (e) { } } }
+function stopVoice() { if (VC.rec) { $(voiceFbId()).textContent = "⏳ 正在识别..."; try { NativeBridge.stopListen(); } catch (e) { } } }
 function cancelVoice() { VC.on = false; VC.rec = false; try { NativeBridge.stopListen(); } catch (e) { } }
 
 /* ---------- 单词本 AI 讲解 ---------- */
@@ -2229,6 +2236,82 @@ function storeFocus() {
   const rows = $("store-list").children;
   for (let i = 0; i < rows.length; i++) rows[i].classList.toggle("focus", i === storeIdx);
 }
+
+/* ================= AI 助手(grok · 独立通道,不影响 AI 外教) ================= */
+const AX_PROMPTS = [
+  "考我 5 个今天学的单词,给中英文",
+  "用最简单的英语讲个笑话,后面附中文",
+  "根据我的进度,今天该重点复习什么?",
+  "把我今天学的几个单词编成 3 句英文小故事,附中文翻译",
+  "陪我用简单英语聊两句,先问我一个问题"
+];
+const AX = { i: 0, msgs: [], busy: false, last: "" };
+let AXn = 0;
+function aiCallX(messages, cb) {
+  const id = "x" + (++AXn); AIcb[id] = cb;
+  const payload = JSON.stringify({ model: "grok-4.5", messages: messages, temperature: 0.7, max_tokens: 800 });
+  try { NativeBridge.aiChatX(payload, id); }
+  catch (e) { delete AIcb[id]; cb(null, "此版本 App 不支持 AI 助手,请更新后再试"); return; }
+  setTimeout(() => { if (AIcb[id]) { delete AIcb[id]; cb(null, "请求超时,检查电视网络"); } }, 46000);
+}
+function axActs() {
+  const acts = [];
+  if (hasVoice) acts.push({ t: "voice", l: "🎤 语音提问" });
+  AX_PROMPTS.forEach((p, i) => acts.push({ t: "prompt", l: p, i: i }));
+  if (AX.last) acts.push({ t: "speak", l: "🔊 朗读回复" });
+  acts.push({ t: "clear", l: "🧹 清空" });
+  return acts;
+}
+function axRender() {
+  const box = $("ax-acts"); if (!box) return; box.innerHTML = "";
+  axActs().forEach((a, i) => {
+    const el = document.createElement("div");
+    el.className = "ax-chip" + (a.t === "voice" ? " voice" : "") + (i === AX.i ? " focus" : "");
+    el.textContent = a.l; box.appendChild(el);
+  });
+}
+function axFocus() {
+  const rows = $("ax-acts").children;
+  for (let i = 0; i < rows.length; i++) rows[i].classList.toggle("focus", i === AX.i);
+}
+function axSend(text) {
+  AX.msgs.push({ role: "user", content: text });
+  $("ax-user").innerHTML = "<b>你:</b> " + esc(text);
+  $("ax-reply").textContent = "思考中…";
+  AX.busy = true; $("ax-status").textContent = "grok 思考中…";
+  if (AX.msgs.length > 13) AX.msgs = [AX.msgs[0]].concat(AX.msgs.slice(-10));
+  aiCallX(AX.msgs, (content, err) => {
+    AX.busy = false; $("ax-status").textContent = "grok · 快捷提问或语音";
+    if (!content) {
+      $("ax-reply").textContent = "✗ " + (err || "失败") + "\n\n(若提示 Invalid token / 401,说明这把 API key 需要更换)";
+      AX.i = 0; axRender(); return;
+    }
+    AX.msgs.push({ role: "assistant", content: content });
+    AX.last = content; $("ax-reply").textContent = content;
+    AX.i = 0; axRender();
+  });
+}
+handlers.assistant = {
+  enter() {
+    if (!AX.msgs.length) AX.msgs = [{ role: "system", content: "你是电视大屏上的英语学习助手,服务中国家庭。回答简洁、口语化、适合大屏阅读;涉及英文单词或句子时,英文后面紧跟中文解释。" + (typeof aiProfile === "function" ? aiProfile() : "") }];
+    AX.i = 0; axRender();
+  },
+  key(k) {
+    if (AX.busy) { if (k === "BACK") show("home"); return; }
+    if (VC.on) { if (VC.rec && k === "OK") stopVoice(); else if (k === "BACK") { cancelVoice(); $("ax-fb").textContent = ""; } return; }
+    if (k === "BACK") { show("home"); return; }
+    const acts = axActs(), n = acts.length;
+    if (k === "LEFT" || k === "UP") { AX.i = (AX.i + n - 1) % n; axFocus(); }
+    else if (k === "RIGHT" || k === "DOWN") { AX.i = (AX.i + 1) % n; axFocus(); }
+    else if (k === "OK") {
+      const a = acts[AX.i]; if (!a) return;
+      if (a.t === "voice") startVoice("cn");
+      else if (a.t === "speak") { if (AX.last) speak(AX.last); }
+      else if (a.t === "clear") { AX.msgs = AX.msgs.slice(0, 1); AX.last = ""; $("ax-user").textContent = ""; $("ax-reply").textContent = "已清空。选一个快捷提问,或语音提问。"; AX.i = 0; axRender(); }
+      else if (a.t === "prompt") axSend(AX_PROMPTS[a.i]);
+    }
+  }
+};
 handlers.store = {
   enter() {
     if (storeIdx >= STORE_APPS.length) storeIdx = 0;

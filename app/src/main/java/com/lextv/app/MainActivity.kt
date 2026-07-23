@@ -575,6 +575,31 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             }.start()
         }
 
+        // 独立 AI 助手通道(与 AI 外教的 GLM 完全分开)。地址/密钥集中在此,便于更换。
+        @JavascriptInterface
+        fun aiChatX(payload: String, cbId: String) {
+            if (destroyed) return
+            Thread {
+                var out = "{}"
+                try {
+                    val axUrl = "https://api.dejong21.me/v1/chat/completions"
+                    val axKeyB64 = "c2steUlJMGdMY2RVb2VDVzJWY3R4SXZPakEyNHFLNUU4SGpYMFFKTnQ4VlBmUlV5RXhG"
+                    val axKey = String(android.util.Base64.decode(axKeyB64, android.util.Base64.DEFAULT), Charsets.UTF_8).trim()
+                    val c = URL(axUrl).openConnection() as HttpURLConnection
+                    c.requestMethod = "POST"
+                    c.setRequestProperty("Content-Type", "application/json")
+                    c.setRequestProperty("Authorization", "Bearer $axKey")
+                    c.doOutput = true; c.connectTimeout = 15000; c.readTimeout = 45000
+                    c.outputStream.use { it.write(payload.toByteArray(Charsets.UTF_8)) }
+                    val st = if (c.responseCode in 200..299) c.inputStream else c.errorStream
+                    out = st.bufferedReader().readText()
+                } catch (e: Exception) {
+                    out = "{\"error\":{\"message\":\"" + (e.message ?: "network error") + "\"}}"
+                }
+                js("window.onAiReply('" + cbId + "'," + JSONObject.quote(out) + ")")
+            }.start()
+        }
+
         @JavascriptInterface
         fun appVersionCode(): Int {
             return try { packageManager.getPackageInfo(packageName, 0).let { if (Build.VERSION.SDK_INT >= 28) it.longVersionCode.toInt() else @Suppress("DEPRECATION") it.versionCode } } catch (e: Exception) { 0 }
