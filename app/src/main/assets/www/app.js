@@ -637,6 +637,9 @@ function show(name) {
   if (SCREEN === "echo-heist" && name !== "echo-heist" && window.EchoHeist && typeof window.EchoHeist.stop === "function") {
     try { window.EchoHeist.stop(); } catch (e) { }
   }
+  if (SCREEN === "versus" && name !== "versus" && window.FamilyVS && typeof window.FamilyVS.stop === "function") {
+    try { window.FamilyVS.stop(); } catch (e) { }
+  }
   cancelFocusFx(false);
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
   $(name).classList.add("active");
@@ -720,6 +723,7 @@ const MENU = [
   { id: "custom", ic: "🗓️", t: "自选复习", d: "按日期挑单词随时复习" },
   { id: "ai", ic: "👨‍🏫", t: "AI 外教", d: "对话 · 跟读 · 情景课 · 教练" },
   { id: "assistant", ic: "🤖", t: "AI 助手", d: "grok 智能问答 · 语音提问" },
+  { id: "versus", ic: "⚔️", t: "家庭对战", d: "两人同屏 · 答对出招 · 战绩榜" },
   { id: "decks", ic: "📚", t: "词库", d: "开关词书 · 外部扩展" },
   { id: "cloud", ic: "☁️", t: "云端词书", d: "搜索 · 安装 · 离线使用" },
   { id: "stats", ic: "📊", t: "统计", d: "热力图 · 掌握度" },
@@ -872,6 +876,7 @@ function openMenu(id) {
   else if (id === "screens") { SC.view = "list"; SC.gi = 0; show("screens"); }
   else if (id === "ai") show("ai");
   else if (id === "assistant") { AX.i = 0; show("assistant"); }
+  else if (id === "versus") { if (window.FamilyVS) window.FamilyVS.open(); else toast("请更新到最新版以使用家庭对战"); }
   else show(id);
 }
 
@@ -1010,6 +1015,14 @@ function finishSession() {
     + '<div class="stat"><div class="n" style="color:var(--good)">' + acc + '%</div><div class="l">初见即会</div></div>'
     + '<div class="stat"><div class="n nflame">' + (window.glyph ? glyph("flame") : "") + P.streak + '</div><div class="l">连续天数</div></div>';
   $("f-msg").textContent = acc >= 85 ? "状态极佳,记忆曲线已为你安排好下次复习" : "没关系,忘记是记忆的必经之路,算法会加密复习";
+  // 今日新词与复习都清零 → 全屏礼花庆祝(每天只放一次)
+  try {
+    const td = todayStr();
+    if (!dueWords().length && !newQuota() && P.celebrated !== td) {
+      P.celebrated = td; saveP();
+      setTimeout(() => { try { if (window.celebrate) window.celebrate("今日任务完成!"); if (window.SFX) SFX.win(); } catch (e) { } }, 420);
+    }
+  } catch (e) { }
   show("finish");
 }
 handlers.finish = { key(k) { if (k === "OK" || k === "BACK") show(RETURN_SCREEN || "home"); } };
