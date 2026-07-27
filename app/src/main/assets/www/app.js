@@ -640,6 +640,9 @@ function show(name) {
   if (SCREEN === "versus" && name !== "versus" && window.FamilyVS && typeof window.FamilyVS.stop === "function") {
     try { window.FamilyVS.stop(); } catch (e) { }
   }
+  if (SCREEN === "readaloud" && name !== "readaloud" && window.ReadAloud && typeof window.ReadAloud.stop === "function") {
+    try { window.ReadAloud.stop(); } catch (e) { }
+  }
   cancelFocusFx(false);
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
   $(name).classList.add("active");
@@ -738,6 +741,7 @@ const GAME_MENU = [
   { id: "listen", ic: "🎧", t: "听音辨义", d: "只听发音 · 训练听力反应" },
   { id: "cloze", ic: "📝", t: "例句填空", d: "读懂整句中文选英文词" },
   { id: "spell", ic: "⌨️", t: "拼写挑战", d: "听音看义 · 完整拼写" },
+  { id: "readaloud", ic: "🎤", t: "口语跟读", d: "对着遥控器读 · 电视打分" },
   { id: "chunks", ic: "🧩", t: "词块拼装", d: "拆成词块 · 重建字形记忆" },
   { id: "sentence", ic: "💬", t: "句子拼图", d: "重排语序 · 读懂真实用法" },
   { id: "starship", ic: "🚀", t: "词汇星舰", d: "双向回忆 · 护盾波次生存" },
@@ -855,6 +859,7 @@ function openMenu(id) {
   else if (id === "custom") { CU.idx = 0; show("custom"); }
   else if (id === "sim") { simOpen(); }
   else if (id === "spell") { startSpell(); }
+  else if (id === "readaloud") { if (window.ReadAloud) window.ReadAloud.open(); else toast("请更新到最新版以使用口语跟读"); }
   else if (id === "chunks") { startChunks(); }
   else if (id === "sentence") { startSentence(); }
   else if (id === "starship") { startStarship(); }
@@ -1679,7 +1684,7 @@ function aiReplyFocus() {
 /* ---------- 语音输入(录音→GLM-ASR云端识别) ---------- */
 const VC = { on: false, rec: false };
 const hasVoice = (() => { try { return !!(window.Bridge && window.Bridge.hasVoice && NativeBridge.hasVoice()); } catch (e) { return false; } })();
-function voiceFbId() { return SCREEN === "assistant" ? "ax-fb" : "ai-fb"; }
+function voiceFbId() { return SCREEN === "assistant" ? "ax-fb" : (SCREEN === "readaloud" ? "ra-fb" : "ai-fb"); }
 window.onVoiceReady = () => { const f = $(voiceFbId()); f.style.color = "var(--gold)"; f.textContent = "🔴 录音中... 说完再按一次 OK 结束并识别 · 返回取消"; VC.rec = true; };
 window.onVoicePart = t => { const f = $(voiceFbId()); f.style.color = "var(--paper)"; f.textContent = t; };
 window.onVoice = t => {
@@ -1689,6 +1694,7 @@ window.onVoice = t => {
     if (!t) { $("ax-fb").textContent = "没听清,再试一次"; return; }
     $("ax-fb").textContent = ""; axSend(t); return;
   }
+  if (SCREEN === "readaloud") { if (window.ReadAloud) window.ReadAloud.handleVoice(t); return; }
   if (SCREEN !== "ai" || AIS.phase !== 1) return;
   if (!t) { $("ai-fb").textContent = "没听清,再试一次"; return; }
   $("ai-say").textContent = "🗣️ " + t;
