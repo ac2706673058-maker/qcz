@@ -1291,6 +1291,93 @@ html.eye #skytrail{filter:saturate(.78) brightness(.98)}html.eye .sr-target,html
 .ax-chip.focus{background:var(--focus-surface);color:var(--paper);transform:translateY(-.3vmin) scale(1.02);
   box-shadow:0 0 0 .28vmin var(--focus),0 1.2vmin 3vmin rgba(0,0,0,.12)}
 .ax-fb{min-height:2.6vmin;font-size:2vmin;color:var(--dim);text-align:center;margin-top:.7vmin}
+
+/* ======================================================================
+   v8.2 深色主题(html.dark)—— 仿 Claude 暖黑:低刺激、暖中性、圆润
+   放在样式表最末,覆盖此前所有写死的浅色表面。
+   ====================================================================== */
+html.dark{
+  --ink:#1F1E1D;            /* 页面底 */
+  --ink2:#302F2C;           /* 凹槽/进度槽 */
+  --panel:#2A2927;          /* 卡片 */
+  --panel2:#343330;         /* 抬升层 */
+  --paper:#F3F1EA;          /* 正文(暖白,不用纯白) */
+  --dim:rgba(243,241,234,.60);
+  --faint:rgba(243,241,234,.32);
+  --gold:#E08A62;           /* 强调:暖珊瑚 */
+  --gold2:#C96D45;
+  --good:#5FBE7F; --bad:#E5705F; --mid:#DFA24E;
+  --brand:#F3F1EA;
+  --hair:rgba(243,241,234,.11);
+  --fill:rgba(243,241,234,.075);
+  --fill2:rgba(243,241,234,.15);
+  --focus:#E08A62;
+  --focus-surface:#3A3936; --focus-text:#F3F1EA;
+  --surface-shadow:0 .18vmin .55vmin rgba(0,0,0,.3),0 .9vmin 2.2vmin rgba(0,0,0,.34);
+  --lift-shadow:0 0 0 .3vmin var(--focus),0 1.4vmin 3.4vmin rgba(0,0,0,.45);
+}
+html.dark body{background:
+  radial-gradient(92vmax 62vmax at 86% -20%,#2C2A27,transparent 62%),
+  radial-gradient(74vmax 50vmax at -12% 112%,#26251F,transparent 62%),var(--ink)!important}
+html.dark body::before{opacity:.1}
+/* 表面:统一暖黑卡片(覆盖 Codex 玻璃白 + 我的奶油白) */
+html.dark .mcard,html.dark .menu.dense .mcard,html.dark .arc-grid .mcard,
+html.dark .rowitem,html.dark .opt,html.dark .brow,html.dark .scard,html.dark .face,
+html.dark .sp-box,html.dark .sp-key,html.dark .piece,html.dark .puzzle-build,
+html.dark .cloud-search,html.dark .cloud-row,html.dark .cloud-query,html.dark .result .stat,
+html.dark #home .hero,html.dark #home .today,html.dark .ax-reply-box,html.dark .ax-chip,
+html.dark .vs-p,html.dark .vs-card,html.dark .ra-mic{
+  background:var(--panel)!important;border-color:var(--hair)!important;box-shadow:var(--surface-shadow)!important}
+html.dark .top .meta .chip,html.dark .top .meta>span,html.dark .hint-bar .k,
+html.dark .arc-label,html.dark .p-seg{background:var(--fill)!important;border-color:var(--hair)!important}
+html.dark .mcard .ic:not(.itile){background:var(--fill)!important}
+html.dark .arc-reco{background:linear-gradient(115deg,rgba(224,138,98,.14),rgba(255,255,255,.03))!important;border-color:var(--hair)!important}
+html.dark .arc-mark{background:var(--panel2)!important;color:var(--paper)!important}
+/* 焦点:抬升层 + 珊瑚描边(不再是亮白块) */
+html.dark .mcard.focus,html.dark .menu.dense .mcard.focus,html.dark .arc-grid .mcard.focus,
+html.dark .rowitem.focus,html.dark .brow.focus,html.dark .sp-key.focus,html.dark .piece.focus,
+html.dark .cloud-row.focus,html.dark .ax-chip.focus,html.dark .vs-card.focus,
+html.dark .opt.focus:not(.right):not(.wrong):not(.selw){
+  background:var(--focus-surface)!important;color:var(--paper)!important;box-shadow:var(--lift-shadow)!important}
+html.dark .mcard.focus .t,html.dark .rowitem.focus .name,html.dark .rowitem.focus .val{color:var(--paper)!important}
+html.dark .mcard.focus .d,html.dark .rowitem.focus .desc{color:var(--dim)!important}
+html.dark .rowitem.focus .val-blue{color:var(--gold)!important}
+html.dark .rowitem.focus .val-red{color:var(--bad)!important}
+/* 语义反馈:深色底 + 亮字(原来是浅绿/浅红底) */
+html.dark .opt.right,html.dark .opt.right.focus,html.dark .jbtn.yes.focus,
+html.dark .puzzle-build.good,html.dark .sp-box.ok{
+  background:#1E2E23!important;color:#7BD196!important;box-shadow:0 0 0 .26vmin var(--good)!important}
+html.dark .opt.wrong,html.dark .opt.wrong.focus,html.dark .jbtn.no.focus,
+html.dark .puzzle-build.bad,html.dark .sp-box.bad,html.dark .sp-box.wrong-pick,
+html.dark .piece.wrong-pick,html.dark .vs-p.hit,html.dark .ra-mic.rec{
+  background:#33211F!important;color:#F09285!important;box-shadow:0 0 0 .26vmin var(--bad)!important}
+html.dark .opt.selw{background:#332A20!important;color:var(--gold)!important;box-shadow:0 0 0 .24vmin var(--gold)!important}
+html.dark .jbtn.mid.focus{background:#332A1C!important;color:#E9B662!important;box-shadow:0 0 0 .26vmin var(--mid)!important}
+/* 控件与材质 */
+html.dark .ios-sw{background:var(--fill2)}
+html.dark .ios-sw.on{background:var(--good)}
+html.dark .ios-sw::after{background:#F3F1EA}
+html.dark .toast{background:rgba(48,47,44,.96)!important;color:var(--paper)!important;border-color:var(--hair)!important;
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+html.dark .aipop{background:rgba(12,11,10,.72)!important;backdrop-filter:saturate(1.1) blur(1.4vmin)!important;-webkit-backdrop-filter:saturate(1.1) blur(1.4vmin)!important}
+html.dark .aipop .box{background:var(--panel2)!important;border-color:var(--hair)!important;color:var(--paper)!important}
+html.dark #home .brand::before{background:linear-gradient(145deg,#E08A62,#B85C34)!important}
+html.dark .pbar i,html.dark .timer i,html.dark .tab.on{background:var(--gold)}
+html.dark .mcard .badge{background:var(--gold)!important;color:#241a13!important}
+/* 彩色图标 tile 在暗底上略收敛,避免过亮 */
+html.dark .itile{filter:saturate(.92) brightness(.94)}
+html.dark .itile::before{opacity:.45}
+/* 焦点光环:去掉写死的蓝/白描边,改用暖珊瑚(消除深色下的双重描边) */
+html.dark .focus-halo{border-color:var(--focus);
+  background:linear-gradient(118deg,rgba(243,241,234,.05),transparent 36%,rgba(224,138,98,.07) 74%,rgba(243,241,234,.04))!important;
+  box-shadow:0 0 0 .14vmin rgba(224,138,98,.35),0 1.2vmin 3vmin rgba(0,0,0,.4)!important}
+html.dark .focus-beam{background:linear-gradient(90deg,transparent 0,var(--focus) 22%,#FFD9C4 70%,var(--focus) 88%,transparent 100%)!important;
+  box-shadow:0 0 .7vmin rgba(224,138,98,.5)!important}
+html.dark .focus-impact.r1{border-color:rgba(255,217,196,.7)!important}
+html.dark .focus-spark{background:linear-gradient(90deg,#FFD9C4,var(--focus),transparent)!important}
+/* 3D 世界与游戏场景整体压暗(它们本身是亮场景) */
+html.dark #world{filter:brightness(.8) saturate(.9)}
+html.dark #skytrail,html.dark #memory-maze{filter:brightness(.9)}
 </style>
 </head>
 <body>
@@ -1434,7 +1521,7 @@ html.eye #skytrail{filter:saturate(.78) brightness(.98)}html.eye .sr-target,html
 
   <div class="screen" id="home">
     <div class="top">
-      <div class="brand serif">千词斩<small>QIANCIZHAN · v8.1</small></div>
+      <div class="brand serif">千词斩<small>QIANCIZHAN · v8.2</small></div>
       <div class="meta">
         <span class="chip chip-user pf-fin" id="h-user-chip"><b id="h-user">爸爸</b></span>
         <span class="chip"><i class="g g-flame" id="h-flame"></i><b id="h-streak">0</b><small>连续天</small></span>

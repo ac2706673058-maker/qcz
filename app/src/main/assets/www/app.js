@@ -25,7 +25,7 @@ window.onTtsReady = ok => { ttsOK = !!ok; };
 let WORDS = {};
 let DECKS = [];
 let P = null;
-const DEFAULTS = { xp: 0, streak: 0, lastDay: "", dayLog: {}, dayNew: {}, words: {}, decksOff: {}, tr: {}, drill: {}, game: {}, set: { newPerDay: 20, tts: 1, auto: 1, eye: 0, rate: 0.9, gameSrc: "today" } };
+const DEFAULTS = { xp: 0, streak: 0, lastDay: "", dayLog: {}, dayNew: {}, words: {}, decksOff: {}, tr: {}, drill: {}, game: {}, set: { newPerDay: 20, tts: 1, auto: 1, theme: "dark", rate: 0.9, gameSrc: "today" } };
 
 /* ================= 家庭空间 v2 =================
    “人物”与“学习模板”分离。爸爸/弟弟保留原 id 和原存储 key，升级绝不搬迁旧进度；
@@ -115,8 +115,23 @@ function loadP() {
   ["dayLog", "dayNew", "words", "decksOff", "tr", "drill", "game"].forEach(k => { if (!P[k]) P[k] = {}; });
   applyVisualPrefs();
 }
+const THEMES = [
+  { id: "dark", n: "深色(默认)" },
+  { id: "warm", n: "暖白" },
+  { id: "eye", n: "护眼暖灰" }
+];
+function themeId() {
+  var t = P && P.set && P.set.theme;
+  if (t === "dark" || t === "warm" || t === "eye") return t;
+  // 老档案兼容:此前只有 eye 开关
+  if (P && P.set && P.set.eye) return "eye";
+  return "dark";
+}
+function themeName(id) { const f = THEMES.find(o => o.id === (id || themeId())); return f ? f.n : "深色(默认)"; }
 function applyVisualPrefs() {
-  document.documentElement.classList.toggle("eye", !!(P && P.set && P.set.eye));
+  const t = themeId(), r = document.documentElement;
+  r.classList.toggle("eye", t === "eye");
+  r.classList.toggle("dark", t === "dark");
 }
 let saveTimer = null;
 function saveP() { clearTimeout(saveTimer); saveTimer = setTimeout(() => { try { NativeBridge.save(PF().store, JSON.stringify(P)); } catch (e) { } }, 600); }
@@ -647,9 +662,9 @@ function show(name) {
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
   $(name).classList.add("active");
   SCREEN = name;
-  // 进屏动画(v5-screen-in .15s)期间测量的焦点框位置会随内容整体偏下,
-  // 动画结束后再校准一次,消除"刚进菜单选择框向下歪"的错位。
-  setTimeout(() => { try { requestFocusSync(); } catch (e) { } }, 210);
+  // 焦点框错位的三个真凶:①进屏动画期间测量②列表 scrollIntoView 在测量之后
+  // 才滚动③自定义字体加载导致回流。这里多次校准把三种都覆盖掉。
+  [0, 60, 150, 320, 620].forEach(d => setTimeout(() => { try { requestFocusSync(); } catch (e) { } }, d));
   try { if (handlers[name] && handlers[name].enter) handlers[name].enter(); }
   catch (e) { toast("界面错误:" + (e && e.message)); }
   requestAnimationFrame(() => placeFocusHalo(focusRect(navFocused())));
@@ -685,6 +700,17 @@ window.onTvKey = k => {
   });
 };
 window.addEventListener("resize", () => requestAnimationFrame(() => placeFocusHalo(focusRect(navFocused()))));
+/* 任何容器滚动(列表 scrollIntoView 是主要来源)后重新贴合焦点框 */
+let haloScrollRaf = 0;
+document.addEventListener("scroll", () => {
+  if (haloScrollRaf) return;
+  haloScrollRaf = requestAnimationFrame(() => {
+    haloScrollRaf = 0;
+    try { placeFocusHalo(focusRect(navFocused())); } catch (e) { }
+  });
+}, true);
+/* 自定义字体加载完成会让文字块回流,焦点框需要再贴一次 */
+try { if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { try { requestFocusSync(); } catch (e) { } }); } catch (e) { }
 document.addEventListener("keydown", e => {
   const map = { ArrowUp: "UP", ArrowDown: "DOWN", ArrowLeft: "LEFT", ArrowRight: "RIGHT", Enter: "OK", Escape: "BACK", Backspace: "BACK" };
   if (map[e.key]) { e.preventDefault(); window.onTvKey(map[e.key]); }
@@ -2036,14 +2062,14 @@ const SETTINGS = [
   { id: "tts", name: "发音", desc: "在线真人发音,需电视联网;离线时自动尝试系统TTS", opts: [1, 0], fmt: v => v ? "开启" : "关闭" },
   { id: "auto", name: "自动朗读", desc: "出示卡片时自动读单词", opts: [1, 0], fmt: v => v ? "开启" : "关闭" },
   { id: "gameSrc", name: "训练词源", desc: "训练馆游戏使用哪些单词(默认今天学的)", opts: ["today", "yesterday", "3d", "7d", "all"], fmt: v => gameSrcName(v || "today") },
-  { id: "eye", name: "护眼模式", desc: "暖灰低蓝光配色,降低大屏亮度刺激", opts: [1, 0], fmt: v => v ? "开启" : "关闭" },
+  { id: "theme", name: "界面主题", desc: "深色更护眼、夜间不刺眼;也可切换暖白或护眼暖灰", opts: ["dark", "warm", "eye"], fmt: v => themeName(v) },
   { id: "rate", name: "语速", desc: "朗读速度", opts: [0.7, 0.9, 1.0, 1.2], fmt: v => v + "×" },
   { id: "store", name: "软件商城", desc: "为电视一键下载安装实用第三方 App", opts: null, fmt: () => "OK 打开" },
   { id: "update", name: "检查更新", desc: "在线检查新版本并一键下载安装,进度保留", opts: null, fmt: () => "OK 检查" },
   { id: "reset", name: "重置全部进度", desc: "清空学习记录,不可恢复", opts: null, fmt: () => "OK 按两次" }
 ];
 let resetArm = false;
-const SET_ICON = { newPerDay: "🎯", tts: "🔊", auto: "▶️", gameSrc: "🗂", eye: "◐", store: "📦", rate: "⏩", update: "🔄", reset: "🗑️" };
+const SET_ICON = { newPerDay: "🎯", tts: "🔊", auto: "▶️", gameSrc: "🗂", theme: "◐", store: "📦", rate: "⏩", update: "🔄", reset: "🗑️" };
 handlers.settings = {
   enter() {
     const box = $("set-list"); box.innerHTML = "";
@@ -2077,7 +2103,7 @@ handlers.settings = {
     else if ((k === "LEFT" || k === "RIGHT") && s.opts) {
       const cur = s.opts.indexOf(P.set[s.id]);
       const nx = (cur + (k === "RIGHT" ? 1 : s.opts.length - 1)) % s.opts.length;
-      P.set[s.id] = s.opts[nx]; if (s.id === "eye") applyVisualPrefs(); saveP();
+      P.set[s.id] = s.opts[nx]; if (s.id === "theme") applyVisualPrefs(); saveP();
     } else if (k === "OK") {
       if (s.id === "store") { storeIdx = 0; show("store"); return; }
       else if (s.id === "update") { checkUpdate(); return; }
@@ -2086,7 +2112,7 @@ handlers.settings = {
         else { P = JSON.parse(JSON.stringify(DEFAULTS)); applyVisualPrefs(); saveP(); resetArm = false; toast("已重置全部进度"); }
       } else if (s.opts) {
         const cur = s.opts.indexOf(P.set[s.id]);
-        P.set[s.id] = s.opts[(cur + 1) % s.opts.length]; if (s.id === "eye") applyVisualPrefs(); saveP();
+        P.set[s.id] = s.opts[(cur + 1) % s.opts.length]; if (s.id === "theme") applyVisualPrefs(); saveP();
         if (s.id === "tts" || s.id === "rate") speak("Welcome to Lex TV");
       }
     }
