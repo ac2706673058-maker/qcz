@@ -2350,6 +2350,15 @@ handlers.settings.key = function (k) {
    每个 App 的下载地址均指向其开源项目官方 GitHub 发布页,与本软件的自更新同源同信任级别。 */
 const STORE_APPS = [
   {
+    id: "self",
+    name: "千词斩 LexTV(本软件)",
+    ver: "最新版",
+    size: "自我更新 · 学习进度完整保留",
+    desc: "直接安装仓库里最新的版本,不比较版本号 · 检查更新失败时用这个",
+    url: UPDATE_APK_URL,
+    self: true
+  },
+  {
     id: "clashmeta",
     name: "Clash Meta for Android",
     ver: "v2.11.32",
@@ -2447,7 +2456,7 @@ handlers.store = {
       const el = document.createElement("div");
       el.className = "rowitem" + (i === storeIdx ? " focus" : "");
       el.innerHTML = (window.iconTile ? iconTile("store") : '<div class="ic">📦</div>')
-        + '<div class="info"><div class="name">' + esc(a.name) + ' <span style="color:var(--dim);font-size:2vmin;font-weight:500">' + esc(a.ver) + '</span></div>'
+        + '<div class="info"><div class="name">' + esc(a.name) + ' <span style="color:var(--dim);font-size:2vmin;font-weight:500">' + esc(a.self ? ("最新版 · 当前 v" + curVN()) : a.ver) + '</span></div>'
         + '<div class="desc">' + esc(a.desc) + ' · ' + esc(a.size) + '</div></div>'
         + '<div class="val val-blue">OK 安装</div>';
       box.appendChild(el);
