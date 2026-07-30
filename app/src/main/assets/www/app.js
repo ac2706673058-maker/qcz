@@ -2107,10 +2107,11 @@ const SETTINGS = [
   { id: "rate", name: "语速", desc: "朗读速度", opts: [0.7, 0.9, 1.0, 1.2], fmt: v => v + "×" },
   { id: "store", name: "软件商城", desc: "为电视一键下载安装实用第三方 App", opts: null, fmt: () => "OK 打开" },
   { id: "update", name: "检查更新", desc: "在线检查新版本并一键下载安装,进度保留", opts: null, fmt: () => "OK 检查" },
+  { id: "forceUpdate", name: "强制安装最新版", desc: "检查更新失败时用:跳过版本比对直接装最新包(自动尝试镜像)", opts: null, fmt: () => "OK 安装" },
   { id: "reset", name: "重置全部进度", desc: "清空学习记录,不可恢复", opts: null, fmt: () => "OK 按两次" }
 ];
 let resetArm = false;
-const SET_ICON = { newPerDay: "🎯", tts: "🔊", auto: "▶️", gameSrc: "🗂", theme: "◐", bright: "🔅", warmth: "🌇", rest: "⏰", store: "📦", rate: "⏩", update: "🔄", reset: "🗑️" };
+const SET_ICON = { newPerDay: "🎯", tts: "🔊", auto: "▶️", gameSrc: "🗂", theme: "◐", forceUpdate: "⬇️", bright: "🔅", warmth: "🌇", rest: "⏰", store: "📦", rate: "⏩", update: "🔄", reset: "🗑️" };
 handlers.settings = {
   enter() {
     const box = $("set-list"); box.innerHTML = "";
@@ -2147,6 +2148,7 @@ handlers.settings = {
       P.set[s.id] = s.opts[nx]; if (s.id === "theme" || s.id === "bright" || s.id === "warmth") applyVisualPrefs(); saveP();
     } else if (k === "OK") {
       if (s.id === "store") { storeIdx = 0; show("store"); return; }
+      else if (s.id === "forceUpdate") { forceInstallLatest(); return; }
       else if (s.id === "update") { checkUpdate(); return; }
       else if (s.id === "reset") {
         if (!resetArm) { resetArm = true; }
@@ -2256,8 +2258,17 @@ function checkUpdate() {
   }
   UP.phase = "checking";
   upBox('<div style="font-size:3vmin">🔄 正在检查更新...</div>');
-  fetch(UPDATE_API_URL, { headers: { "Accept": "application/vnd.github+json" } })
-    .then(r => r.json())
+  // 先用原生跳转探测(不走 api.github.com:国内常不通、且未登录仅 60 次/小时),
+  // 失败再退回 API。此前 API 出错时 tag 为空会被算成版本 0,导致谎报"已是最新"。
+  probeLatestTag().then(probe => {
+    if (probe && probe.tag) return { tag_name: probe.tag, body: "" };
+    return fetch(UPDATE_API_URL, { headers: { "Accept": "application/vnd.github+json" } })
+      .then(r => r.json())
+      .then(d => {
+        if (!d || !d.tag_name) throw new Error((d && d.message) ? String(d.message).slice(0, 120) : (probe && probe.error ? probe.error : "接口没有返回版本号"));
+        return d;
+      });
+  })
     .then(data => {
       const tag = String(data.tag_name || "");
       const notes = String(data.body || "").slice(0, 300);
@@ -2266,6 +2277,7 @@ function checkUpdate() {
       const vnMatch = tag.match(/v?([\d.]+)/);
       const remoteVN = vnMatch ? vnMatch[1] : tag;
       const localVC = curVC();
+      if (!remoteVC) throw new Error("版本号解析失败:" + (tag || "空"));
       if (remoteVC > localVC) {
         UP.phase = "found"; UP.url = UPDATE_APK_URL; UP.newVn = remoteVN; UP.notes = notes;
         upBox('<div style="font-size:2.8vmin;line-height:1.7">🎉 发现新版本 <b style="color:var(--gold)">v' + esc(remoteVN) + '</b><br><span style="color:var(--dim);font-size:2.3vmin">当前 v' + esc(curVN()) + '</span>'
@@ -2278,8 +2290,37 @@ function checkUpdate() {
     })
     .catch(e => {
       UP.phase = "error";
-      upBox('<div style="font-size:2.7vmin;line-height:1.7">❌ 检查失败<br><span style="font-size:2.3vmin;color:var(--dim)">' + esc(String(e.message || e)) + '</span><br><br>请确认电视已联网,以及仓库已发布过 Release。<br><br><span style="color:var(--dim);font-size:2.2vmin">按任意键关闭</span></div>');
+      upBox('<div style="font-size:2.7vmin;line-height:1.7">❌ 检查失败<br><span style="font-size:2.3vmin;color:var(--dim)">' + esc(String(e.message || e)) + '</span>'
+        + '<br><br>常见原因:电视网络无法访问 GitHub。<br>可在设置里选「强制安装最新版」直接下载(会自动尝试镜像加速)。'
+        + '<br><br><span style="color:var(--dim);font-size:2.2vmin">按任意键关闭</span></div>');
     });
+}
+const PROBEcb = {}; let PROBEn = 0;
+window.onProbeLatest = (id, raw) => {
+  const cb = PROBEcb[id]; delete PROBEcb[id];
+  if (!cb) return;
+  try { cb(JSON.parse(raw)); } catch (e) { cb({ error: "解析失败" }); }
+};
+function probeLatestTag() {
+  return new Promise(resolve => {
+    let done = false;
+    const fin = v => { if (!done) { done = true; resolve(v); } };
+    try {
+      if (!NativeBridge.probeLatest) return fin(null);
+      const id = "p" + (++PROBEn);
+      PROBEcb[id] = fin;
+      NativeBridge.probeLatest(GH_USER, GH_REPO, id);
+      setTimeout(() => { delete PROBEcb[id]; fin(null); }, 22000);
+    } catch (e) { fin(null); }
+  });
+}
+/* 逃生通道:不比较版本,直接下载安装最新版(网络异常/版本号异常时用) */
+function forceInstallLatest() {
+  UP.phase = "found"; UP.url = UPDATE_APK_URL;
+  upBox('<div style="font-size:2.7vmin;line-height:1.7">强制安装<b style="color:var(--gold)">最新版</b>?'
+    + '<br><span style="color:var(--dim);font-size:2.3vmin">不比较版本号,直接下载仓库里最新的 APK;直连失败会自动尝试镜像加速</span>'
+    + '<br><br><b style="color:var(--good)">按 OK 开始下载</b>　·　按返回取消'
+    + '<br><span style="color:var(--dim);font-size:2.15vmin">安装后学习进度完整保留</span></div>');
 }
 function startUpdateDownload() {
   UP.phase = "downloading";

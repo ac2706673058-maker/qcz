@@ -160,12 +160,23 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             try {
                 val outFile = File(cacheDir, "update.apk")
                 if (outFile.exists()) outFile.delete()
-                val c = URL(url).openConnection() as HttpURLConnection
-                c.connectTimeout = 15000; c.readTimeout = 60000
-                c.instanceFollowRedirects = true
-                c.connect()
-                if (c.responseCode !in 200..399) {
-                    js("window.onUpdateErr && window.onUpdateErr(" + JSONObject.quote("\u4e0b\u8f7d\u5931\u8d25:HTTP " + c.responseCode) + ")"); return@Thread
+                // 直连失败时自动改走 GitHub 加速镜像(国内 objects.githubusercontent.com 常被阻断)
+                var c: HttpURLConnection? = null
+                var lastCode = 0
+                for (candidate in listOf(url, "https://ghfast.top/" + url, "https://gh-proxy.com/" + url)) {
+                    try {
+                        val t = URL(candidate).openConnection() as HttpURLConnection
+                        t.connectTimeout = 15000; t.readTimeout = 60000
+                        t.instanceFollowRedirects = true
+                        t.setRequestProperty("User-Agent", "LexTV")
+                        t.connect()
+                        lastCode = t.responseCode
+                        if (lastCode in 200..399) { c = t; break }
+                        t.disconnect()
+                    } catch (e: Exception) { lastCode = -1 }
+                }
+                if (c == null) {
+                    js("window.onUpdateErr && window.onUpdateErr(" + JSONObject.quote("\u4e0b\u8f7d\u5931\u8d25(\u542b\u955c\u50cf):HTTP " + lastCode) + ")"); return@Thread
                 }
                 val total = c.contentLength
                 val input = c.inputStream
@@ -572,6 +583,35 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                     out = "{\"error\":{\"message\":\"" + (e.message ?: "network error") + "\"}}"
                 }
                 js("window.onAiReply('" + cbId + "'," + JSONObject.quote(out) + ")")
+            }.start()
+        }
+
+        // 版本探测:不走 api.github.com(国内常不通且有 60 次/小时配额),
+        // 改为跟随 github.com/.../releases/latest 的 302 跳转,从最终 URL 取标签。
+        @JavascriptInterface
+        fun probeLatest(user: String, repo: String, cbId: String) {
+            if (destroyed) return
+            Thread {
+                var out = "{}"
+                try {
+                    val u = URL("https://github.com/$user/$repo/releases/latest")
+                    val c = u.openConnection() as HttpURLConnection
+                    c.requestMethod = "HEAD"
+                    c.instanceFollowRedirects = false
+                    c.connectTimeout = 12000; c.readTimeout = 20000
+                    c.setRequestProperty("User-Agent", "LexTV")
+                    val code = c.responseCode
+                    val loc = c.getHeaderField("Location") ?: ""
+                    c.disconnect()
+                    val tag = Regex("/tag/([^/?#]+)").find(loc)?.groupValues?.get(1) ?: ""
+                    out = if (tag.isNotEmpty())
+                        "{\"tag\":" + JSONObject.quote(tag) + "}"
+                    else
+                        "{\"error\":\"HTTP " + code + " 未取到版本(Location=" + loc.take(80) + ")\"}"
+                } catch (e: Exception) {
+                    out = "{\"error\":" + JSONObject.quote(e.message ?: "network error") + "}"
+                }
+                js("window.onProbeLatest && window.onProbeLatest('" + cbId + "'," + JSONObject.quote(out) + ")")
             }.start()
         }
 
