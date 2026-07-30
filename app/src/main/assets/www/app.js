@@ -25,7 +25,7 @@ window.onTtsReady = ok => { ttsOK = !!ok; };
 let WORDS = {};
 let DECKS = [];
 let P = null;
-const DEFAULTS = { xp: 0, streak: 0, lastDay: "", dayLog: {}, dayNew: {}, words: {}, decksOff: {}, tr: {}, drill: {}, game: {}, set: { newPerDay: 20, tts: 1, auto: 1, theme: "dark", rate: 0.9, gameSrc: "today" } };
+const DEFAULTS = { xp: 0, streak: 0, lastDay: "", dayLog: {}, dayNew: {}, words: {}, decksOff: {}, tr: {}, drill: {}, game: {}, set: { newPerDay: 20, tts: 1, auto: 1, theme: "dark", bright: 0, warmth: 0, rest: 1, rate: 0.9, gameSrc: "today" } };
 
 /* ================= 家庭空间 v2 =================
    “人物”与“学习模板”分离。爸爸/弟弟保留原 id 和原存储 key，升级绝不搬迁旧进度；
@@ -128,11 +128,49 @@ function themeId() {
   return "dark";
 }
 function themeName(id) { const f = THEMES.find(o => o.id === (id || themeId())); return f ? f.n : "深色(默认)"; }
+const BRIGHT = [
+  { v: 0, n: "标准" }, { v: 1, n: "柔和" }, { v: 2, n: "更暗" }, { v: 3, n: "极暗(夜间)" }
+];
+const WARMTH = [{ v: 0, n: "关闭" }, { v: 1, n: "轻微暖光" }, { v: 2, n: "较暖(低蓝光)" }];
+const DIM_ALPHA = [0, 0.10, 0.20, 0.32];
+const WARM_ALPHA = [0, 0.06, 0.13];
+function brightName(v) { const f = BRIGHT.find(o => o.v === (v == null ? 0 : v)); return f ? f.n : "标准"; }
+function warmName(v) { const f = WARMTH.find(o => o.v === (v == null ? 0 : v)); return f ? f.n : "关闭"; }
+function ensureLayer(id) {
+  let el = document.getElementById(id);
+  if (!el) { el = document.createElement("div"); el.id = id; el.setAttribute("aria-hidden", "true"); document.body.appendChild(el); }
+  return el;
+}
+function applyDisplayFilters() {
+  try {
+    const b = Math.max(0, Math.min(3, (P && P.set && P.set.bright) | 0));
+    const w = Math.max(0, Math.min(2, (P && P.set && P.set.warmth) | 0));
+    ensureLayer("dim-layer").style.opacity = String(DIM_ALPHA[b] || 0);
+    ensureLayer("warm-layer").style.opacity = String(WARM_ALPHA[w] || 0);
+  } catch (e) { }
+}
 function applyVisualPrefs() {
   const t = themeId(), r = document.documentElement;
   r.classList.toggle("eye", t === "eye");
   r.classList.toggle("dark", t === "dark");
+  applyDisplayFilters();
 }
+
+/* ---------- 护眼:久看提醒(每 30 分钟连续使用提示一次) ---------- */
+const REST = { start: 0, lastTip: 0 };
+function restTick() {
+  try {
+    if (!P || !P.set || P.set.rest === 0) return;
+    const now = NOW();
+    if (!REST.start) REST.start = now;
+    if (now - REST.start >= 1800000 && now - REST.lastTip >= 1800000) {
+      REST.lastTip = now;
+      toast("已经连续学了 30 分钟,起来走两步、看看远处放松眼睛吧");
+      try { if (window.SFX) SFX.ok(); } catch (e) { }
+    }
+  } catch (e) { }
+}
+setInterval(restTick, 60000);
 let saveTimer = null;
 function saveP() { clearTimeout(saveTimer); saveTimer = setTimeout(() => { try { NativeBridge.save(PF().store, JSON.stringify(P)); } catch (e) { } }, 600); }
 function flushP() { clearTimeout(saveTimer); try { NativeBridge.save(PF().store, JSON.stringify(P)); } catch (e) { } }
@@ -2063,13 +2101,16 @@ const SETTINGS = [
   { id: "auto", name: "自动朗读", desc: "出示卡片时自动读单词", opts: [1, 0], fmt: v => v ? "开启" : "关闭" },
   { id: "gameSrc", name: "训练词源", desc: "训练馆游戏使用哪些单词(默认今天学的)", opts: ["today", "yesterday", "3d", "7d", "all"], fmt: v => gameSrcName(v || "today") },
   { id: "theme", name: "界面主题", desc: "深色更护眼、夜间不刺眼;也可切换暖白或护眼暖灰", opts: ["dark", "warm", "eye"], fmt: v => themeName(v) },
+  { id: "bright", name: "屏幕亮度", desc: "整体调暗画面,夜间或觉得刺眼时往下调", opts: [0, 1, 2, 3], fmt: v => brightName(v) },
+  { id: "warmth", name: "暖光护眼", desc: "叠加暖色降低蓝光,长时间观看更舒服", opts: [0, 1, 2], fmt: v => warmName(v) },
+  { id: "rest", name: "久看提醒", desc: "连续学习 30 分钟提醒起来放松眼睛", opts: [1, 0], fmt: v => v ? "开启" : "关闭" },
   { id: "rate", name: "语速", desc: "朗读速度", opts: [0.7, 0.9, 1.0, 1.2], fmt: v => v + "×" },
   { id: "store", name: "软件商城", desc: "为电视一键下载安装实用第三方 App", opts: null, fmt: () => "OK 打开" },
   { id: "update", name: "检查更新", desc: "在线检查新版本并一键下载安装,进度保留", opts: null, fmt: () => "OK 检查" },
   { id: "reset", name: "重置全部进度", desc: "清空学习记录,不可恢复", opts: null, fmt: () => "OK 按两次" }
 ];
 let resetArm = false;
-const SET_ICON = { newPerDay: "🎯", tts: "🔊", auto: "▶️", gameSrc: "🗂", theme: "◐", store: "📦", rate: "⏩", update: "🔄", reset: "🗑️" };
+const SET_ICON = { newPerDay: "🎯", tts: "🔊", auto: "▶️", gameSrc: "🗂", theme: "◐", bright: "🔅", warmth: "🌇", rest: "⏰", store: "📦", rate: "⏩", update: "🔄", reset: "🗑️" };
 handlers.settings = {
   enter() {
     const box = $("set-list"); box.innerHTML = "";
@@ -2103,7 +2144,7 @@ handlers.settings = {
     else if ((k === "LEFT" || k === "RIGHT") && s.opts) {
       const cur = s.opts.indexOf(P.set[s.id]);
       const nx = (cur + (k === "RIGHT" ? 1 : s.opts.length - 1)) % s.opts.length;
-      P.set[s.id] = s.opts[nx]; if (s.id === "theme") applyVisualPrefs(); saveP();
+      P.set[s.id] = s.opts[nx]; if (s.id === "theme" || s.id === "bright" || s.id === "warmth") applyVisualPrefs(); saveP();
     } else if (k === "OK") {
       if (s.id === "store") { storeIdx = 0; show("store"); return; }
       else if (s.id === "update") { checkUpdate(); return; }
@@ -2112,7 +2153,7 @@ handlers.settings = {
         else { P = JSON.parse(JSON.stringify(DEFAULTS)); applyVisualPrefs(); saveP(); resetArm = false; toast("已重置全部进度"); }
       } else if (s.opts) {
         const cur = s.opts.indexOf(P.set[s.id]);
-        P.set[s.id] = s.opts[(cur + 1) % s.opts.length]; if (s.id === "theme") applyVisualPrefs(); saveP();
+        P.set[s.id] = s.opts[(cur + 1) % s.opts.length]; if (s.id === "theme" || s.id === "bright" || s.id === "warmth") applyVisualPrefs(); saveP();
         if (s.id === "tts" || s.id === "rate") speak("Welcome to Lex TV");
       }
     }

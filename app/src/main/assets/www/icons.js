@@ -38,6 +38,9 @@
     newPerDay: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="1"/>',
     tts: '<path d="M4 9.5v5h3.5L13 19V5L7.5 9.5H4z"/><path d="M16.5 9a4 4 0 0 1 0 6"/>',
     auto: '<path d="M7 4.5 19 12 7 19.5V4.5z"/>',
+    bright: '<circle cx="12" cy="12" r="4"/><path d="M12 2.6v2.4M12 19v2.4M2.6 12h2.4M19 12h2.4M5.6 5.6l1.7 1.7M16.7 16.7l1.7 1.7M18.4 5.6l-1.7 1.7M7.3 16.7l-1.7 1.7"/>',
+    warmth: '<path d="M3 18h18"/><path d="M6.8 18a5.2 5.2 0 0 1 10.4 0"/><path d="M12 5.4v2.2M4.9 8.3l1.6 1.6M19.1 8.3l-1.6 1.6"/>',
+    rest: '<circle cx="12" cy="13" r="7.6"/><path d="M12 9.4V13l2.6 1.6M8.4 2.8 6 4.6M15.6 2.8 18 4.6"/>',
     theme: '<path d="M12 3.2a8.8 8.8 0 1 0 0 17.6V3.2z"/><circle cx="12" cy="12" r="8.8"/>',
     eye: '<path d="M2.5 12s3.5-5.5 9.5-5.5 9.5 5.5 9.5 5.5-3.5 5.5-9.5 5.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>',
     gameSrc: '<rect x="4" y="5" width="16" height="16" rx="2.4"/><path d="M4 9.5h16M8.5 3v4M15.5 3v4M8.5 13.5h3M8.5 17h5"/>',
@@ -61,7 +64,7 @@
     decks: ['#4A91DE', '#286CB6'], cloud: ['#58A9D8', '#336DB7'], restore: ['#55A66F', '#347C4F'], stats: ['#51A66C', '#327C4C'], who: ['#50AEC2', '#2E7E9F'],
     settings: ['#76767E', '#4A4A50'],
     newPerDay: ['#4A91DE', '#286CB6'], tts: ['#D78634', '#AF5C24'], auto: ['#4DA16B', '#307A4E'],
-    eye: ['#A58A58', '#71603F'], theme: ['#8E8E93', '#5B5B60'], gameSrc: ['#4AA39A', '#2E7771'], store: ['#5AC8FA', '#287CB8'], assistant: ['#7469D1', '#3B5FB6'], versus: ['#FF6B4A', '#C9342B'], readaloud: ['#E9548C', '#B02463'], rate: ['#A969C4', '#754693'], update: ['#4A91DE', '#286CB6'], reset: ['#DF5A53', '#B83238'],
+    eye: ['#A58A58', '#71603F'], theme: ['#8E8E93', '#5B5B60'], bright: ['#E0A64B', '#B0741F'], warmth: ['#E08A62', '#B85C34'], rest: ['#5FBE7F', '#2F7A4C'], gameSrc: ['#4AA39A', '#2E7771'], store: ['#5AC8FA', '#287CB8'], assistant: ['#7469D1', '#3B5FB6'], versus: ['#FF6B4A', '#C9342B'], readaloud: ['#E9548C', '#B02463'], rate: ['#A969C4', '#754693'], update: ['#4A91DE', '#286CB6'], reset: ['#DF5A53', '#B83238'],
     _default: ['#8E8E93', '#5B5B60']
   };
   window.iconSvg = function (id) {

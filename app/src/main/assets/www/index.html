@@ -1376,8 +1376,26 @@ html.dark .focus-beam{background:linear-gradient(90deg,transparent 0,var(--focus
 html.dark .focus-impact.r1{border-color:rgba(255,217,196,.7)!important}
 html.dark .focus-spark{background:linear-gradient(90deg,#FFD9C4,var(--focus),transparent)!important}
 /* 3D 世界与游戏场景整体压暗(它们本身是亮场景) */
-html.dark #world{filter:brightness(.8) saturate(.9)}
+/* 词汇世界:深色下换成"夜间的世界"(星空+暗绿丘陵),不再是白天大亮景 */
+html.dark #world{background:#131B22;color:#E6EDEA;filter:none}
+html.dark #world-stage{background:linear-gradient(180deg,#111A24 0%,#17222B 46%,#1C2A26 100%)}
+html.dark #world-stage>canvas{filter:brightness(.62) saturate(.82) contrast(1.04)}
+html.dark #world-fallback{background:
+  radial-gradient(circle at 73% 19%,rgba(232,226,180,.5) 0 2.6vmin,rgba(200,196,150,.12) 2.8vmin 9vmin,transparent 17vmin),
+  linear-gradient(180deg,#121B25 0%,#182430 52%,#1B2A25 100%)!important}
+html.dark #world-fallback:before{opacity:.3;filter:saturate(.5) brightness(.55)}
+html.dark #world-fallback:after{background:linear-gradient(180deg,#2A3B31,#1E2C26)!important;
+  box-shadow:inset 0 2vmin 0 rgba(180,196,170,.14),0 -5vmin 12vmin rgba(10,16,14,.4)!important}
+html.dark .world-action{background:rgba(32,40,44,.86)!important;border-color:rgba(230,237,234,.14)!important;color:#E6EDEA}
+html.dark .world-action.focus{background:var(--focus-surface)!important;color:var(--paper)!important;
+  border-color:var(--focus)!important;box-shadow:0 0 0 .28vmin var(--focus),0 1.4vmin 3.4vmin rgba(0,0,0,.45)!important}
+html.dark .world-action .wa-sub{color:rgba(230,237,234,.6)!important}
 html.dark #skytrail,html.dark #memory-maze{filter:brightness(.9)}
+html.dark #skytrail,html.dark #memory-maze{filter:brightness(.9)}
+/* ===== 屏幕亮度 / 暖光护眼遮罩(合成层,比 filter 省性能) ===== */
+#dim-layer,#warm-layer{position:fixed;inset:0;pointer-events:none;z-index:9998;opacity:0;transition:opacity .35s ease}
+#dim-layer{background:#000}
+#warm-layer{background:#FF9A3C;mix-blend-mode:multiply}
 </style>
 </head>
 <body>
@@ -1521,7 +1539,7 @@ html.dark #skytrail,html.dark #memory-maze{filter:brightness(.9)}
 
   <div class="screen" id="home">
     <div class="top">
-      <div class="brand serif">千词斩<small>QIANCIZHAN · v8.2</small></div>
+      <div class="brand serif">千词斩<small>QIANCIZHAN · v8.3</small></div>
       <div class="meta">
         <span class="chip chip-user pf-fin" id="h-user-chip"><b id="h-user">爸爸</b></span>
         <span class="chip"><i class="g g-flame" id="h-flame"></i><b id="h-streak">0</b><small>连续天</small></span>
